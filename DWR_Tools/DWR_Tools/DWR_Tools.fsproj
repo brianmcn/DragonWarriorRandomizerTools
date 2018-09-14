@@ -1,0 +1,164 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>b6a2fcf2-81ca-432e-9846-c9c9b71fcf95</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>DWR_Tools</RootNamespace>
+    <AssemblyName>DWR_Tools</AssemblyName>
+    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
+    <Name>DWR_Tools</Name>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <Tailcalls>false</Tailcalls>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <WarningLevel>3</WarningLevel>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DocumentationFile>bin\Debug\DWR_Tools.XML</DocumentationFile>
+    <Prefer32Bit>true</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <Tailcalls>true</Tailcalls>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <WarningLevel>3</WarningLevel>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DocumentationFile>bin\Release\DWR_Tools.XML</DocumentationFile>
+    <Prefer32Bit>true</Prefer32Bit>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="mscorlib" />
+    <Reference Include="FSharp.Core, Version=$(TargetFSharpCoreVersion), Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="System" />
+    <Reference Include="System.ComponentModel.Composition" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Design" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Numerics" />
+    <Reference Include="System.Windows" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Windows.Presentation" />
+    <Reference Include="System.Xaml" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Xml.Serialization" />
+    <Reference Include="UIAutomationClient" />
+    <Reference Include="UIAutomationTypes" />
+    <Reference Include="WindowsBase" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="Program.fs" />
+    <None Include="App.config" />
+    <EmbeddedResource Include="CroppedBrianKitty.png" />
+    <EmbeddedResource Include="DW_TabletCave.png" />
+    <EmbeddedResource Include="DW_SwampCave.png" />
+    <EmbeddedResource Include="DW_MountainCave.png" />
+    <EmbeddedResource Include="DW_GarinTomb.png" />
+    <EmbeddedResource Include="DW_Charlock.png" />
+    <EmbeddedResource Include="wyvern.png" />
+    <EmbeddedResource Include="wraithknight.png" />
+    <EmbeddedResource Include="wraith.png" />
+    <EmbeddedResource Include="wolflord.png" />
+    <EmbeddedResource Include="wolf.png" />
+    <EmbeddedResource Include="wizard.png" />
+    <EmbeddedResource Include="werewolf.png" />
+    <EmbeddedResource Include="warlock.png" />
+    <EmbeddedResource Include="stoneman.png" />
+    <EmbeddedResource Include="statistics.png" />
+    <EmbeddedResource Include="starwyvern.png" />
+    <EmbeddedResource Include="specter.png" />
+    <EmbeddedResource Include="slime.png" />
+    <EmbeddedResource Include="skeleton.png" />
+    <EmbeddedResource Include="scorpion.png" />
+    <EmbeddedResource Include="roguescorpion.png" />
+    <EmbeddedResource Include="redslime.png" />
+    <EmbeddedResource Include="reddragon.png" />
+    <EmbeddedResource Include="poltergeist.png" />
+    <EmbeddedResource Include="metalslime.png" />
+    <EmbeddedResource Include="metalscorpion.png" />
+    <EmbeddedResource Include="magiwyvern.png" />
+    <EmbeddedResource Include="magidrakee.png" />
+    <EmbeddedResource Include="magician.png" />
+    <EmbeddedResource Include="knight.png" />
+    <EmbeddedResource Include="greendragon.png" />
+    <EmbeddedResource Include="golem.png" />
+    <EmbeddedResource Include="goldman.png" />
+    <EmbeddedResource Include="ghost.png" />
+    <EmbeddedResource Include="druinlord.png" />
+    <EmbeddedResource Include="druin.png" />
+    <EmbeddedResource Include="drollmagi.png" />
+    <EmbeddedResource Include="droll.png" />
+    <EmbeddedResource Include="dragonlord2.png" />
+    <EmbeddedResource Include="drakeema.png" />
+    <EmbeddedResource Include="drakee.png" />
+    <EmbeddedResource Include="demonknight.png" />
+    <EmbeddedResource Include="bluedragon.png" />
+    <EmbeddedResource Include="axeknight.png" />
+    <EmbeddedResource Include="armoredknight.png" />
+    <EmbeddedResource Include="ow_water_ws.png" />
+    <EmbeddedResource Include="ow_water_wes.png" />
+    <EmbeddedResource Include="ow_water_we.png" />
+    <EmbeddedResource Include="ow_water_w.png" />
+    <EmbeddedResource Include="ow_water_s.png" />
+    <EmbeddedResource Include="ow_water_nws.png" />
+    <EmbeddedResource Include="ow_water_nwes.png" />
+    <EmbeddedResource Include="ow_water_nwe.png" />
+    <EmbeddedResource Include="ow_water_nw.png" />
+    <EmbeddedResource Include="ow_water_ns.png" />
+    <EmbeddedResource Include="ow_water_nes.png" />
+    <EmbeddedResource Include="ow_water_ne.png" />
+    <EmbeddedResource Include="ow_water_n.png" />
+    <EmbeddedResource Include="ow_water_es.png" />
+    <EmbeddedResource Include="ow_water_e.png" />
+    <EmbeddedResource Include="ow_water.png" />
+    <EmbeddedResource Include="ow_wall.png" />
+    <EmbeddedResource Include="ow_town.png" />
+    <EmbeddedResource Include="ow_swamp.png" />
+    <EmbeddedResource Include="ow_plains.png" />
+    <EmbeddedResource Include="ow_mountain.png" />
+    <EmbeddedResource Include="ow_hills.png" />
+    <EmbeddedResource Include="ow_forest.png" />
+    <EmbeddedResource Include="ow_desert.png" />
+    <EmbeddedResource Include="ow_cave.png" />
+    <EmbeddedResource Include="ow_castle.png" />
+    <EmbeddedResource Include="ow_bridge.png" />
+  </ItemGroup>
+  <PropertyGroup>
+    <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
+  </PropertyGroup>
+  <Choose>
+    <When Condition="'$(VisualStudioVersion)' == '11.0'">
+      <PropertyGroup Condition="Exists('$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets')">
+        <FSharpTargetsPath>$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets</FSharpTargetsPath>
+      </PropertyGroup>
+    </When>
+    <Otherwise>
+      <PropertyGroup Condition="Exists('$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\FSharp\Microsoft.FSharp.Targets')">
+        <FSharpTargetsPath>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\FSharp\Microsoft.FSharp.Targets</FSharpTargetsPath>
+      </PropertyGroup>
+    </Otherwise>
+  </Choose>
+  <Import Project="$(FSharpTargetsPath)" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
