@@ -1,7 +1,4 @@
-﻿// Learn more about F# at http://fsharp.org
-// See the 'F# Tutorial' project for more help.
-
-open System
+﻿open System
 open System.Windows
 open System.Windows.Controls 
 open System.Windows.Media
@@ -14,8 +11,6 @@ open System.Windows.Interop
 // TODO add spell tracker? (see spell menu)
 // TODO add AP/DP/STR/AGI tracker (when that screen pops up?)
 // TODO exp level time splits?
-
-let ENABLE_MAP = true
 
 //////////////////////////////////////////////////
 
@@ -126,17 +121,9 @@ module Screenshot =
         let hWnd_DragonWarrior = Winterop.GetForegroundWindow()
         let mutable rect = Winterop.RECT()
         let b = Winterop.GetWindowRect(hWnd_DragonWarrior, &&rect)
-        //printfn "%A %d %d %d %d" b rect.Left rect.Top rect.Right rect.Bottom 
-        (*
-        gfxScreenshot.CopyFromScreen(System.Windows.Forms.Screen.PrimaryScreen.Bounds.X, System.Windows.Forms.Screen.PrimaryScreen.Bounds.Y,
-                                    0, 0,
-                                    System.Windows.Forms.Screen.PrimaryScreen.Bounds.Size,
-                                    System.Drawing.CopyPixelOperation.SourceCopy)
-        *)
-        gfxScreenshot.CopyFromScreen(rect.Left, rect.Top,
-                                    0, 0,
-                                    System.Drawing.Size(rect.Right-rect.Left+1,rect.Bottom-rect.Top+1),
-                                    System.Drawing.CopyPixelOperation.SourceCopy)
+        gfxScreenshot.CopyFromScreen(rect.Left, rect.Top, 0, 0,
+                                     System.Drawing.Size(rect.Right-rect.Left+1,rect.Bottom-rect.Top+1),
+                                     System.Drawing.CopyPixelOperation.SourceCopy)
         bmpScreenshot
     let GetInnerDWRBitmaps() =
         let outerBmp = GetDWRBitmap()
@@ -144,8 +131,8 @@ module Screenshot =
         let innerHeight = 672
         let innerBmp = outerBmp.Clone(new System.Drawing.Rectangle(8+24, 51, innerWidth, innerHeight), System.Drawing.Imaging.PixelFormat.Format32bppArgb)
         let innerBmp = RedToWhiteBmp(innerBmp)
-        let fastInnerBmp = new FastRGBBitmap(innerBmp.Clone() :?> System.Drawing.Bitmap)
         //innerBmp.Save("Crop024.png")
+        let fastInnerBmp = new FastRGBBitmap(innerBmp.Clone() :?> System.Drawing.Bitmap)
         let getDownscaledPixel(x,y) =
             innerBmp.GetPixel(x*3,y*3)
         let matchesKnownTile(ulx, uly) =
@@ -187,7 +174,7 @@ module Screenshot =
                                 // check for match
                                 let ulx = bx*16+lx
                                 let uly = by*16+ty
-                                if not(matchesKnownTile(ulx, uly)) then
+                                if not(matchesKnownTile(ulx, uly)) then   // TODO represent ile grid using DUs internally
                                     bad.Add( (ulx,uly) )
             if bad.Count < THRESHOLD then
                 printfn "pixel sync succeeded with %d outliers" bad.Count 
@@ -204,6 +191,7 @@ module Screenshot =
             else
                 false
         // for each possible pixel alignment
+        // TODO don't need to search 16x16 possibilties, either top or left (or both) is a known fixed alignment, depending on if character is moving E-W or N-S (or none)
         for lx = 0 to 15 do
             if not ok then
                 for ty = 0 to 15 do
@@ -440,7 +428,7 @@ type MyWindow(ihrs,imins,isecs) as this =
             bmpScreenshot.Save(sprintf "Auto%03d.png" ssNum, System.Drawing.Imaging.ImageFormat.Png)
             ssNum <- ssNum + 1
         // update map
-        if ENABLE_MAP && mapper.HasStarted then
+        if mapper.HasStarted then
             let innerBMPs = Screenshot.GetInnerDWRBitmaps()
             if innerBMPs.Count > 0 then
                 mapper.TryIncrementalPaint(innerBMPs)
@@ -568,7 +556,7 @@ type MyWindow(ihrs,imins,isecs) as this =
         this.Top <- 20.0
 
         let timer = new System.Windows.Threading.DispatcherTimer()
-        timer.Interval <- TimeSpan.FromSeconds(if ENABLE_MAP then 0.5 (*0.25*) else 1.0)  // TODO decide time
+        timer.Interval <- TimeSpan.FromSeconds(0.5)  // TODO decide time, interacts with both mapping and monster portraits...
         timer.Tick.Add(fun _ -> update())
         timer.Start()
 
@@ -624,12 +612,11 @@ type MyWindow(ihrs,imins,isecs) as this =
                     startTime <- DateTime.Now - System.TimeSpan.FromHours(float ihrs) - System.TimeSpan.FromMinutes(float imins) - System.TimeSpan.FromSeconds(float isecs)
                 elif key = VK_F9 then
                     printfn "reset map"
-                    if ENABLE_MAP then
-                        let bmps = Screenshot.GetInnerDWRBitmaps()
-                        if bmps.Count = 1 then
-                            mapper.StartFromScratch(bmps.[0])
-                        else
-                            printfn "FAILED TO START, count was %d" bmps.Count 
+                    let bmps = Screenshot.GetInnerDWRBitmaps()
+                    if bmps.Count = 1 then
+                        mapper.StartFromScratch(bmps.[0])
+                    else
+                        printfn "FAILED TO START MAPPING, count was %d" bmps.Count 
                 elif key = VK_F4 then
                     let bmpScreenshot = Screenshot.GetDWRBitmap()
                     bmpScreenshot.Save(sprintf "Screen%03d.png" ssNum, System.Drawing.Imaging.ImageFormat.Png)
@@ -642,15 +629,6 @@ type MyWindow(ihrs,imins,isecs) as this =
 [<EntryPoint>]
 let main argv = 
     let app = new Application()
-    (*
-    printfn "Init hours?"
-    let hrs  = System.Console.ReadLine() |> int
-    printfn "Init mins?"
-    let mins = System.Console.ReadLine() |> int
-    printfn "Init secs?"
-    let secs = System.Console.ReadLine() |> int
-    app.Run(MyWindow(hrs,mins,secs)) |> ignore
-    *)
     let myAssembly = System.Reflection.Assembly.GetExecutingAssembly()
     let names = myAssembly.GetManifestResourceNames()
     for n in names do
@@ -661,38 +639,8 @@ let main argv =
         let imageStream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream(ow)
         let bmp = new System.Drawing.Bitmap(imageStream)
         Screenshot.UniqueOverworldTiles.Add(ow,new FastRGBBitmap(bmp))
-    (*
-    for file in System.IO.Directory.EnumerateFiles("""C:\Users\Admin1\Source\Repos\Misc\DragonWarriorRandomizerDisplay\DragonWarriorRandomizerDisplay\bin\Debug\""", "ow_*.png") do
-        let bmp = System.Drawing.Bitmap.FromFile(file) :?> System.Drawing.Bitmap
-        Screenshot.UniqueOverworldTiles.Add(bmp)
-    *)
     printfn "loaded %d overworld tiles" Screenshot.UniqueOverworldTiles.Count 
-
-    (*
-    let tiles = ResizeArray<System.Drawing.Bitmap>()
-    for file in System.IO.Directory.EnumerateFiles("""C:\Users\Admin1\Source\Repos\Misc\DragonWarriorRandomizerDisplay\DragonWarriorRandomizerDisplay\bin\Debug\""", "?Tile???.png") do
-        let bmp = System.Drawing.Bitmap.FromFile(file) :?> System.Drawing.Bitmap
-        let mutable unique = true
-        for tile in tiles do
-            if unique then
-                let mutable differ = false
-                for x = 0 to 15 do
-                    if not differ then
-                        for y = 0 to 15 do
-                            if not differ then
-                                if tile.GetPixel(x,y).ToArgb() <> bmp.GetPixel(x,y).ToArgb() then
-                                    differ <- true
-                if not differ then
-                    unique <- false
-        if unique then
-            tiles.Add(bmp)
-    printfn "# tiles = %d" tiles.Count
-    let mutable i = 0
-    for tile in tiles do
-        tile.Save(sprintf "OWMap%03d.png" i)
-        i <- i + 1
-    *)
-        
+     
     (*
     let bmp = new System.Drawing.Bitmap(System.IO.Path.Combine("""C:\Users\Admin1\Source\Repos\Misc\DragonWarriorRandomizerDisplay\DragonWarriorRandomizerDisplay\bin\Debug\roguescorpion.png"""))
     let screen = new System.Drawing.Bitmap(System.IO.Path.Combine("""C:\Users\Admin1\Source\Repos\Misc\DragonWarriorRandomizerDisplay\DragonWarriorRandomizerDisplay\bin\Debug\Screen001.png"""))
