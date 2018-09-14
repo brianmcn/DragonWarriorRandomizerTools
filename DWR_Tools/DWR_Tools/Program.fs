@@ -85,37 +85,6 @@ type FastRGBBitmap(orig:System.Drawing.Bitmap) =
 
 //////////////////////////////////////////////////
 
-let OVERWORLD_MAP_TILE_FILENAMES = 
-    [|
-    "ow_bridge.png"
-    "ow_castle.png"
-    "ow_cave.png"
-    "ow_desert.png"
-    "ow_forest.png"
-    "ow_hills.png"
-    "ow_mountain.png"
-    "ow_plains.png"
-    "ow_swamp.png"
-    "ow_town.png"
-    "ow_wall.png"
-    "ow_water.png"
-    "ow_water_e.png"
-    "ow_water_es.png"
-    "ow_water_n.png"
-    "ow_water_ne.png"
-    "ow_water_nes.png"
-    "ow_water_ns.png"
-    "ow_water_nw.png"
-    "ow_water_nwe.png"
-    "ow_water_nwes.png"
-    "ow_water_nws.png"
-    "ow_water_s.png"
-    "ow_water_w.png"
-    "ow_water_we.png"
-    "ow_water_wes.png"
-    "ow_water_ws.png"
-    |]
-
 module Screenshot =
     let RedToWhiteColor(c:System.Drawing.Color) =
         if c.R = byte 0xFC && c.G = byte 0x74 && c.B = byte 0x60 then // red
@@ -410,169 +379,6 @@ type Mapper() =
         curULY <- lowULY - N + ey - H/2
         printfn "new cur x, y = %d,%d" curULX curULY
 
-// randomizer xp levels are 75% the normal NES game
-let DWR_XP_LEVEL_THRESHOLDS = [|
-    5
-    17
-    35
-    82
-    165
-    337
-    600
-    975
-    1500
-    2175
-    3000
-    4125
-    5625
-    7500
-    9750
-    12000
-    14250
-    16500
-    19500
-    |]
-
-let ENEMY_DATA = [|
-    // name                    XP  GOLD  STR  AGI   HP
-    "slime",                    1,    2,   5,   3,   2
-    "redslime",                 2,    4,   7,   3,   3
-    "drakee",                   3,    6,   9,   6,   5
-    "ghost",                    4,    8,  11,   8,   7
-    "magician",                 8,   16,  11,  12,  12
-    "magidrakee",              12,   20,  14,  14,  13
-    "scorpion",                16,   25,  18,  16,  13
-    "druin",                   14,   21,  20,  18,  22
-    "poltergeist",             15,   19,  18,  20,  23
-    "droll",                   18,   30,  22,  24,  20
-    "drakeema",                20,   25,  24,  26,  16
-    "skeleton",                25,   42,  28,  22,  24
-    "warlock",                 28,   50,  28,  22,  28
-    "metalscorpion",           31,   48,  36,  42,  18
-    "wolf",                    40,   60,  40,  30,  33
-    "wraith",                  42,   62,  44,  34,  39
-    "metalslime",             255,    6,  10, 255,   3
-    "specter",                 47,   75,  40,  38,  33
-    "wolflord",                52,   80,  50,  36,  37
-    "druinlord",               58,   95,  47,  40,  35
-    "drollmagi",               58,  110,  52,  50,  44
-    "wyvern",                  64,  105,  56,  48,  37
-    "roguescorpion",           70,  110,  60,  90,  40
-    "wraithknight",            72,  120,  68,  56,  40
-    "golem",                  255,   10, 120,  60, 153
-    "goldman",                  6,  255,  48,  40,  35
-    "knight",                  78,  150,  76,  78,  47
-    "magiwyvern",              83,  135,  78,  68,  48
-    "demonknight",             90,  148,  79,  64,  38
-    "werewolf",                95,  155,  86,  70,  70
-    "greendragon",            135,  160,  88,  74,  72
-    "starwyvern",             105,  169,  86,  80,  74
-    "wizard",                 120,  185,  80,  70,  65
-    "axeknight",              130,  165,  94,  82,  67
-    "bluedragon",             180,  150,  98,  84,  98
-    "stoneman",               155,  148, 100,  40, 135
-    "armoredknight",          172,  152, 105,  86,  99
-    "reddragon",              255,  143, 120,  90, 106
-    "dragonlord1",              0,    0,  90,  75, 100
-    "dragonlord2",              0,    0, 140, 200, 165
-    |]
-
-let XP   = dict [| for name, xp, _gold,_str,_agi,_hp in ENEMY_DATA do yield name,xp |]
-let GOLD = dict [| for name, _xp, gold,_str,_agi,_hp in ENEMY_DATA do yield name,gold |]
-let STR  = dict [| for name, _xp, _gold,str,_agi,_hp in ENEMY_DATA do yield name,str |]
-let AGI  = dict [| for name, _xp, _gold,_str,agi,_hp in ENEMY_DATA do yield name,agi |]
-let HP   = dict [| for name, _xp, _gold,_str,_agi,hp in ENEMY_DATA do yield name,hp |]
-
-let crop(bmp:System.Drawing.Bitmap, w:int, h:int, ulx, uly) =
-    let targetBmp = new System.Drawing.Bitmap(w, h)
-    use g = System.Drawing.Graphics.FromImage(targetBmp)
-    g.DrawImage(bmp, new System.Drawing.Rectangle(0, 0, w, h), 
-                     new System.Drawing.Rectangle(ulx, uly, w, h),                        
-                     System.Drawing.GraphicsUnit.Pixel)
-    targetBmp
-
-let ENEMY_BMP = 
-    let a = ResizeArray()
-    for e,_,_,_,_,_ in ENEMY_DATA do
-        if e <> "demonknight" then // TODO how to match him, all black
-            try
-                // TODO where file resources load from
-                let imageStream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream(e+".png")
-                let bmp = new System.Drawing.Bitmap(imageStream)
-                //let bmp = new System.Drawing.Bitmap(System.IO.Path.Combine("""C:\Users\Admin1\Source\Repos\Misc\DragonWarriorRandomizerDisplay\DragonWarriorRandomizerDisplay\bin\Debug""",e+".png"))
-                let crop = crop(bmp, 140, 150, 346, 290)
-                a.Add(e, bmp, crop)
-            with e ->
-                ()
-    a.ToArray()
-
-let computeMatch(bmp1:System.Drawing.Bitmap, bmp2:System.Drawing.Bitmap, x1, x2, y1, y2) =
-    let mutable n = 0
-    for x = x1 to x2 do
-        for y = y1 to y2 do
-            if bmp1.GetPixel(x,y) = bmp2.GetPixel(x,y) then
-                n <- n + 1
-    float n / (float ((x2-x1+1)*(y2-y1+1)))
-
-let bestMatch(screen:System.Drawing.Bitmap) =
-    let matches = ResizeArray()
-    for name,bmp,crop in ENEMY_BMP do
-        if name.Contains("drakee") then
-            let r = computeMatch(bmp, screen, 402, 426, 342, 364)
-            if r > 0.85 then
-                matches.Add(r,name,bmp,crop)
-        elif name.Contains("skeleton") || name.Contains("wraith") || name.Contains("knight") || name.Contains("wyvern") || name.Contains("druin") || name.Contains("stoneman") || name.Contains("golem") || name.Contains("goldman") then
-            let r = computeMatch(bmp, screen, 402, 426, 360, 380)
-            if r > 0.85 then
-                matches.Add(r,name,bmp,crop)
-        else
-            let r = computeMatch(bmp, screen, 402, 426, 384, 396)
-            if r > 0.85 then
-                matches.Add(r,name,bmp,crop)
-    if matches.Count > 0 then
-        for r,name,_,_ in matches do
-            ()
-//            printfn "%1.3f  %s" r name
-//        printfn "-----"
-    matches.Sort()
-    matches.Reverse()
-    matches
-
-let LOCATIONS = [|
-    "---Tantagel (4box, cave)", ""
-    "Charlock Castle", "DW_Charlock.png"
-    "Brecconary (Motel 6)", ""
-    "Rimuldar (keys)", ""
-    "---Rimuldar (1box)", ""
-    "Cantlin (coordinates)", ""
-    "Kol (fountain)", ""
-    "Hauksness (dead)", ""
-    "Garinham (grave below)", ""
-    "---Garinham (3box)", ""
-    "Sun Stones Cave (v)", ""
-    "Staff Rain Cave (>)", ""
-    "Jerk Cave (<)", ""
-    "Swamp Cave North", "DW_SwampCave.png"
-    "Swamp Cave South", "DW_SwampCave.png"
-    "Mountain Cave (5box)", "DW_MountainCave.png"
-    "Tablet Cave (1box)", "DW_TabletCave.png"
-    "Garin's Tomb (3box)", "DW_GarinTomb.png"
-    "---Garin's Tomb (2box)", "DW_GarinTomb.png"
-    |]
-
-let ITEMS = [|
-    "Stones of Sunlight", ""
-    "Silver Harp", ""
-    "Staff of Rain", ""
-    "Erdrick Token (*)", ""
-    "Rainbow Drop", ""
-    "Erdrick Sword", ""
-    "Erdrick Armor (*)", ""
-    "Fairy Flute (*)", ""
-    "Death Necklace", ""
-    "Princess' Love", ""
-    |]
-
 let gridAdd(g:Grid, x, c, r) =
     g.Children.Add(x) |> ignore
     Grid.SetColumn(x, c)
@@ -607,7 +413,7 @@ type MyWindow(ihrs,imins,isecs) as this =
             sp.Children.Add(cb) |> ignore
         sp
     let content = new Grid()
-    let pretty = DWR_XP_LEVEL_THRESHOLDS |> Array.map (fun x -> let s = x.ToString() in (String.replicate (5-s.Length) " ") + s)
+    let pretty = Constants.DWR_XP_LEVEL_THRESHOLDS |> Array.map (fun x -> let s = x.ToString() in (String.replicate (5-s.Length) " ") + s)
     let xpTextBox = new TextBox(Text="XP to\nlevel\n"+String.Join("\n",pretty),FontSize=20.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0))
     let goalTextBox = new TextBox(Text="-GOAL-\nAG>75\nHP>100\nMP>80\nAP>120\nDP>86",FontSize=20.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0))
     let hmsTimeTextBox = new TextBox(Text="timer",FontSize=20.0,Background=Brushes.Black,Foreground=Brushes.LightGreen,BorderThickness=Thickness(0.0))
@@ -644,7 +450,7 @@ type MyWindow(ihrs,imins,isecs) as this =
                 image2.Source <- Screenshot.BMPtoImage(mapper.GetExploredMap(width))
         // update monster TODO
         let bmpScreenshot = Screenshot.GetDWRBitmap()
-        let matches = bestMatch(bmpScreenshot)
+        let matches = EnemyData.bestMatch(bmpScreenshot)
         if matches.Count > 0 then
             // TODO erase if goes away for 2 frames, only show monster portrait area, eventually add stats
             let _,name,_bmp,crop = matches.[0]
@@ -653,11 +459,11 @@ type MyWindow(ihrs,imins,isecs) as this =
                 tab.SelectedIndex <- 1
                 monsterImage.Source <- Screenshot.BMPtoImage(crop)
                 monsterName.Text <- name
-                monsterXP.Text   <- sprintf "XP:   %d" XP.[name]
-                monsterGold.Text <- sprintf "GOLD: %d" GOLD.[name]
-                monsterSTR.Text  <- sprintf "STR:  %d" STR.[name]
-                monsterAGI.Text  <- sprintf "AGI:  %d" AGI.[name]
-                monsterHP.Text   <- sprintf "HP:   %d" HP.[name]
+                monsterXP.Text   <- sprintf "XP:   %d" EnemyData.XP.[name]
+                monsterGold.Text <- sprintf "GOLD: %d" EnemyData.GOLD.[name]
+                monsterSTR.Text  <- sprintf "STR:  %d" EnemyData.STR.[name]
+                monsterAGI.Text  <- sprintf "AGI:  %d" EnemyData.AGI.[name]
+                monsterHP.Text   <- sprintf "HP:   %d" EnemyData.HP.[name]
             elif prevMatchName <> name then
                 //printfn "changed from %s to %s" prevMatchName name
                 prevMatchName <- "1"   // e.g. once saw wyvern change to magician - flashing screen screwed it up? give it one tempo to fix
@@ -701,11 +507,11 @@ type MyWindow(ihrs,imins,isecs) as this =
         gridAdd(rightGrid,hmsTimeTextBox,0,0)
 
         rightGrid.RowDefinitions.Add(new RowDefinition(Height=GridLength(416.0)))
-        let locationTextBox = makeCheckedStuff("LOCATIONS",LOCATIONS)
+        let locationTextBox = makeCheckedStuff("LOCATIONS",Constants.LOCATIONS)
         gridAdd(rightGrid,locationTextBox,0,1)
 
         rightGrid.RowDefinitions.Add(new RowDefinition())
-        let itemTextBox = makeCheckedStuff("ITEMS",ITEMS)
+        let itemTextBox = makeCheckedStuff("ITEMS",Constants.ITEMS)
         gridAdd(rightGrid,itemTextBox,0,2)
 
         // add right grid
@@ -851,7 +657,7 @@ let main argv =
         printfn "%s" n
 
     // load up known overworld map tiles
-    for ow in OVERWORLD_MAP_TILE_FILENAMES do
+    for ow in Constants.OVERWORLD_MAP_TILE_FILENAMES do
         let imageStream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream(ow)
         let bmp = new System.Drawing.Bitmap(imageStream)
         Screenshot.UniqueOverworldTiles.Add(ow,new FastRGBBitmap(bmp))
