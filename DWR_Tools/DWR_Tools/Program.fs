@@ -372,7 +372,7 @@ let gridAdd(g:Grid, x, c, r) =
     Grid.SetColumn(x, c)
     Grid.SetRow(x, r)
 
-type MyWindow(ihrs,imins,isecs) as this = 
+type MyWindow(ihrs,imins,isecs,racingMode) as this = 
     inherit Window()
     let mapper = new Mapper()
     let mutable startTime = DateTime.Now + TimeSpan.FromSeconds(0.0)
@@ -422,47 +422,48 @@ type MyWindow(ihrs,imins,isecs) as this =
         let ts = DateTime.Now - startTime
         let h,m,s = ts.Hours, ts.Minutes, ts.Seconds
         hmsTimeTextBox.Text <- sprintf "%02d:%02d:%02d" h m s
-        // auto screenshot
-        if false then
+        if not racingMode then
+            // auto screenshot
+            if false then
+                let bmpScreenshot = Screenshot.GetDWRBitmap()
+                bmpScreenshot.Save(sprintf "Auto%03d.png" ssNum, System.Drawing.Imaging.ImageFormat.Png)
+                ssNum <- ssNum + 1
+            // update map
+            if mapper.HasStarted then
+                let innerBMPs = Screenshot.GetInnerDWRBitmaps()
+                if innerBMPs.Count > 0 then
+                    mapper.TryIncrementalPaint(innerBMPs)
+                    //printfn "width: %f %f %f" stackPanel.ActualWidth image1.ActualWidth image2.ActualWidth 
+                    let width = int stackPanel.ActualWidth - 8  // image width given border/thickness
+                    image1.Source <- Screenshot.BMPtoImage(mapper.GetNearbyMap(width/4))  // TODO decide ratio
+                    image2.Source <- Screenshot.BMPtoImage(mapper.GetExploredMap(width))
+            // update monster TODO
             let bmpScreenshot = Screenshot.GetDWRBitmap()
-            bmpScreenshot.Save(sprintf "Auto%03d.png" ssNum, System.Drawing.Imaging.ImageFormat.Png)
-            ssNum <- ssNum + 1
-        // update map
-        if mapper.HasStarted then
-            let innerBMPs = Screenshot.GetInnerDWRBitmaps()
-            if innerBMPs.Count > 0 then
-                mapper.TryIncrementalPaint(innerBMPs)
-                //printfn "width: %f %f %f" stackPanel.ActualWidth image1.ActualWidth image2.ActualWidth 
-                let width = int stackPanel.ActualWidth - 8  // image width given border/thickness
-                image1.Source <- Screenshot.BMPtoImage(mapper.GetNearbyMap(width/4))  // TODO decide ratio
-                image2.Source <- Screenshot.BMPtoImage(mapper.GetExploredMap(width))
-        // update monster TODO
-        let bmpScreenshot = Screenshot.GetDWRBitmap()
-        let matches = EnemyData.bestMatch(bmpScreenshot)
-        if matches.Count > 0 then
-            // TODO erase if goes away for 2 frames, only show monster portrait area, eventually add stats
-            let _,name,_bmp,crop = matches.[0]
-            if prevMatchName = "1" || prevMatchName = "" then
-                prevMatchName <- name
-                tab.SelectedIndex <- 1
-                monsterImage.Source <- Screenshot.BMPtoImage(crop)
-                monsterName.Text <- name
-                monsterXP.Text   <- sprintf "XP:   %d" EnemyData.XP.[name]
-                monsterGold.Text <- sprintf "GOLD: %d" EnemyData.GOLD.[name]
-                monsterSTR.Text  <- sprintf "STR:  %d" EnemyData.STR.[name]
-                monsterAGI.Text  <- sprintf "AGI:  %d" EnemyData.AGI.[name]
-                monsterHP.Text   <- sprintf "HP:   %d" EnemyData.HP.[name]
-            elif prevMatchName <> name then
-                //printfn "changed from %s to %s" prevMatchName name
-                prevMatchName <- "1"   // e.g. once saw wyvern change to magician - flashing screen screwed it up? give it one tempo to fix
-            // TODO eventually check for stats screen
-        elif prevMatchName = "1" then
-            prevMatchName <- ""
-            tab.SelectedIndex <- 0
-        elif prevMatchName <> "" then
-            //printfn "one tick no match"
-            prevMatchName <- "1"
-        //printfn "update took %d ms" timer.ElapsedMilliseconds 
+            let matches = EnemyData.bestMatch(bmpScreenshot)
+            if matches.Count > 0 then
+                // TODO erase if goes away for 2 frames, only show monster portrait area, eventually add stats
+                let _,name,_bmp,crop = matches.[0]
+                if prevMatchName = "1" || prevMatchName = "" then
+                    prevMatchName <- name
+                    tab.SelectedIndex <- 1
+                    monsterImage.Source <- Screenshot.BMPtoImage(crop)
+                    monsterName.Text <- name
+                    monsterXP.Text   <- sprintf "XP:   %d" EnemyData.XP.[name]
+                    monsterGold.Text <- sprintf "GOLD: %d" EnemyData.GOLD.[name]
+                    monsterSTR.Text  <- sprintf "STR:  %d" EnemyData.STR.[name]
+                    monsterAGI.Text  <- sprintf "AGI:  %d" EnemyData.AGI.[name]
+                    monsterHP.Text   <- sprintf "HP:   %d" EnemyData.HP.[name]
+                elif prevMatchName <> name then
+                    //printfn "changed from %s to %s" prevMatchName name
+                    prevMatchName <- "1"   // e.g. once saw wyvern change to magician - flashing screen screwed it up? give it one tempo to fix
+                // TODO eventually check for stats screen
+            elif prevMatchName = "1" then
+                prevMatchName <- ""
+                tab.SelectedIndex <- 0
+            elif prevMatchName <> "" then
+                //printfn "one tick no match"
+                prevMatchName <- "1"
+            //printfn "update took %d ms" timer.ElapsedMilliseconds 
 
     //let activate() =
     //    this.Activate() |> ignore
@@ -481,9 +482,12 @@ type MyWindow(ihrs,imins,isecs) as this =
         leftGrid.RowDefinitions.Add(new RowDefinition(Height=GridLength(76.0)))
         leftGrid.RowDefinitions.Add(new RowDefinition(Height=GridLength(474.0)))
         leftGrid.RowDefinitions.Add(new RowDefinition())
-        let kitty = new Image()
-        let imageStream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("CroppedBrianKitty.png")
-        kitty.Source <- System.Windows.Media.Imaging.BitmapFrame.Create(imageStream)
+        let makeKitty() =
+            let kitty = new Image()
+            let imageStream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("CroppedBrianKitty.png")
+            kitty.Source <- System.Windows.Media.Imaging.BitmapFrame.Create(imageStream)
+            kitty
+        let kitty = makeKitty()
         gridAdd(leftGrid,kitty,0,0)
         gridAdd(leftGrid,xpTextBox,0,1)
         gridAdd(leftGrid,goalTextBox,0,2)
@@ -506,44 +510,53 @@ type MyWindow(ihrs,imins,isecs) as this =
         gridAdd(content,rightGrid,1,0)
 
         // picture area
-        let maps = new TabItem(Background=Brushes.Black, Header="Maps")
-        let monsters = new TabItem(Background=Brushes.Black, Header="Monsters")
-        tab.Items.Add(maps) |> ignore
-        tab.Items.Add(monsters) |> ignore
-        let sp = new StackPanel(Background=Brushes.Black,Orientation=Orientation.Vertical)
-        sp.Children.Add(image1) |> ignore
-        sp.Children.Add(new TextBox(Text="nearby world",FontSize=16.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(2.0))) |> ignore
-        image1.Margin <- Thickness(1.0)
-        image2.Margin <- Thickness(1.0)
-        image2.MouseLeftButtonDown.Add(fun x -> 
-            let point = x.GetPosition(image2) 
-            mapper.ResetCurrentLocation(int point.X, int point.Y)
-            ())
-        sp.Children.Add(image2) |> ignore
-        sp.Children.Add(new TextBox(Text="all explored",FontSize=16.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(2.0))) |> ignore
-        maps.Content <- sp
+        if racingMode then
+            let sp = new StackPanel(Background=Brushes.Black,Orientation=Orientation.Vertical)
+            let kitty = makeKitty()
+            sp.Children.Add(kitty) |> ignore
+            sp.Children.Add(new TextBox(TextWrapping=TextWrapping.Wrap,Text="Monster data and maps are disabled during this stream, since this is a race!\n\nNo hints/advice/spoilers in chat during the race!",FontSize=16.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(8.0))) |> ignore
+            let kitty = makeKitty()
+            sp.Children.Add(kitty) |> ignore
+            gridAdd(content,sp,2,0)
+        else
+            let maps = new TabItem(Background=Brushes.Black, Header="Maps")
+            let monsters = new TabItem(Background=Brushes.Black, Header="Monsters")
+            tab.Items.Add(maps) |> ignore
+            tab.Items.Add(monsters) |> ignore
+            let sp = new StackPanel(Background=Brushes.Black,Orientation=Orientation.Vertical)
+            sp.Children.Add(image1) |> ignore
+            sp.Children.Add(new TextBox(Text="nearby world",FontSize=16.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(2.0))) |> ignore
+            image1.Margin <- Thickness(1.0)
+            image2.Margin <- Thickness(1.0)
+            image2.MouseLeftButtonDown.Add(fun x -> 
+                let point = x.GetPosition(image2) 
+                mapper.ResetCurrentLocation(int point.X, int point.Y)
+                ())
+            sp.Children.Add(image2) |> ignore
+            sp.Children.Add(new TextBox(Text="all explored",FontSize=16.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(2.0))) |> ignore
+            maps.Content <- sp
 
-        let monsterGrid = new Grid()
-        monsterGrid.ColumnDefinitions.Add(new ColumnDefinition())
-        monsterGrid.RowDefinitions.Add(new RowDefinition())
-        monsterGrid.RowDefinitions.Add(new RowDefinition(Height=GridLength(24.0)))
-        monsterGrid.RowDefinitions.Add(new RowDefinition(Height=GridLength(24.0)))
-        monsterGrid.RowDefinitions.Add(new RowDefinition(Height=GridLength(24.0)))
-        monsterGrid.RowDefinitions.Add(new RowDefinition(Height=GridLength(24.0)))
-        monsterGrid.RowDefinitions.Add(new RowDefinition(Height=GridLength(24.0)))
-        monsterGrid.RowDefinitions.Add(new RowDefinition(Height=GridLength(24.0)))
-        monsters.Content <- monsterGrid
-        gridAdd(monsterGrid,monsterImage,0,0)
-        gridAdd(monsterGrid,monsterName,0,1)
-        gridAdd(monsterGrid,monsterXP,0,2)
-        gridAdd(monsterGrid,monsterGold,0,3)
-        gridAdd(monsterGrid,monsterSTR,0,4)
-        gridAdd(monsterGrid,monsterAGI,0,5)
-        gridAdd(monsterGrid,monsterHP,0,6)
+            let monsterGrid = new Grid()
+            monsterGrid.ColumnDefinitions.Add(new ColumnDefinition())
+            monsterGrid.RowDefinitions.Add(new RowDefinition())
+            monsterGrid.RowDefinitions.Add(new RowDefinition(Height=GridLength(24.0)))
+            monsterGrid.RowDefinitions.Add(new RowDefinition(Height=GridLength(24.0)))
+            monsterGrid.RowDefinitions.Add(new RowDefinition(Height=GridLength(24.0)))
+            monsterGrid.RowDefinitions.Add(new RowDefinition(Height=GridLength(24.0)))
+            monsterGrid.RowDefinitions.Add(new RowDefinition(Height=GridLength(24.0)))
+            monsterGrid.RowDefinitions.Add(new RowDefinition(Height=GridLength(24.0)))
+            monsters.Content <- monsterGrid
+            gridAdd(monsterGrid,monsterImage,0,0)
+            gridAdd(monsterGrid,monsterName,0,1)
+            gridAdd(monsterGrid,monsterXP,0,2)
+            gridAdd(monsterGrid,monsterGold,0,3)
+            gridAdd(monsterGrid,monsterSTR,0,4)
+            gridAdd(monsterGrid,monsterAGI,0,5)
+            gridAdd(monsterGrid,monsterHP,0,6)
 
-        tab.SelectedIndex <- 0
-        stackPanel.Children.Add(tab) |> ignore
-        gridAdd(content,stackPanel,2,0)
+            tab.SelectedIndex <- 0
+            stackPanel.Children.Add(tab) |> ignore
+            gridAdd(content,stackPanel,2,0)
 
         // full window
         this.Title <- "Dragon Warrior Randomizer"
@@ -649,6 +662,6 @@ let main argv =
     let r = computeMatch(bmp, screen, 402, 426, 384, 396)
     printfn "%f" r
     *)
-
-    app.Run(MyWindow(0,0,0)) |> ignore
+    let racingMode = argv.Length > 0
+    app.Run(MyWindow(0,0,0,racingMode)) |> ignore
     0
