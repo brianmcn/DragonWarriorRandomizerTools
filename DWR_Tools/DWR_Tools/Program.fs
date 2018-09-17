@@ -5,10 +5,7 @@ open System.Windows.Media
 open System.Windows.Interop 
 
 // TODO now that can align tiles, can 'see' the half tiles at edge of screen, incorporate into map
-// TODO need 'tp home' button, also need buttons that don't cause fceux popups
-
 // TODO add death counter? (can i auto-recognize? HP 0 in upper left maybe)
-// TODO add spell tracker? (see spell menu)
 // TODO add AP/DP/STR/AGI tracker (when that screen pops up?)
 // TODO exp level time splits?
 
@@ -382,6 +379,14 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
     let tab = new TabControl(Background=Brushes.Black)
     let mutable ssNum = 1
     let mutable prevMatchName = ""
+    let mutable heroExp = 0
+    let mutable heroLevel = 1
+    let heroSpells = Array.create 10 false
+    let appendRichText(box:RichTextBox, text, color) = 
+        let range = new System.Windows.Documents.TextRange(box.Document.ContentEnd, box.Document.ContentEnd)
+        range.Text <- text
+        range.ApplyPropertyValue(System.Windows.Documents.TextElement.ForegroundProperty, color)
+        range.ApplyPropertyValue(System.Windows.Documents.TextElement.FontWeightProperty, FontWeights.Bold)
     let onCheckedChanged(resource) =
         if resource <> "" then
             let imageStream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream(resource)
@@ -401,8 +406,7 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
             sp.Children.Add(cb) |> ignore
         sp
     let content = new Grid()
-    let pretty = Constants.DWR_XP_LEVEL_THRESHOLDS |> Array.map (fun x -> let s = x.ToString() in (String.replicate (5-s.Length) " ") + s)
-    let xpTextBox = new TextBox(Text="XP to\nlevel\n"+String.Join("\n",pretty),FontSize=20.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0))
+    let xpTextBox = new RichTextBox(FontSize=18.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0))
     let goalTextBox = new TextBox(Text="-GOAL-\nAG>75\nHP>100\nMP>80\nAP>120\nDP>86",FontSize=20.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0))
     let hmsTimeTextBox = new TextBox(Text="timer",FontSize=20.0,Background=Brushes.Black,Foreground=Brushes.LightGreen,BorderThickness=Thickness(0.0))
     //let locationTextBox = new TextBox(Text=String.Join("\n",LOCATIONS),FontSize=20.0,Background=Brushes.Black,Foreground=Brushes.Orange)
@@ -422,10 +426,30 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
         let ts = DateTime.Now - startTime
         let h,m,s = ts.Hours, ts.Minutes, ts.Seconds
         hmsTimeTextBox.Text <- sprintf "%02d:%02d:%02d" h m s
+        // update XP & spell info
+        let bmpScreenshot = Screenshot.GetDWRBitmap()
+        let gp = fun (x,y) -> bmpScreenshot.GetPixel(x*3+8,y*3+51) // TODO factor fceux window's 3x pixels and 8,51 offset somewhere better
+        let mutable changed = PixelLayout.identifySpells(gp,heroSpells)
+        match PixelLayout.identifyEXP(gp) with   
+        | Some exp -> 
+            heroExp <- exp
+            let newHeroLevel = (Constants.DWR_XP_LEVEL_THRESHOLDS |> Array.findIndex(fun z -> z > exp)) + 1
+            if newHeroLevel <> heroLevel then
+                heroLevel <- newHeroLevel
+                changed <- true
+        | None -> ()
+        if changed then
+            xpTextBox.Document.Blocks.Clear()
+            appendRichText(xpTextBox, sprintf "LV %2d " heroLevel, Brushes.White)
+            appendRichText(xpTextBox, "  next levels " , Brushes.Orange)
+            appendRichText(xpTextBox, sprintf " %6d" Constants.DWR_XP_LEVEL_THRESHOLDS.[heroLevel-1], Brushes.Orange)
+            appendRichText(xpTextBox, sprintf " %6d" Constants.DWR_XP_LEVEL_THRESHOLDS.[heroLevel], Brushes.Orange)
+            appendRichText(xpTextBox, sprintf " %6d\n" Constants.DWR_XP_LEVEL_THRESHOLDS.[heroLevel+1], Brushes.Orange)
+            for i = 0 to 9 do
+                appendRichText(xpTextBox, PixelLayout.SPELL_NAMES.[i].Substring(0,6) + " ", if heroSpells.[i] then Brushes.White else Brushes.DarkSlateGray)
         if not racingMode then
             // auto screenshot
             if false then
-                let bmpScreenshot = Screenshot.GetDWRBitmap()
                 bmpScreenshot.Save(sprintf "Auto%03d.png" ssNum, System.Drawing.Imaging.ImageFormat.Png)
                 ssNum <- ssNum + 1
             // update map
@@ -438,7 +462,6 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
                     image1.Source <- Screenshot.BMPtoImage(mapper.GetNearbyMap(width/4))  // TODO decide ratio
                     image2.Source <- Screenshot.BMPtoImage(mapper.GetExploredMap(width))
             // update monster TODO
-            let bmpScreenshot = Screenshot.GetDWRBitmap()
             let matches = EnemyData.bestMatch(bmpScreenshot)
             if matches.Count > 0 then
                 // TODO erase if goes away for 2 frames, only show monster portrait area, eventually add stats
@@ -468,6 +491,9 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
     //let activate() =
     //    this.Activate() |> ignore
     do
+        let pretty = Constants.DWR_XP_LEVEL_THRESHOLDS |> Array.map (fun x -> let s = x.ToString() in (String.replicate (5-s.Length) " ") + s)
+        appendRichText(xpTextBox, "XP to level ", Brushes.Orange)
+        appendRichText(xpTextBox, String.Join(" ",pretty), Brushes.White)
         RenderOptions.SetBitmapScalingMode(image1, BitmapScalingMode.NearestNeighbor)
         RenderOptions.SetBitmapScalingMode(image2, BitmapScalingMode.NearestNeighbor)
 
@@ -662,6 +688,19 @@ let main argv =
     let r = computeMatch(bmp, screen, 402, 426, 384, 396)
     printfn "%f" r
     *)
+
+    (*    
+    let bmp = new System.Drawing.Bitmap(System.IO.Path.Combine("""C:\Users\Admin1\Documents\GitHubVisualStudio\DragonWarriorRandomizerTools\DWR_Tools\DWR_Tools\spellmenu.png"""))
+    let downscaled = new System.Drawing.Bitmap(256,224)
+    for x = 0 to 255 do
+        for y = 0 to 223 do
+            downscaled.SetPixel(x,y, bmp.GetPixel(x*3+8, y*3+51))
+    let spells = PixelLayout.identifySpells(fun (x,y) -> downscaled.GetPixel(x,y))
+    printfn "%A" spells
+    let exp = PixelLayout.identifyEXP(fun (x,y) -> downscaled.GetPixel(x,y))
+    printfn "EXP: %A" exp
+    *)
+
     let racingMode = argv.Length > 0
     app.Run(MyWindow(0,0,0,racingMode)) |> ignore
     0

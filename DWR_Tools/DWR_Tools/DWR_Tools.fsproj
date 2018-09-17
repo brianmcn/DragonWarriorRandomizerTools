@@ -64,6 +64,7 @@
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Constants.fs" />
     <Compile Include="EnemyData.fs" />
+    <Compile Include="PixelLayout.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config" />
     <EmbeddedResource Include="CroppedBrianKitty.png" />
