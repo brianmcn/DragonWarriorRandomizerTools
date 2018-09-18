@@ -6,8 +6,11 @@ open System.Windows.Interop
 
 // TODO now that can align tiles, can 'see' the half tiles at edge of screen, incorporate into map
 // TODO add death counter? (can i auto-recognize? HP 0 in upper left maybe)
+//   - and reset location to start
 // TODO add AP/DP/STR/AGI tracker (when that screen pops up?)
 // TODO exp level time splits?
+
+// TODO rainbow drop changes map, can no longer sync charlock
 
 //////////////////////////////////////////////////
 
@@ -77,6 +80,8 @@ type FastRGBBitmap(orig:System.Drawing.Bitmap) =
 
 //////////////////////////////////////////////////
 
+let UNKNOWN = System.Drawing.Color.Magenta 
+
 module Screenshot =
     let RedToWhiteColor(c:System.Drawing.Color) =
         if c.R = byte 0xFC && c.G = byte 0x74 && c.B = byte 0x60 then // red
@@ -102,7 +107,7 @@ module Screenshot =
         *)
         clone
     let mutable badTileNum = 1
-    let UniqueOverworldTiles = ResizeArray<string*FastRGBBitmap>()
+    let UniqueOverworldTiles = ResizeArray<string*Constants.OverworldMapTile*FastRGBBitmap>()
     let BMPtoImage(bmp:System.Drawing.Bitmap) =
         let ms = new System.IO.MemoryStream()
         bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Bmp)
@@ -133,9 +138,9 @@ module Screenshot =
         let getDownscaledPixel(x,y) =
             innerBmp.GetPixel(x*3,y*3)
         let matchesKnownTile(ulx, uly) =
-            let mutable result = false
-            for tilename,tile in UniqueOverworldTiles do
-                if not result then
+            let mutable result = None
+            for tilename,kind,tile in UniqueOverworldTiles do
+                if result.IsNone then
                     let mutable matchesThis = true
                     for i = 0 to 15 do
                         if matchesThis then
@@ -146,16 +151,14 @@ module Screenshot =
                                     if not(tile.Equals(i,j,fastInnerBmp,3*(ulx+i),3*(uly+j))) then
                                         matchesThis <- false
                     if matchesThis then
-                        result <- true
+                        result <- Some kind
             result
         //TODO perf
-        let mutable leftX = 0
-        let mutable topY = 0
-        let mutable ok = false
         let THRESHOLD = 2  // TODO set at higher number to save new world tile, if failing to sync because legal tile not in our resource set
         let doesThisLeftTopWork(lx,ty) = 
             // see if vast majority match known tiles
             let bad = ResizeArray()  // each mismatched tile stored here
+            let good = Array2D.create 14 13 None
             if bad.Count < THRESHOLD then
                 for by = 0 to 12 do //in [0;1;2;3;4;9;10] do      // 0-12 is all, but just get enough to feel mostly confident we've synchronized
                     if bad.Count < THRESHOLD then
@@ -171,8 +174,9 @@ module Screenshot =
                                 // check for match
                                 let ulx = bx*16+lx
                                 let uly = by*16+ty
-                                if not(matchesKnownTile(ulx, uly)) then   // TODO represent ile grid using DUs internally
-                                    bad.Add( (ulx,uly) )
+                                match matchesKnownTile(ulx, uly) with
+                                | None -> bad.Add( (ulx,uly) )
+                                | Some kind -> good.[bx,by] <- Some kind
             if bad.Count < THRESHOLD then
                 printfn "pixel sync succeeded with %d outliers" bad.Count 
                 // save outliers to human verify and add to unique map tiles
@@ -184,29 +188,35 @@ module Screenshot =
                     ot.Save(sprintf "BadTile%06d.png" badTileNum)
                     badTileNum <- badTileNum + 1
                 badTileNum <- ((badTileNum + 100) / 100) * 100
-                true
+                good
             else
-                false
+                null
         // for each possible pixel alignment
         // TODO don't need to search 16x16 possibilties, either top or left (or both) is a known fixed alignment, depending on if character is moving E-W or N-S (or none)
+        let mutable leftX = 0
+        let mutable topY = 0
+        let mutable goodResult = null
         for lx = 0 to 15 do
-            if not ok then
+            if goodResult=null then
                 for ty = 0 to 15 do
-                    if not ok then
-                        if doesThisLeftTopWork(lx,ty) then
-                            ok <- true
+                    if goodResult=null then
+                        match doesThisLeftTopWork(lx,ty) with
+                        | null -> ()
+                        | r ->
+                            goodResult <- r
                             leftX <- lx
                             topY <- ty
-        if not ok then
+        if goodResult=null then
             printfn "pixel sync failed"
             fastInnerBmp.Finish()
             ResizeArray()
         else
-            let makeTiny(leftX, topY) = 
+            let makeTiny(leftX, topY, goodResult:Constants.OverworldMapTile option[,]) = 
                 // turn each 16x16 block of the overworld map down to a single pixel
                 let tinyBmp = new System.Drawing.Bitmap(14,13)
                 for x = 0 to 13 do
                     for y = 0 to 12 do
+                        (*
                         let mutable r, g, b = 0, 0, 0
                         for i = 0 to 15 do
                             for j = 0 to 15 do
@@ -215,23 +225,33 @@ module Screenshot =
                                 g <- g + int c.G
                                 b <- b + int c.B
                         tinyBmp.SetPixel(x, y, System.Drawing.Color.FromArgb(r/256, g/256, b/256))
+                        *)
+                        match goodResult.[x,y] with
+                        | None -> tinyBmp.SetPixel(x, y, UNKNOWN)
+                        | Some k -> tinyBmp.SetPixel(x, y, k.ProjectionColor)
                 // tinyBmp.Save("Tiny028.png")
                 tinyBmp
             let results = ResizeArray()
-            results.Add(makeTiny(leftX, topY))
+            results.Add(makeTiny(leftX, topY,goodResult))
             // we can mistakenly sync on half tiles, as some tiles like swamp/desert/grass repeat every 8 pixels of their 16x16 grids - ensure find 'real' sync
             if leftX < 8 then
                 if topY < 8 then
-                    if doesThisLeftTopWork(leftX+8, topY+8) then
+                    match doesThisLeftTopWork(leftX+8, topY+8) with
+                    | null -> ()
+                    | r ->
                         printfn "extra result +8,+8"
-                        results.Add(makeTiny(leftX+8, topY+8))
-                if doesThisLeftTopWork(leftX+8, topY) then
+                        results.Add(makeTiny(leftX+8, topY+8, r))
+                match doesThisLeftTopWork(leftX+8, topY) with
+                | null -> ()
+                | r ->
                     printfn "extra result +8,+0"
-                    results.Add(makeTiny(leftX+8, topY))
+                    results.Add(makeTiny(leftX+8, topY, r))
             if topY < 8 then
-                if doesThisLeftTopWork(leftX, topY+8) then
+                match doesThisLeftTopWork(leftX, topY+8) with
+                | null -> ()
+                | r ->
                     printfn "extra result +0,+8"
-                    results.Add(makeTiny(leftX, topY+8))
+                    results.Add(makeTiny(leftX, topY+8, r))
             fastInnerBmp.Finish()
             results
 
@@ -239,7 +259,6 @@ module Screenshot =
 type Mapper() =
     let EXPLORED_MAP_BORDER_THICKNESS = 2
     let mutable exploredMapImageWidth = 0
-    let UNKNOWN = System.Drawing.Color.Magenta 
     let UARGB = UNKNOWN.ToArgb()
     let MAX = 400
     let W = 14
@@ -252,6 +271,9 @@ type Mapper() =
     let mutable hiULX = MAX/2
     let mutable hiULY = MAX/2
     let mutable hasStarted = false
+    let recolor(r:System.Drawing.Bitmap,x,y) =  // highlights on map
+        let c = r.GetPixel(x,y)
+        r.SetPixel(x,y,System.Drawing.Color.FromArgb(int c.R*7/8, int c.G*7/8, int c.B*7/8))
     member this.HasStarted = hasStarted
     member private this.Mask(bmp:System.Drawing.Bitmap) =
         if bmp.Width <> W || bmp.Height <> H then
@@ -326,13 +348,29 @@ type Mapper() =
                             hiULX <- max hiULX curULX
                             hiULY <- max hiULY curULY
         ok
-    member this.GetWholeMap() = 
-        wholeMap.Clone() :?> System.Drawing.Bitmap 
+    member this.GetWholeMap(nearbyMapSize) = 
+        let size = nearbyMapSize
+        let r = wholeMap.Clone() :?> System.Drawing.Bitmap 
+        let ulx = curULX + W/2 - size/2
+        let uly = curULY + H/2 - size/2
+        for x = ulx to ulx+size-1 do
+            recolor(r,x,uly)
+            recolor(r,x,uly+size/2)
+            recolor(r,x,uly+size-1)
+        for y = uly+1 to uly+size-2 do
+            recolor(r,ulx,y)
+            recolor(r,ulx+size/2,y)
+            recolor(r,ulx+size-1,y)
+        r
     member this.GetNearbyMap(size) = 
         let ulx = curULX + W/2 - size/2
         let uly = curULY + H/2 - size/2
         let cloned = wholeMap.Clone(new System.Drawing.Rectangle(ulx, uly, size, size), System.Drawing.Imaging.PixelFormat.Format32bppArgb)
         cloned.SetPixel(size/2, size/2, System.Drawing.Color.Red)
+        for x = 0 to size-1 do
+            recolor(cloned,x,size/2)
+        for y = 0 to size-1 do
+            recolor(cloned,size/2,y)
         cloned
     member private this.ComputeExploreMapSize() =
         let N = EXPLORED_MAP_BORDER_THICKNESS
@@ -342,11 +380,11 @@ type Mapper() =
         let m = max ew eh
         let m = max m 50  // ensure don't begin ridiculously zoomed in
         m+2*N
-    member this.GetExploredMap(width) = 
+    member this.GetExploredMap(width, nearbyMapSize) = 
         exploredMapImageWidth <- width
         let N = EXPLORED_MAP_BORDER_THICKNESS
         let m = this.ComputeExploreMapSize()
-        let cloned = wholeMap.Clone(new System.Drawing.Rectangle(lowULX-N, lowULY-N, m, m), System.Drawing.Imaging.PixelFormat.Format32bppArgb)
+        let cloned = this.GetWholeMap(nearbyMapSize).Clone(new System.Drawing.Rectangle(lowULX-N, lowULY-N, m, m), System.Drawing.Imaging.PixelFormat.Format32bppArgb)
         cloned
     member this.ResetCurrentLocation(x,y) =
         // user clicked at x,y relative to upper left of the GetExploredMap image, want to update curULX/curULX appropriately
@@ -459,8 +497,8 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
                     mapper.TryIncrementalPaint(innerBMPs)
                     //printfn "width: %f %f %f" stackPanel.ActualWidth image1.ActualWidth image2.ActualWidth 
                     let width = int stackPanel.ActualWidth - 8  // image width given border/thickness
-                    image1.Source <- Screenshot.BMPtoImage(mapper.GetNearbyMap(width/4))  // TODO decide ratio
-                    image2.Source <- Screenshot.BMPtoImage(mapper.GetExploredMap(width))
+                    image1.Source <- Screenshot.BMPtoImage(mapper.GetNearbyMap(width/4))
+                    image2.Source <- Screenshot.BMPtoImage(mapper.GetExploredMap(width,width/4))
             // update monster TODO
             let matches = EnemyData.bestMatch(bmpScreenshot)
             if matches.Count > 0 then
@@ -674,10 +712,10 @@ let main argv =
         printfn "%s" n
 
     // load up known overworld map tiles
-    for ow in Constants.OVERWORLD_MAP_TILE_FILENAMES do
+    for ow,kind in Constants.OVERWORLD_MAP_TILE_FILENAMES do
         let imageStream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream(ow)
         let bmp = new System.Drawing.Bitmap(imageStream)
-        Screenshot.UniqueOverworldTiles.Add(ow,new FastRGBBitmap(bmp))
+        Screenshot.UniqueOverworldTiles.Add(ow,kind,new FastRGBBitmap(bmp))
     printfn "loaded %d overworld tiles" Screenshot.UniqueOverworldTiles.Count 
      
     (*

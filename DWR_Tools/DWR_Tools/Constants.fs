@@ -2,35 +2,94 @@
 
 ///////////////////////////////////////////////////////
 
+[<RequireQualifiedAccess>]
+type OverworldMapTile = 
+    | Bridge
+    | Castle
+    | Cave
+    | Desert
+    | Forest
+    | Hills
+    | Mountain
+    | Plains
+    | Swamp
+    | Town
+    | Wall
+    | Water_xxxx
+    | Water_Nxxx
+    | Water_NWxx
+    | Water_NxEx
+    | Water_NxxS
+    | Water_NWEx
+    | Water_NWxS
+    | Water_NxES
+    | Water_NWES
+    | Water_xWxx
+    | Water_xWEx
+    | Water_xWxS
+    | Water_xWES
+    | Water_xxEx
+    | Water_xxES
+    | Water_xxxS
+    member this.ProjectionColor =
+        match this with
+        | Bridge      -> System.Drawing.Color.LightGray
+        | Castle      -> System.Drawing.Color.Pink
+        | Cave        -> System.Drawing.Color.White
+        | Desert      -> System.Drawing.Color.Yellow
+        | Forest      -> System.Drawing.Color.ForestGreen
+        | Hills       -> System.Drawing.Color.YellowGreen 
+        | Mountain    -> System.Drawing.Color.Purple
+        | Plains      -> System.Drawing.Color.LawnGreen
+        | Swamp       -> System.Drawing.Color.SlateGray
+        | Town        -> System.Drawing.Color.Red
+        | Wall        -> System.Drawing.Color.Black
+        | Water_xxxx  -> System.Drawing.Color.Blue
+        | Water_Nxxx  -> System.Drawing.Color.FromArgb(0,0,0xFE)
+        | Water_NWxx  -> System.Drawing.Color.FromArgb(0,0,0xFD)
+        | Water_NxEx  -> System.Drawing.Color.FromArgb(0,0,0xFC)
+        | Water_NxxS  -> System.Drawing.Color.FromArgb(0,0,0xFB)
+        | Water_NWEx  -> System.Drawing.Color.FromArgb(0,0,0xFA)
+        | Water_NWxS  -> System.Drawing.Color.FromArgb(0,0,0xF9)
+        | Water_NxES  -> System.Drawing.Color.FromArgb(0,0,0xF8)
+        | Water_NWES  -> System.Drawing.Color.FromArgb(0,0,0xF7)
+        | Water_xWxx  -> System.Drawing.Color.FromArgb(0,0,0xF6)
+        | Water_xWEx  -> System.Drawing.Color.FromArgb(0,0,0xF5)
+        | Water_xWxS  -> System.Drawing.Color.FromArgb(0,0,0xF4)
+        | Water_xWES  -> System.Drawing.Color.FromArgb(0,0,0xF3)
+        | Water_xxEx  -> System.Drawing.Color.FromArgb(0,0,0xF2)
+        | Water_xxES  -> System.Drawing.Color.FromArgb(0,0,0xF1)
+        | Water_xxxS  -> System.Drawing.Color.FromArgb(0,0,0xF0)
+
 let OVERWORLD_MAP_TILE_FILENAMES = 
     [|
-    "ow_bridge.png"
-    "ow_castle.png"
-    "ow_cave.png"
-    "ow_desert.png"
-    "ow_forest.png"
-    "ow_hills.png"
-    "ow_mountain.png"
-    "ow_plains.png"
-    "ow_swamp.png"
-    "ow_town.png"
-    "ow_wall.png"
-    "ow_water.png"
-    "ow_water_e.png"
-    "ow_water_es.png"
-    "ow_water_n.png"
-    "ow_water_ne.png"
-    "ow_water_nes.png"
-    "ow_water_ns.png"
-    "ow_water_nw.png"
-    "ow_water_nwe.png"
-    "ow_water_nwes.png"
-    "ow_water_nws.png"
-    "ow_water_s.png"
-    "ow_water_w.png"
-    "ow_water_we.png"
-    "ow_water_wes.png"
-    "ow_water_ws.png"
+    "ow_bridge.png"          , OverworldMapTile.Bridge
+    "ow_castle.png"          , OverworldMapTile.Castle 
+    "ow_cave.png"            , OverworldMapTile.Cave
+    "ow_desert.png"          , OverworldMapTile.Desert
+    "ow_forest.png"          , OverworldMapTile.Forest
+    "ow_hills.png"           , OverworldMapTile.Hills
+    "ow_mountain.png"        , OverworldMapTile.Mountain
+    "ow_plains.png"          , OverworldMapTile.Plains
+    "ow_swamp.png"           , OverworldMapTile.Swamp
+    "ow_town.png"            , OverworldMapTile.Town
+    "ow_wall.png"            , OverworldMapTile.Wall 
+    "ow_water.png"           , OverworldMapTile.Water_xxxx 
+    "ow_water_e.png"         , OverworldMapTile.Water_xxEx
+    "ow_water_es.png"        , OverworldMapTile.Water_xxES
+    "ow_water_n.png"         , OverworldMapTile.Water_Nxxx
+    "ow_water_ne.png"        , OverworldMapTile.Water_NxEx
+    "ow_water_nes.png"       , OverworldMapTile.Water_NxES
+    "ow_water_ns.png"        , OverworldMapTile.Water_NxxS
+    "ow_water_nw.png"        , OverworldMapTile.Water_NWxx
+    "ow_water_nwe.png"       , OverworldMapTile.Water_NWEx
+    "ow_water_nwes.png"      , OverworldMapTile.Water_NWES
+    "ow_water_nws.png"       , OverworldMapTile.Water_NWxS
+    "ow_water_s.png"         , OverworldMapTile.Water_xxxS
+    "ow_water_w.png"         , OverworldMapTile.Water_xWxx
+    "ow_water_we.png"        , OverworldMapTile.Water_xWEx
+    "ow_water_wes.png"       , OverworldMapTile.Water_xWES
+    "ow_water_ws.png"        , OverworldMapTile.Water_xWxS
     |]
 
 ///////////////////////////////////////////////////////
