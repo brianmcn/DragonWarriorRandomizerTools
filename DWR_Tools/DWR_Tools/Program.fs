@@ -140,6 +140,66 @@ module Screenshot =
         let fastInnerBmp = new FastRGBBitmap(innerBmp.Clone() :?> System.Drawing.Bitmap)
         let getDownscaledPixel(x,y) =
             innerBmp.GetPixel(x*3,y*3)
+        let matchesExactlyOneTileTopEdge(x, y) =
+            // see if 16 pixels from x,y to x+15,y match the top edge of exactly one tile
+            let result = ResizeArray()
+            for tilename,kind,tile in UniqueOverworldTiles do
+                let mutable matchesThis = true
+                for i = 0 to 15 do
+                    if matchesThis then
+                        if not(tile.Equals(i,0,fastInnerBmp,3*(x+i),3*y)) then
+                            matchesThis <- false
+                if matchesThis then
+                    result.Add(kind)
+            if result.Count = 1 then
+                Some result.[0]
+            else
+                None
+        let matchesExactlyOneTileBottomEdge(x, y) =
+            // see if 16 pixels from x,y to x+15,y match the bottom edge of exactly one tile
+            let result = ResizeArray()
+            for tilename,kind,tile in UniqueOverworldTiles do
+                let mutable matchesThis = true
+                for i = 0 to 15 do
+                    if matchesThis then
+                        if not(tile.Equals(i,15,fastInnerBmp,3*(x+i),3*y)) then
+                            matchesThis <- false
+                if matchesThis then
+                    result.Add(kind)
+            if result.Count = 1 then
+                Some result.[0]
+            else
+                None
+        let matchesExactlyOneTileRightEdge(x, y) =
+            // see if 16 pixels from x,y to x,y+16 match the right edge of exactly one tile
+            let result = ResizeArray()
+            for tilename,kind,tile in UniqueOverworldTiles do
+                let mutable matchesThis = true
+                for j = 0 to 15 do
+                    if matchesThis then
+                        if not(tile.Equals(15,j,fastInnerBmp,3*x,3*(y+j))) then
+                            matchesThis <- false
+                if matchesThis then
+                    result.Add(kind)
+            if result.Count = 1 then
+                Some result.[0]
+            else
+                None
+        let matchesExactlyOneTileLeftEdge(x, y) =
+            // see if 16 pixels from x,y to x,y+16 match the left edge of exactly one tile
+            let result = ResizeArray()
+            for tilename,kind,tile in UniqueOverworldTiles do
+                let mutable matchesThis = true
+                for j = 0 to 15 do
+                    if matchesThis then
+                        if not(tile.Equals(0,j,fastInnerBmp,3*x,3*(y+j))) then
+                            matchesThis <- false
+                if matchesThis then
+                    result.Add(kind)
+            if result.Count = 1 then
+                Some result.[0]
+            else
+                None
         let matchesKnownTile(ulx, uly) =
             let mutable result = None
             for tilename,kind,tile in UniqueOverworldTiles do
@@ -162,10 +222,10 @@ module Screenshot =
             // see if vast majority match known tiles
             let bad = ResizeArray()  // each mismatched tile stored here
             let good = Array2D.create 14 13 None
-            if bad.Count < THRESHOLD then
-                for by = 0 to 12 do //in [0;1;2;3;4;9;10] do      // 0-12 is all, but just get enough to feel mostly confident we've synchronized
-                    if bad.Count < THRESHOLD then
-                        for bx = 0 to 13 do //in [1;2;3;4;11;12] do // 0-13 is all, but just get enough to feel mostly confident we've synchronized
+            for by = 0 to 12 do //in [0;1;2;3;4;9;10] do      // 0-12 is all, but just get enough to feel mostly confident we've synchronized
+                if bad.Count < THRESHOLD then
+                    for bx = 0 to 13 do //in [1;2;3;4;11;12] do // 0-13 is all, but just get enough to feel mostly confident we've synchronized
+                        if bad.Count < THRESHOLD then
                             // hero can cover up these map squares, must skip
                             if  bx = 6 && by = 6 ||
                                 bx = 7 && by = 5 ||
@@ -191,7 +251,40 @@ module Screenshot =
                     ot.Save(sprintf "BadTile%06d.png" badTileNum)
                     badTileNum <- badTileNum + 1
                 badTileNum <- ((badTileNum + 100) / 100) * 100
-                good
+                // now 'good' is the 14x13 region we can totally see and identify
+                // we can probably see parts of tiles around this region, try to identify those too
+                let better = Array2D.init 16 15 (fun x y ->
+                    if x = 0 || x = 15 then None
+                    elif y = 0 || y = 14 then None
+                    else good.[x-1,y-1])
+                // look along top edge
+                for x = 1 to 14 do
+                    match matchesExactlyOneTileBottomEdge(lx+(x-1)*16,ty-1) with
+                    | None -> ()
+                    | Some k -> better.[x,0] <- Some k
+                // look along bottom edge
+                if ty <> 16 then   // TODO if ty=16, then this means we are halfway thru an up-down move, and can see exactly 14 full tiles tall, can't look down for 15th, as completely offscreen (and sadly only matching edge of top tiles, when entire top tiles on-screen)
+                    for x = 1 to 14 do
+                        match matchesExactlyOneTileTopEdge(lx+(x-1)*16,ty+16*13) with
+                        | None -> ()
+                        | Some k -> better.[x,14] <- Some k
+                // look along left edge
+                for y = 1 to 13 do
+                    match matchesExactlyOneTileRightEdge(lx-1,ty+(y-1)*16) with
+                    | None -> ()
+                    | Some k -> better.[0,y] <- Some k
+                // look along right edge
+                for y = 1 to 13 do
+                    match matchesExactlyOneTileLeftEdge(lx+16*14,ty+(y-1)*16) with
+                    | None -> ()
+                    | Some k -> better.[15,y] <- Some k
+                (*
+                for y = 0 to 14 do
+                    for x = 0 to 15 do
+                        printf "%s" (if better.[x,y].IsNone then "." else "X")
+                    printfn ""
+                *)
+                better
             else
                 null
         let mutable leftX = 0
@@ -199,7 +292,7 @@ module Screenshot =
         let mutable goodResult = null
         // either leftX is 8 (hero is moving up-down, exactly half a tile is visible at left edge), 
         // or topY is 8 (hero is moving left-right, exactly half a tile visible at top edge)
-        for ty = 0 to 15 do
+        for ty = 1 to 16 do
             if goodResult=null then
                 match doesThisLeftTopWork(8,ty) with
                 | null -> ()
@@ -207,7 +300,7 @@ module Screenshot =
                     goodResult <- r
                     leftX <- 8
                     topY <- ty
-        for lx = 0 to 15 do
+        for lx = 1 to 16 do
             if goodResult=null then
                 match doesThisLeftTopWork(lx,8) with
                 | null -> ()
@@ -222,29 +315,18 @@ module Screenshot =
         else
             let makeTiny(leftX, topY, goodResult:Constants.OverworldMapTile option[,]) = 
                 // turn each 16x16 block of the overworld map down to a single pixel
-                let tinyBmp = new System.Drawing.Bitmap(14,13)
-                for x = 0 to 13 do
-                    for y = 0 to 12 do
-                        (*
-                        let mutable r, g, b = 0, 0, 0
-                        for i = 0 to 15 do
-                            for j = 0 to 15 do
-                                let c = getDownscaledPixel(leftX+x*16+i, topY+y*16+j)
-                                r <- r + int c.R
-                                g <- g + int c.G
-                                b <- b + int c.B
-                        tinyBmp.SetPixel(x, y, System.Drawing.Color.FromArgb(r/256, g/256, b/256))
-                        *)
+                let tinyBmp = new System.Drawing.Bitmap(goodResult.GetLength(0),goodResult.GetLength(1))
+                for x = 0 to goodResult.GetLength(0)-1 do
+                    for y = 0 to goodResult.GetLength(1)-1 do
                         match goodResult.[x,y] with
                         | None -> tinyBmp.SetPixel(x, y, UNKNOWN)
                         | Some k -> tinyBmp.SetPixel(x, y, k.ProjectionColor)
-                // tinyBmp.Save("Tiny028.png")
                 tinyBmp
             let results = ResizeArray()
             results.Add(makeTiny(leftX, topY,goodResult))
             // we can mistakenly sync on half tiles, as some tiles like swamp/desert/grass repeat every 8 pixels of their 16x16 grids - ensure find 'real' sync
-            if leftX < 8 then
-                if topY < 8 then
+            if leftX <= 8 then
+                if topY <= 8 then
                     match doesThisLeftTopWork(leftX+8, topY+8) with
                     | null -> ()
                     | r ->
@@ -255,7 +337,7 @@ module Screenshot =
                 | r ->
                     printfn "extra result +8,+0"
                     results.Add(makeTiny(leftX+8, topY, r))
-            if topY < 8 then
+            if topY <= 8 then
                 match doesThisLeftTopWork(leftX, topY+8) with
                 | null -> ()
                 | r ->
@@ -270,8 +352,8 @@ type Mapper() =
     let mutable exploredMapImageWidth = 0
     let UARGB = UNKNOWN.ToArgb()
     let MAX = 400
-    let W = 14
-    let H = 13
+    let W = 16
+    let H = 15
     let wholeMap = new System.Drawing.Bitmap(MAX,MAX)
     let mutable lowULX = MAX/2
     let mutable lowULY = MAX/2
@@ -289,14 +371,11 @@ type Mapper() =
             failwith "bad bmp to mask"
         let bmp = bmp.Clone() :?> System.Drawing.Bitmap
         // hero can cover up these map squares
-        bmp.SetPixel(6,6,UNKNOWN)
-        bmp.SetPixel(7,5,UNKNOWN)
-        bmp.SetPixel(7,6,UNKNOWN)
         bmp.SetPixel(7,7,UNKNOWN)
         bmp.SetPixel(8,6,UNKNOWN)
-        // TODO issue with bottom row? pressing f10 to start causes fceux to pup up display on bottom row // TODO can probably avoid better moving up to start?
-        for x = 0 to W-1 do
-            bmp.SetPixel(x,H-1,UNKNOWN)
+        bmp.SetPixel(8,7,UNKNOWN)
+        bmp.SetPixel(8,8,UNKNOWN)
+        bmp.SetPixel(9,7,UNKNOWN)
         bmp
     member private this.PaintHere(bmp:System.Drawing.Bitmap) =
         for x = 0 to W-1 do
@@ -317,6 +396,9 @@ type Mapper() =
         curULY <- MAX/2
         // paint it
         let bmp = this.Mask(bmp)
+        // TODO issue with bottom row? pressing f9 to start causes fceux to pop up display on bottom row
+        for x = 0 to W-1 do
+            bmp.SetPixel(x,H-1,UNKNOWN)
         this.PaintHere(bmp)
         hasStarted <- true
     member private this.ExactMatch(dx, dy, bmp:System.Drawing.Bitmap) =
@@ -376,10 +458,20 @@ type Mapper() =
         let uly = curULY + H/2 - size/2
         let cloned = wholeMap.Clone(new System.Drawing.Rectangle(ulx, uly, size, size), System.Drawing.Imaging.PixelFormat.Format32bppArgb)
         cloned.SetPixel(size/2, size/2, System.Drawing.Color.Red)
+        // draw crosshairs to help locate hero
         for x = 0 to size-1 do
             recolor(cloned,x,size/2)
         for y = 0 to size-1 do
             recolor(cloned,size/2,y)
+        // draw bounds of currently visible tiles
+        let lox, hix = (size-W)/2, (size-W)/2 + W - 1
+        let loy, hiy = (size-H)/2, (size-H)/2 + H - 1
+        for x = lox to hix do
+            recolor(cloned, x, loy)
+            recolor(cloned, x, hiy)
+        for y = loy+1 to hiy-1 do
+            recolor(cloned, lox, y)
+            recolor(cloned, hix, y)
         cloned
     member private this.ComputeExploreMapSize() =
         let N = EXPLORED_MAP_BORDER_THICKNESS
