@@ -2,6 +2,11 @@
 
 // fceux with Dragon Warrior puts out 256x224 color pixels
 
+// on overworld map...
+// when walking up-down, hero left hand side is at X=128; 7 tiles fully visible to his left, 8th (leftmost) is half-drawn (left half black); 7 tiles fully visible to his right
+// when walking left-right, hero top is at Y=104; 6 tiles fully visible above, 7th (topmost) is half-drawn (cut off screen top); 6 tiles fully visible below, 7th (bottom most) half drawn (cut off screen)
+
+
 ////////////////////////////////////////////////////////////////
 
 // TEXT

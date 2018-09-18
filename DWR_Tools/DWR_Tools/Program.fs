@@ -11,6 +11,7 @@ open System.Windows.Interop
 // TODO exp level time splits?
 
 // TODO rainbow drop changes map, can no longer sync charlock
+// TODO deal with second continent somehow
 
 //////////////////////////////////////////////////
 
@@ -131,7 +132,9 @@ module Screenshot =
         let outerBmp = GetDWRBitmap()
         let innerWidth  = 744
         let innerHeight = 672
+        //                                                         8 for fceux left border, 24 for black pixels, 51 for fceux top menu
         let innerBmp = outerBmp.Clone(new System.Drawing.Rectangle(8+24, 51, innerWidth, innerHeight), System.Drawing.Imaging.PixelFormat.Format32bppArgb)
+        // innerBmp is now just the 'colorful' area - the (3x) NES window without the 8(x3) black pixels along the left edge
         let innerBmp = RedToWhiteBmp(innerBmp)
         //innerBmp.Save("Crop024.png")
         let fastInnerBmp = new FastRGBBitmap(innerBmp.Clone() :?> System.Drawing.Bitmap)
@@ -191,21 +194,27 @@ module Screenshot =
                 good
             else
                 null
-        // for each possible pixel alignment
-        // TODO don't need to search 16x16 possibilties, either top or left (or both) is a known fixed alignment, depending on if character is moving E-W or N-S (or none)
         let mutable leftX = 0
         let mutable topY = 0
         let mutable goodResult = null
+        // either leftX is 8 (hero is moving up-down, exactly half a tile is visible at left edge), 
+        // or topY is 8 (hero is moving left-right, exactly half a tile visible at top edge)
+        for ty = 0 to 15 do
+            if goodResult=null then
+                match doesThisLeftTopWork(8,ty) with
+                | null -> ()
+                | r ->
+                    goodResult <- r
+                    leftX <- 8
+                    topY <- ty
         for lx = 0 to 15 do
             if goodResult=null then
-                for ty = 0 to 15 do
-                    if goodResult=null then
-                        match doesThisLeftTopWork(lx,ty) with
-                        | null -> ()
-                        | r ->
-                            goodResult <- r
-                            leftX <- lx
-                            topY <- ty
+                match doesThisLeftTopWork(lx,8) with
+                | null -> ()
+                | r ->
+                    goodResult <- r
+                    leftX <- lx
+                    topY <- 8
         if goodResult=null then
             printfn "pixel sync failed"
             fastInnerBmp.Finish()
