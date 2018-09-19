@@ -345,6 +345,22 @@ module Screenshot =
             fastInnerBmp.Finish()
             results
 
+let NUM_ANIMATION_FRAMES = 2
+
+let animateColors(bmp:System.Drawing.Bitmap, colors:System.Drawing.Color[]) =
+    let colors = colors |> Array.map (fun c -> c, c.ToArgb())
+    let F = NUM_ANIMATION_FRAMES
+    let scale(i, b) = byte(int b*(F-i-1)/F)
+    let frames = Array.init F (fun _ -> bmp.Clone() :?> System.Drawing.Bitmap)
+    let fastFrames = Array.init F (fun i -> new FastRGBBitmap(frames.[i]) )
+    for x = 0 to frames.[0].Width-1 do
+        for y = 0 to frames.[0].Height-1 do
+            for c, argb in colors do
+                if fastFrames.[0].Equals(x,y,argb) then
+                    for i = 1 to F-1 do
+                        fastFrames.[i].SetRGB(x, y, scale(i,c.R), scale(i,c.G), scale(i,c.B))
+    fastFrames |> Array.iter (fun ff -> ff.Finish())
+    frames
 
 type Mapper() =
     let EXPLORED_MAP_BORDER_THICKNESS = 2
@@ -363,7 +379,8 @@ type Mapper() =
     let mutable hasStarted = false
     let recolor(r:System.Drawing.Bitmap,x,y) =  // highlights on map
         let c = r.GetPixel(x,y)
-        r.SetPixel(x,y,System.Drawing.Color.FromArgb(int c.R*7/8, int c.G*7/8, int c.B*7/8))
+        if not(Constants.OverworldMapTile.IsAnimationColor(c)) then
+            r.SetPixel(x,y,System.Drawing.Color.FromArgb(int c.R*7/8, int c.G*7/8, int c.B*7/8))
     member this.HasStarted = hasStarted
     member private this.Mask(bmp:System.Drawing.Bitmap) =
         if bmp.Width <> W || bmp.Height <> H then
@@ -531,6 +548,9 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
     let mutable mostRecentDeathTime = DateTime.Now 
     let mutable numDeaths = 0
     let mutable changed = false
+    let mutable curFrame = 0
+    let mutable image1Frames = null
+    let mutable image2Frames = null
     let image1 = new Image()
     let image2 = new Image()
     let monsterImage = new Image()
@@ -579,6 +599,7 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
     let mutable source = null
     let stackPanel = new StackPanel(Background=Brushes.Black)
     let update() =
+        curFrame <- curFrame+1
         let timer = System.Diagnostics.Stopwatch.StartNew()
         // update time
         let ts = DateTime.Now - startTime
@@ -633,12 +654,14 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
                     mapper.TryIncrementalPaint(innerBMPs)
                     //printfn "width: %f %f %f" stackPanel.ActualWidth image1.ActualWidth image2.ActualWidth 
                     let width = int stackPanel.ActualWidth - 8  // image width given border/thickness
-                    image1.Source <- Screenshot.BMPtoImage(mapper.GetNearbyMap(width/4))
-                    image2.Source <- Screenshot.BMPtoImage(mapper.GetExploredMap(width,width/4))
-            // update monster TODO
+                    image1Frames <- animateColors(mapper.GetNearbyMap(width/4), Constants.OverworldMapTile.AnimationColors)
+                    image2Frames <- animateColors(mapper.GetExploredMap(width,width/4), Constants.OverworldMapTile.AnimationColors)
+                if image1Frames <> null then
+                    image1.Source <- Screenshot.BMPtoImage(image1Frames.[curFrame%NUM_ANIMATION_FRAMES])
+                    image2.Source <- Screenshot.BMPtoImage(image2Frames.[curFrame%NUM_ANIMATION_FRAMES])
+            // update monster
             let matches = EnemyData.bestMatch(bmpScreenshot)
             if matches.Count > 0 then
-                // TODO erase if goes away for 2 frames, only show monster portrait area, eventually add stats
                 let _,name,_bmp,crop = matches.[0]
                 if prevMatchName = "1" || prevMatchName = "" then
                     prevMatchName <- name

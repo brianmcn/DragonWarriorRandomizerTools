@@ -35,7 +35,7 @@ type OverworldMapTile =
         match this with
         | Bridge      -> System.Drawing.Color.LightGray
         | Castle      -> System.Drawing.Color.Pink
-        | Cave        -> System.Drawing.Color.CornflowerBlue 
+        | Cave        -> System.Drawing.Color.White // CornflowerBlue 
         | Desert      -> System.Drawing.Color.Yellow
         | Forest      -> System.Drawing.Color.ForestGreen
         | Hills       -> System.Drawing.Color.YellowGreen 
@@ -60,6 +60,12 @@ type OverworldMapTile =
         | Water_xxEx  -> System.Drawing.Color.FromArgb(0,0,0xF2)
         | Water_xxES  -> System.Drawing.Color.FromArgb(0,0,0xF1)
         | Water_xxxS  -> System.Drawing.Color.FromArgb(0,0,0xF0)
+    static member AnimationColors = [| OverworldMapTile.Cave.ProjectionColor; OverworldMapTile.Town.ProjectionColor |]
+    static member IsAnimationColor(c:System.Drawing.Color) = 
+        if c.ToArgb() = OverworldMapTile.Cave.ProjectionColor.ToArgb() || c.ToArgb() = OverworldMapTile.Town.ProjectionColor.ToArgb() then
+            true
+        else
+            false
 
 let OVERWORLD_MAP_TILE_FILENAMES = 
     [|
