@@ -4,11 +4,13 @@ open System.Windows.Controls
 open System.Windows.Media
 open System.Windows.Interop 
 
-// TODO add AP/DP/STR/AGI tracker (when that screen pops up?)
+// TODO add AP/DP/STR/AGI tracker (when that screen pops up?) also note weapon/armor/etc
 // TODO exp level time splits?
 
 // TODO rainbow drop changes map, can no longer sync charlock
 // TODO deal with second continent somehow
+// TODO consider adding 15x15 enemy zone map overlay thingy, when certain found a map edge
+// TODO maybe, if click town checkbox, add it to map at that location, highlight with crosshairs when name is clicked?
 
 //////////////////////////////////////////////////
 
@@ -418,6 +420,20 @@ type Mapper() =
                 if found then
                     printfn "FOUND TWO PAINTS, this is bad and will be hard to recover from"
                 found <- true
+        if not found then
+            // maybe just return'd or wings'd, try looking near start
+            let tmpx,tmpy = curULX, curULY
+            curULX <- MAX/2
+            curULY <- MAX/2
+            for bmp in bmps do
+                if this.TryIncrementalPaint(bmp) then
+                    if found then
+                        printfn "FOUND TWO PAINTS, this is bad and will be hard to recover from"
+                    found <- true
+            // if still not found, return to last known
+            if not found then
+                curULX <- tmpx
+                curULY <- tmpy
     member private this.TryIncrementalPaint(bmp:System.Drawing.Bitmap) =
         let mutable ok = false
         let bmp = this.Mask(bmp)
