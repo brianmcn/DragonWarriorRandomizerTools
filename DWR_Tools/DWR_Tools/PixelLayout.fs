@@ -17,13 +17,13 @@ let RED   = System.Drawing.Color.FromArgb(0xFC, 0x74, 0x60)
 let BLACK = System.Drawing.Color.FromArgb(0x00, 0x00, 0x00)
 
 let CAPS_ALPHABET = [|
-    "  XXX                           XXXXXXX                         XXXXXXX                 XXX     XX   XX                 XXXXXX          XXXXXX   XXXXX  XXXXXXX XX   XX                                                 "
-    " XX XX                          XX                                XXX                   XXX     XXX XXX                 XX   XX         XX   XX XX   XX   XXX   XX   XX                                                 "
-    "XX   XX                         XX                                XXX                   XXX     XXX XXX                 XX   XX         XX   XX XX        XXX   XX   XX                                                 "
-    "XX   XX                         XXXXXX                            XXX                   XXX     XXXXXXX                 XX   XX         XX   XX  XXXXX    XXX   XX   XX                                                 "
-    "XXXXXXX                         XX                                XXX                   XXX     XX X XX                 XXXXXX          XXXXXX       XX   XXX   XX   XX                                                 "
-    "XX   XX                         XX                                XXX                   XXX     XX   XX                 XX              XX   XX XX   XX   XXX   XX   XX                                                 "
-    "XX   XX                         XXXXXXX                         XXXXXXX                 XXXXXXX XX   XX                 XX              XX   XX  XXXXX    XXX    XXXXX                                                  "
+    "  XXX                           XXXXXXX                 XX   XX XXXXXXX                 XXX     XX   XX                 XXXXXX          XXXXXX   XXXXX  XXXXXXX XX   XX                                                 "
+    " XX XX                          XX                      XX   XX   XXX                   XXX     XXX XXX                 XX   XX         XX   XX XX   XX   XXX   XX   XX                                                 "
+    "XX   XX                         XX                      XX   XX   XXX                   XXX     XXX XXX                 XX   XX         XX   XX XX        XXX   XX   XX                                                 "
+    "XX   XX                         XXXXXX                  XXXXXXX   XXX                   XXX     XXXXXXX                 XX   XX         XX   XX  XXXXX    XXX   XX   XX                                                 "
+    "XXXXXXX                         XX                      XX   XX   XXX                   XXX     XX X XX                 XXXXXX          XXXXXX       XX   XXX   XX   XX                                                 "
+    "XX   XX                         XX                      XX   XX   XXX                   XXX     XX   XX                 XX              XX   XX XX   XX   XXX   XX   XX                                                 "
+    "XX   XX                         XXXXXXX                 XX   XX XXXXXXX                 XXXXXXX XX   XX                 XX              XX   XX  XXXXX    XXX    XXXXX                                                  "
     |]
 
 let DIGITS = [|
@@ -137,6 +137,19 @@ let identifyEXP(getPixel) =
             exp <- exp * 10
             x <- x + 8
         Some(exp/10)
+    else
+        None
+
+let identifyHP(getPixel) =
+    let x,y = statCoords(1)
+    if matchLetter(getPixel,x,y,'H') then
+        let mutable hp = 0 
+        let mutable x = x+24
+        for place = 0 to 2 do
+            hp <- hp + value(getPixel,x,y)            
+            hp <- hp * 10
+            x <- x + 8
+        Some(hp/10)
     else
         None
             

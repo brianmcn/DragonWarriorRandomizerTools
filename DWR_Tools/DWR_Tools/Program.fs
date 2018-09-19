@@ -4,9 +4,6 @@ open System.Windows.Controls
 open System.Windows.Media
 open System.Windows.Interop 
 
-// TODO now that can align tiles, can 'see' the half tiles at edge of screen, incorporate into map
-// TODO add death counter? (can i auto-recognize? HP 0 in upper left maybe)
-//   - and reset location to start
 // TODO add AP/DP/STR/AGI tracker (when that screen pops up?)
 // TODO exp level time splits?
 
@@ -502,6 +499,9 @@ type Mapper() =
         curULX <- lowULX - N + ex - W/2
         curULY <- lowULY - N + ey - H/2
         printfn "new cur x, y = %d,%d" curULX curULY
+    member this.ResetCurrentLocationToStart() =
+        curULX <- MAX/2
+        curULY <- MAX/2
 
 let gridAdd(g:Grid, x, c, r) =
     g.Children.Add(x) |> ignore
@@ -512,6 +512,9 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
     inherit Window()
     let mapper = new Mapper()
     let mutable startTime = DateTime.Now + TimeSpan.FromSeconds(0.0)
+    let mutable mostRecentDeathTime = DateTime.Now 
+    let mutable numDeaths = 0
+    let mutable changed = false
     let image1 = new Image()
     let image2 = new Image()
     let monsterImage = new Image()
@@ -567,8 +570,14 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
         hmsTimeTextBox.Text <- sprintf "%02d:%02d:%02d" h m s
         // update XP & spell info
         let bmpScreenshot = Screenshot.GetDWRBitmap()
-        let gp = fun (x,y) -> bmpScreenshot.GetPixel(x*3+8,y*3+51) // TODO factor fceux window's 3x pixels and 8,51 offset somewhere better
-        let mutable changed = PixelLayout.identifySpells(gp,heroSpells)
+        let gp(x,y) =
+            let c = bmpScreenshot.GetPixel(x*3+8,y*3+51)  // TODO factor fceux window's 3x pixels and 8,51 offset somewhere better
+            if c.ToArgb() = PixelLayout.RED.ToArgb() then // if hero low health, convert red to white
+                PixelLayout.WHITE 
+            else
+                c
+        if PixelLayout.identifySpells(gp,heroSpells) then
+            changed <- true
         match PixelLayout.identifyEXP(gp) with   
         | Some exp -> 
             heroExp <- exp
@@ -577,6 +586,14 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
                 heroLevel <- newHeroLevel
                 changed <- true
         | None -> ()
+        match PixelLayout.identifyHP(gp) with   
+        | Some 0 -> // HP = 0 - we are dying now
+            if (DateTime.Now - mostRecentDeathTime) > TimeSpan.FromSeconds(10.0) then // ensure don't run this two frames in a row
+                numDeaths <- numDeaths + 1
+                mostRecentDeathTime <- DateTime.Now 
+                mapper.ResetCurrentLocationToStart()
+                changed <- true
+        | _ -> ()
         if changed then
             xpTextBox.Document.Blocks.Clear()
             appendRichText(xpTextBox, sprintf "LV %2d " heroLevel, Brushes.White)
@@ -584,6 +601,8 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
             appendRichText(xpTextBox, sprintf " %6d" Constants.DWR_XP_LEVEL_THRESHOLDS.[heroLevel-1], Brushes.Orange)
             appendRichText(xpTextBox, sprintf " %6d" Constants.DWR_XP_LEVEL_THRESHOLDS.[heroLevel], Brushes.Orange)
             appendRichText(xpTextBox, sprintf " %6d\n" Constants.DWR_XP_LEVEL_THRESHOLDS.[heroLevel+1], Brushes.Orange)
+            appendRichText(xpTextBox, "deaths ", Brushes.Orange)
+            appendRichText(xpTextBox, sprintf " %6d\n" numDeaths, Brushes.Orange)
             for i = 0 to 9 do
                 appendRichText(xpTextBox, PixelLayout.SPELL_NAMES.[i].Substring(0,6) + " ", if heroSpells.[i] then Brushes.White else Brushes.DarkSlateGray)
         if not racingMode then
@@ -790,6 +809,7 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
                     startTime <- DateTime.Now - System.TimeSpan.FromHours(float ihrs) - System.TimeSpan.FromMinutes(float imins) - System.TimeSpan.FromSeconds(float isecs)
                 elif key = VK_F9 then
                     printfn "reset map"
+                    changed <- true // populate initial level stats
                     let bmps = Screenshot.GetInnerDWRBitmaps()
                     if bmps.Count = 1 then
                         mapper.StartFromScratch(bmps.[0])
