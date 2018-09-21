@@ -4,11 +4,12 @@ open System.Windows.Controls
 open System.Windows.Media
 open System.Windows.Interop 
 
-// TODO add AP/DP/STR/AGI tracker (when that screen pops up?) also note weapon/armor/etc
+// TODO deal with second continent somehow
 // TODO exp level time splits?
 
+// TODO add AP/DP/STR/AGI tracker (when that screen pops up?) also note weapon/armor/etc
+
 // TODO rainbow drop changes map, can no longer sync charlock
-// TODO deal with second continent somehow
 // TODO consider adding 15x15 enemy zone map overlay thingy, when certain found a map edge
 // TODO maybe, if click town checkbox, add it to map at that location, highlight with crosshairs when name is clicked?
 
@@ -215,7 +216,6 @@ module Screenshot =
                     if matchesThis then
                         result <- Some kind
             result
-        //TODO perf
         let THRESHOLD = 2  // TODO set at higher number to save new world tile, if failing to sync because legal tile not in our resource set
         let doesThisLeftTopWork(lx,ty) = 
             // see if vast majority match known tiles
@@ -554,6 +554,7 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
     let mutable image2Frames = null
     let image1 = new Image()
     let image2 = new Image()
+    let mutable caveMapIsCurrentlyDisplayed = false
     let monsterImage = new Image()
     let tab = new TabControl(Background=Brushes.Black)
     let mutable ssNum = 1
@@ -591,8 +592,10 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
         if resource <> "" then
             let imageStream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream(resource)
             image1.Source <- System.Windows.Media.Imaging.BitmapFrame.Create(imageStream)
+            caveMapIsCurrentlyDisplayed <- true
         else
             image1.Source <- null
+            caveMapIsCurrentlyDisplayed <- false
     let makeCheckedStuff(labelStr,strs) = 
         let sp = new StackPanel(Background=Brushes.Black)
         sp.Background<-Brushes.Black
@@ -684,7 +687,9 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
                     let width = int stackPanel.ActualWidth - 8  // image width given border/thickness
                     image1Frames <- animateColors(mapper.GetNearbyMap(width/4), Constants.OverworldMapTile.AnimationColors)
                     image2Frames <- animateColors(mapper.GetExploredMap(width,width/4), Constants.OverworldMapTile.AnimationColors)
-                if image1Frames <> null then
+                    caveMapIsCurrentlyDisplayed <- false // if innerBMPs was non-null, we're on overworld map, turn off any cave map
+                if image1Frames <> null && not(caveMapIsCurrentlyDisplayed) then
+                    // draw/animate overworld map
                     image1.Source <- Screenshot.BMPtoImage(image1Frames.[curFrame%NUM_ANIMATION_FRAMES])
                     image2.Source <- Screenshot.BMPtoImage(image2Frames.[curFrame%NUM_ANIMATION_FRAMES])
             // update monster
