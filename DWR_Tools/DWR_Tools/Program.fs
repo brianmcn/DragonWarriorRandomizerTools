@@ -4,7 +4,6 @@ open System.Windows.Controls
 open System.Windows.Media
 open System.Windows.Interop 
 
-// TODO deal with second continent somehow
 // TODO exp level time splits?
 
 // TODO add AP/DP/STR/AGI tracker (when that screen pops up?) also note weapon/armor/etc
@@ -452,6 +451,7 @@ type Mapper() =
             if not found then
                 curULX <- tmpx
                 curULY <- tmpy
+        found
     member private this.TryIncrementalPaint(bmp:System.Drawing.Bitmap) =
         let mutable ok = false
         let bmp = this.Mask(bmp)
@@ -544,7 +544,23 @@ let gridAdd(g:Grid, x, c, r) =
 
 type MyWindow(ihrs,imins,isecs,racingMode) as this = 
     inherit Window()
-    let mapper = new Mapper()
+    let nearbyCaption = new TextBox(Text="nearby world 0",FontSize=16.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(2.0))
+    let allCaption = new TextBox(Text="all explored 0",FontSize=16.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(2.0))
+    let mapper0 = new Mapper()
+    let mapper1 = new Mapper()
+    let mutable currentContinent = 0
+    let CurrentMapper() = if currentContinent = 0 then mapper0 else mapper1
+    let TryPaintOther(innerBMPs) =
+         if currentContinent = 0 then 
+            if mapper1.TryIncrementalPaint(innerBMPs) then
+                currentContinent <- 1
+                nearbyCaption.Text <- "nearby world 1"
+                allCaption.Text <- "all explored 1"
+         else 
+            if mapper0.TryIncrementalPaint(innerBMPs) then
+                currentContinent <- 0
+                nearbyCaption.Text <- "nearby world 0"
+                allCaption.Text <- "all explored 0"
     let mutable startTime = DateTime.Now + TimeSpan.FromSeconds(0.0)
     let mutable mostRecentDeathTime = DateTime.Now 
     let mutable numDeaths = 0
@@ -658,7 +674,8 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
             if (DateTime.Now - mostRecentDeathTime) > TimeSpan.FromSeconds(10.0) then // ensure don't run this two frames in a row
                 numDeaths <- numDeaths + 1
                 mostRecentDeathTime <- DateTime.Now 
-                mapper.ResetCurrentLocationToStart()
+                mapper0.ResetCurrentLocationToStart()
+                currentContinent <- 0
                 changed <- true
         | _ -> ()
         if not racingMode then
@@ -679,14 +696,15 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
                 bmpScreenshot.Save(sprintf "Auto%03d.png" ssNum, System.Drawing.Imaging.ImageFormat.Png)
                 ssNum <- ssNum + 1
             // update map
-            if mapper.HasStarted then
+            if mapper0.HasStarted then
                 let innerBMPs = Screenshot.GetInnerDWRBitmaps()
                 if innerBMPs.Count > 0 then
-                    mapper.TryIncrementalPaint(innerBMPs)
+                    if not(CurrentMapper().TryIncrementalPaint(innerBMPs)) then
+                        TryPaintOther(innerBMPs)
                     //printfn "width: %f %f %f" stackPanel.ActualWidth image1.ActualWidth image2.ActualWidth 
                     let width = int stackPanel.ActualWidth - 8  // image width given border/thickness
-                    image1Frames <- animateColors(mapper.GetNearbyMap(width/4), Constants.OverworldMapTile.AnimationColors)
-                    image2Frames <- animateColors(mapper.GetExploredMap(width,width/4), Constants.OverworldMapTile.AnimationColors)
+                    image1Frames <- animateColors(CurrentMapper().GetNearbyMap(width/4), Constants.OverworldMapTile.AnimationColors)
+                    image2Frames <- animateColors(CurrentMapper().GetExploredMap(width,width/4), Constants.OverworldMapTile.AnimationColors)
                     caveMapIsCurrentlyDisplayed <- false // if innerBMPs was non-null, we're on overworld map, turn off any cave map
                 if image1Frames <> null && not(caveMapIsCurrentlyDisplayed) then
                     // draw/animate overworld map
@@ -791,15 +809,15 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
             tab.Items.Add(monsters) |> ignore
             let sp = new StackPanel(Background=Brushes.Black,Orientation=Orientation.Vertical)
             sp.Children.Add(image1) |> ignore
-            sp.Children.Add(new TextBox(Text="nearby world",FontSize=16.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(2.0))) |> ignore
+            sp.Children.Add(nearbyCaption) |> ignore
             image1.Margin <- Thickness(1.0)
             image2.Margin <- Thickness(1.0)
             image2.MouseLeftButtonDown.Add(fun x -> 
                 let point = x.GetPosition(image2) 
-                mapper.ResetCurrentLocation(int point.X, int point.Y)
+                CurrentMapper().ResetCurrentLocation(int point.X, int point.Y)
                 ())
             sp.Children.Add(image2) |> ignore
-            sp.Children.Add(new TextBox(Text="all explored",FontSize=16.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(2.0))) |> ignore
+            sp.Children.Add(allCaption) |> ignore
             maps.Content <- sp
 
             let monsterGrid = new Grid()
@@ -846,6 +864,7 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
     // global hotkey
 
     let VK_F4 =  0x73
+    let VK_F8 =  0x77
     let VK_F9 =  0x78
     let VK_F10 = 0x79
     //let MOD_CTRL = uint32 0x0002
@@ -872,6 +891,9 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
         if(not(Winterop.RegisterHotKey(helper.Handle, Winterop.HOTKEY_ID, MOD_NONE, uint32 VK_F9))) then
             // handle error
             ()
+        if(not(Winterop.RegisterHotKey(helper.Handle, Winterop.HOTKEY_ID, MOD_NONE, uint32 VK_F8))) then
+            // handle error
+            ()
         if(not(Winterop.RegisterHotKey(helper.Handle, Winterop.HOTKEY_ID, MOD_NONE, uint32 VK_F4))) then
             // handle error
             ()
@@ -890,11 +912,19 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
                     printfn "reset time"
                     startTime <- DateTime.Now - System.TimeSpan.FromHours(float ihrs) - System.TimeSpan.FromMinutes(float imins) - System.TimeSpan.FromSeconds(float isecs)
                 elif key = VK_F9 then
-                    printfn "reset map"
+                    printfn "reset map 0 "
                     changed <- true // populate initial level stats
                     let bmps = Screenshot.GetInnerDWRBitmaps()
                     if bmps.Count = 1 then
-                        mapper.StartFromScratch(bmps.[0])
+                        mapper0.StartFromScratch(bmps.[0])
+                    else
+                        printfn "FAILED TO START MAPPING, count was %d" bmps.Count 
+                elif key = VK_F8 then
+                    printfn "reset map 1 "
+                    let bmps = Screenshot.GetInnerDWRBitmaps()
+                    if bmps.Count = 1 then
+                        mapper1.StartFromScratch(bmps.[0])
+                        TryPaintOther(bmps)
                     else
                         printfn "FAILED TO START MAPPING, count was %d" bmps.Count 
                 elif key = VK_F4 then
