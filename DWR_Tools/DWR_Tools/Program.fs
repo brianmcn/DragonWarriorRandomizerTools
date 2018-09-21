@@ -380,7 +380,8 @@ type Mapper() =
     let recolor(r:System.Drawing.Bitmap,x,y) =  // highlights on map
         let c = r.GetPixel(x,y)
         if not(Constants.OverworldMapTile.IsAnimationColor(c)) then
-            r.SetPixel(x,y,System.Drawing.Color.FromArgb(int c.R*7/8, int c.G*7/8, int c.B*7/8))
+            r.SetPixel(x,y,System.Drawing.Color.FromArgb(int c.R*3/4, int c.G*3/4, int c.B*3/4))
+            //r.SetPixel(x,y,System.Drawing.Color.FromArgb(int c.R*7/8, int c.G*7/8, int c.B*7/8))
     member this.HasStarted = hasStarted
     member private this.Mask(bmp:System.Drawing.Bitmap) =
         if bmp.Width <> W || bmp.Height <> H then
@@ -560,11 +561,32 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
     let mutable heroExp = 0
     let mutable heroLevel = 1
     let heroSpells = Array.create 10 false
+    let mutable heroWeaponIndex = -1
+    let mutable heroArmorIndex = -1 
+    let mutable heroShieldIndex = -1 
+    let weaponTextBox = new RichTextBox(FontSize=18.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0),Focusable=false)
+    let armorTextBox  = new RichTextBox(FontSize=18.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0),Focusable=false)
+    let shieldTextBox = new RichTextBox(FontSize=18.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0),Focusable=false)
     let appendRichText(box:RichTextBox, text, color) = 
         let range = new System.Windows.Documents.TextRange(box.Document.ContentEnd, box.Document.ContentEnd)
         range.Text <- text
         range.ApplyPropertyValue(System.Windows.Documents.TextElement.ForegroundProperty, color)
         range.ApplyPropertyValue(System.Windows.Documents.TextElement.FontWeightProperty, FontWeights.Bold)
+    let updateWeapon() =
+        heroWeaponIndex <- (heroWeaponIndex + 1) % Constants.WEAPONS.Length
+        weaponTextBox.Document.Blocks.Clear()
+        appendRichText(weaponTextBox, "weapon ", Brushes.Orange)
+        appendRichText(weaponTextBox, sprintf "%s" Constants.WEAPONS.[heroWeaponIndex], Brushes.White)
+    let updateArmor() =
+        heroArmorIndex <- (heroArmorIndex + 1) % Constants.ARMOR.Length
+        armorTextBox.Document.Blocks.Clear()
+        appendRichText(armorTextBox, " armor ", Brushes.Orange)
+        appendRichText(armorTextBox, sprintf "%s" Constants.ARMOR.[heroArmorIndex], Brushes.White)
+    let updateShield() =
+        heroShieldIndex <- (heroShieldIndex + 1) % Constants.SHIELD.Length
+        shieldTextBox.Document.Blocks.Clear()
+        appendRichText(shieldTextBox, "shield ", Brushes.Orange)
+        appendRichText(shieldTextBox, sprintf "%s" Constants.SHIELD.[heroShieldIndex], Brushes.White)
     let onCheckedChanged(resource) =
         if resource <> "" then
             let imageStream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream(resource)
@@ -579,16 +601,21 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
         sp.Children.Add(label) |> ignore
         for s,res in strs do
             let cb = new CheckBox(Content=new TextBox(Text=s,FontSize=16.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0)))
-            cb.Checked.Add(fun _ -> onCheckedChanged(res))
+            cb.Checked.Add(fun _ -> 
+                if res = "E_SWORD" then 
+                    heroWeaponIndex <- Constants.WEAPONS.Length-2
+                    updateWeapon()
+                elif res = "E_ARMOR" then 
+                    heroArmorIndex <- Constants.ARMOR.Length-2
+                    updateArmor()
+                else 
+                    onCheckedChanged(res))
             cb.Unchecked.Add(fun _ -> onCheckedChanged(""))
             sp.Children.Add(cb) |> ignore
         sp
     let content = new Grid()
-    let xpTextBox = new RichTextBox(FontSize=18.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0))
-    let goalTextBox = new TextBox(Text="-GOAL-\nAG>75\nHP>100\nMP>80\nAP>120\nDP>86",FontSize=20.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0))
+    let xpTextBox = new RichTextBox(FontSize=18.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0),Focusable=false)
     let hmsTimeTextBox = new TextBox(Text="timer",FontSize=20.0,Background=Brushes.Black,Foreground=Brushes.LightGreen,BorderThickness=Thickness(0.0))
-    //let locationTextBox = new TextBox(Text=String.Join("\n",LOCATIONS),FontSize=20.0,Background=Brushes.Black,Foreground=Brushes.Orange)
-    //let itemTextBox = new TextBox(Text=String.Join("\n",ITEMS),FontSize=20.0,Background=Brushes.Black,Foreground=Brushes.Orange)
     let monsterName = new TextBox(Text="name",FontSize=20.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0))
     let monsterXP = new TextBox(Text="EXP",FontSize=20.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0))
     let monsterGold = new TextBox(Text="GOLD",FontSize=20.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0))
@@ -631,18 +658,19 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
                 mapper.ResetCurrentLocationToStart()
                 changed <- true
         | _ -> ()
-        if changed then
-            xpTextBox.Document.Blocks.Clear()
-            appendRichText(xpTextBox, sprintf "LV %2d " heroLevel, Brushes.White)
-            appendRichText(xpTextBox, "  next levels " , Brushes.Orange)
-            appendRichText(xpTextBox, sprintf " %6d" Constants.DWR_XP_LEVEL_THRESHOLDS.[heroLevel-1], Brushes.Orange)
-            appendRichText(xpTextBox, sprintf " %6d" Constants.DWR_XP_LEVEL_THRESHOLDS.[heroLevel], Brushes.Orange)
-            appendRichText(xpTextBox, sprintf " %6d\n" Constants.DWR_XP_LEVEL_THRESHOLDS.[heroLevel+1], Brushes.Orange)
-            appendRichText(xpTextBox, "deaths ", Brushes.Orange)
-            appendRichText(xpTextBox, sprintf " %6d\n" numDeaths, Brushes.Orange)
-            for i = 0 to 9 do
-                appendRichText(xpTextBox, PixelLayout.SPELL_NAMES.[i].Substring(0,6) + " ", if heroSpells.[i] then Brushes.White else Brushes.DarkSlateGray)
         if not racingMode then
+            // level xp/deaths/spells text area
+            if changed then
+                xpTextBox.Document.Blocks.Clear()
+                appendRichText(xpTextBox, sprintf "LV %2d " heroLevel, Brushes.White)
+                appendRichText(xpTextBox, "  next levels " , Brushes.Orange)
+                appendRichText(xpTextBox, sprintf " %6d" Constants.DWR_XP_LEVEL_THRESHOLDS.[heroLevel-1], Brushes.Orange)
+                appendRichText(xpTextBox, sprintf " %6d" Constants.DWR_XP_LEVEL_THRESHOLDS.[heroLevel], Brushes.Orange)
+                appendRichText(xpTextBox, sprintf " %6d\n" Constants.DWR_XP_LEVEL_THRESHOLDS.[heroLevel+1], Brushes.Orange)
+                appendRichText(xpTextBox, "deaths ", Brushes.Orange)
+                appendRichText(xpTextBox, sprintf " %6d\n" numDeaths, Brushes.Orange)
+                for i = 0 to 9 do
+                    appendRichText(xpTextBox, PixelLayout.SPELL_NAMES.[i].Substring(0,6) + " ", if heroSpells.[i] then Brushes.White else Brushes.DarkSlateGray)
             // auto screenshot
             if false then
                 bmpScreenshot.Save(sprintf "Auto%03d.png" ssNum, System.Drawing.Imaging.ImageFormat.Png)
@@ -691,6 +719,9 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
         let pretty = Constants.DWR_XP_LEVEL_THRESHOLDS |> Array.map (fun x -> let s = x.ToString() in (String.replicate (5-s.Length) " ") + s)
         appendRichText(xpTextBox, "XP to level ", Brushes.Orange)
         appendRichText(xpTextBox, String.Join(" ",pretty), Brushes.White)
+        updateWeapon()
+        updateArmor()
+        updateShield()
         RenderOptions.SetBitmapScalingMode(image1, BitmapScalingMode.NearestNeighbor)
         RenderOptions.SetBitmapScalingMode(image2, BitmapScalingMode.NearestNeighbor)
 
@@ -705,6 +736,8 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
         leftGrid.RowDefinitions.Add(new RowDefinition(Height=GridLength(76.0)))
         leftGrid.RowDefinitions.Add(new RowDefinition(Height=GridLength(474.0)))
         leftGrid.RowDefinitions.Add(new RowDefinition())
+        leftGrid.RowDefinitions.Add(new RowDefinition())
+        leftGrid.RowDefinitions.Add(new RowDefinition())
         let makeKitty() =
             let kitty = new Image()
             let imageStream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("CroppedBrianKitty.png")
@@ -713,7 +746,12 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
         let kitty = makeKitty()
         gridAdd(leftGrid,kitty,0,0)
         gridAdd(leftGrid,xpTextBox,0,1)
-        gridAdd(leftGrid,goalTextBox,0,2)
+        gridAdd(leftGrid,weaponTextBox,0,2)
+        gridAdd(leftGrid,armorTextBox,0,3)
+        gridAdd(leftGrid,shieldTextBox,0,4)
+        weaponTextBox.MouseDown.Add(fun _ -> updateWeapon())
+        armorTextBox.MouseDown.Add(fun _ -> updateArmor())
+        shieldTextBox.MouseDown.Add(fun _ -> updateShield())
         gridAdd(content,leftGrid,0,0)
         // right grid
         let rightGrid = new Grid()

@@ -159,11 +159,42 @@ let ITEMS = [|
     "Staff of Rain", ""
     "Erdrick Token (*)", ""
     "Rainbow Drop", ""
-    "Erdrick Sword", ""
-    "Erdrick Armor (*)", ""
+    "Erdrick Sword", "E_SWORD"
+    "Erdrick Armor (*)", "E_ARMOR"
     "Fairy Flute (*)", ""
     "Death Necklace", ""
     "Princess' Love", ""
+    |]
+
+///////////////////////////////////////////////////////
+
+let WEAPONS = [|
+    "(none)"
+    "bamboo"
+    "club"
+    "copper"
+    "handax"
+    "broad"
+    "flame"
+    "erdrik"
+    |]
+
+let ARMOR = [|
+    "(none)"
+    "cloth"
+    "leathr"
+    "chain"
+    "half"
+    "full"
+    "magic"
+    "erdrik"
+    |]
+
+let SHIELD = [|
+    "(none)"
+    "small"
+    "large"
+    "silver"
     |]
 
 ///////////////////////////////////////////////////////
