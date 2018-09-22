@@ -4,8 +4,6 @@ open System.Windows.Controls
 open System.Windows.Media
 open System.Windows.Interop 
 
-// TODO exp level time splits?
-
 // TODO add AP/DP/STR/AGI tracker (when that screen pops up?) also note weapon/armor/etc
 
 // TODO rainbow drop changes map, can no longer sync charlock
@@ -577,13 +575,14 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
     let mutable prevMatchName = ""
     let mutable heroExp = 0
     let mutable heroLevel = 1
+    let heroLevelTimes = Array.create 30 null
     let heroSpells = Array.create 10 false
     let mutable heroWeaponIndex = -1
     let mutable heroArmorIndex = -1 
     let mutable heroShieldIndex = -1 
-    let weaponTextBox = new RichTextBox(FontSize=18.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0),Focusable=false)
-    let armorTextBox  = new RichTextBox(FontSize=18.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0),Focusable=false)
-    let shieldTextBox = new RichTextBox(FontSize=18.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0),Focusable=false)
+    let weaponTextBox = new RichTextBox(FontSize=16.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0),Focusable=false)
+    let armorTextBox  = new RichTextBox(FontSize=16.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0),Focusable=false)
+    let shieldTextBox = new RichTextBox(FontSize=16.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0),Focusable=false)
     let appendRichText(box:RichTextBox, text, color) = 
         let range = new System.Windows.Documents.TextRange(box.Document.ContentEnd, box.Document.ContentEnd)
         range.Text <- text
@@ -633,7 +632,7 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
             sp.Children.Add(cb) |> ignore
         sp
     let content = new Grid()
-    let xpTextBox = new RichTextBox(FontSize=18.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0),Focusable=false)
+    let xpTextBox = new RichTextBox(FontSize=16.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0),Focusable=false)
     let hmsTimeTextBox = new TextBox(Text="timer",FontSize=20.0,Background=Brushes.Black,Foreground=Brushes.LightGreen,BorderThickness=Thickness(0.0))
     let monsterName = new TextBox(Text="name",FontSize=20.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0))
     let monsterXP = new TextBox(Text="EXP",FontSize=20.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0))
@@ -650,7 +649,7 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
         // update time
         let ts = DateTime.Now - startTime
         let h,m,s = ts.Hours, ts.Minutes, ts.Seconds
-        hmsTimeTextBox.Text <- sprintf "%02d:%02d:%02d" h m s
+        hmsTimeTextBox.Text <- sprintf "%02d:%02d:%02d  deaths:%3d" h m s numDeaths
         // update XP & spell info
         let bmpScreenshot = Screenshot.GetDWRBitmap()
         let gp(x,y) =
@@ -667,6 +666,7 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
             let newHeroLevel = (Constants.DWR_XP_LEVEL_THRESHOLDS |> Array.findIndex(fun z -> z > exp)) + 1
             if newHeroLevel <> heroLevel then
                 heroLevel <- newHeroLevel
+                heroLevelTimes.[heroLevel-2] <- sprintf "%03d:%02d " (60*h+m) s
                 changed <- true
         | None -> ()
         match PixelLayout.identifyHP(gp) with   
@@ -685,15 +685,13 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
             // level xp/deaths/spells text area
             if changed then
                 xpTextBox.Document.Blocks.Clear()
-                appendRichText(xpTextBox, sprintf "LV %2d " heroLevel, Brushes.White)
-                appendRichText(xpTextBox, "  next levels " , Brushes.Orange)
-                appendRichText(xpTextBox, sprintf " %6d" Constants.DWR_XP_LEVEL_THRESHOLDS.[heroLevel-1], Brushes.Orange)
-                appendRichText(xpTextBox, sprintf " %6d" Constants.DWR_XP_LEVEL_THRESHOLDS.[heroLevel], Brushes.Orange)
-                appendRichText(xpTextBox, sprintf " %6d\n" Constants.DWR_XP_LEVEL_THRESHOLDS.[heroLevel+1], Brushes.Orange)
-                appendRichText(xpTextBox, "deaths ", Brushes.Orange)
-                appendRichText(xpTextBox, sprintf " %6d\n" numDeaths, Brushes.Orange)
+                for l = 0 to 17 do
+                    if heroLevelTimes.[l] <> null then
+                        appendRichText(xpTextBox, heroLevelTimes.[l], Brushes.White)
+                    else
+                        appendRichText(xpTextBox, sprintf "%-6d " Constants.DWR_XP_LEVEL_THRESHOLDS.[l], Brushes.Orange)
                 for i = 0 to 9 do
-                    appendRichText(xpTextBox, PixelLayout.SPELL_NAMES.[i].Substring(0,6) + " ", if heroSpells.[i] then Brushes.White else Brushes.DarkSlateGray)
+                    appendRichText(xpTextBox, " " + PixelLayout.SPELL_NAMES.[i].Substring(0,6), if heroSpells.[i] then Brushes.White else Brushes.DarkSlateGray)
             // auto screenshot
             if false then
                 bmpScreenshot.Save(sprintf "Auto%03d.png" ssNum, System.Drawing.Imaging.ImageFormat.Png)
@@ -760,7 +758,7 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
         let leftGrid = new Grid()
         leftGrid.ColumnDefinitions.Add(new ColumnDefinition())
         leftGrid.RowDefinitions.Add(new RowDefinition(Height=GridLength(76.0)))
-        leftGrid.RowDefinitions.Add(new RowDefinition(Height=GridLength(474.0)))
+        leftGrid.RowDefinitions.Add(new RowDefinition(Height=GridLength(506.0)))
         leftGrid.RowDefinitions.Add(new RowDefinition())
         leftGrid.RowDefinitions.Add(new RowDefinition())
         leftGrid.RowDefinitions.Add(new RowDefinition())
