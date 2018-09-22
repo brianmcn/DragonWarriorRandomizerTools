@@ -678,20 +678,20 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
                 currentContinent <- 0
                 changed <- true
         | _ -> ()
+        // level xp/times/spells text area
+        if changed then
+            xpTextBox.Document.Blocks.Clear()
+            for l = 0 to 17 do
+                if heroLevelTimes.[l] <> null then
+                    appendRichText(xpTextBox, heroLevelTimes.[l], Brushes.White)
+                else
+                    appendRichText(xpTextBox, sprintf "%-6d " Constants.DWR_XP_LEVEL_THRESHOLDS.[l], Brushes.Orange)
+            for i = 0 to 9 do
+                appendRichText(xpTextBox, " " + PixelLayout.SPELL_NAMES.[i].Substring(0,6), if heroSpells.[i] then Brushes.White else Brushes.DarkSlateGray)
         if racingMode then
             // TODO for reasons I don't understand, not running this causes an unmanaged memory leak that makes the app crash in less than 2 minutes
             EnemyData.bestMatch(bmpScreenshot) |> ignore
         else
-            // level xp/deaths/spells text area
-            if changed then
-                xpTextBox.Document.Blocks.Clear()
-                for l = 0 to 17 do
-                    if heroLevelTimes.[l] <> null then
-                        appendRichText(xpTextBox, heroLevelTimes.[l], Brushes.White)
-                    else
-                        appendRichText(xpTextBox, sprintf "%-6d " Constants.DWR_XP_LEVEL_THRESHOLDS.[l], Brushes.Orange)
-                for i = 0 to 9 do
-                    appendRichText(xpTextBox, " " + PixelLayout.SPELL_NAMES.[i].Substring(0,6), if heroSpells.[i] then Brushes.White else Brushes.DarkSlateGray)
             // auto screenshot
             if false then
                 bmpScreenshot.Save(sprintf "Auto%03d.png" ssNum, System.Drawing.Imaging.ImageFormat.Png)
