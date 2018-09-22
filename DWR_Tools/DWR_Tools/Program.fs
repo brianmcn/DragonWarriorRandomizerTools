@@ -678,7 +678,10 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
                 currentContinent <- 0
                 changed <- true
         | _ -> ()
-        if not racingMode then
+        if racingMode then
+            // TODO for reasons I don't understand, not running this causes an unmanaged memory leak that makes the app crash in less than 2 minutes
+            EnemyData.bestMatch(bmpScreenshot) |> ignore
+        else
             // level xp/deaths/spells text area
             if changed then
                 xpTextBox.Document.Blocks.Clear()
