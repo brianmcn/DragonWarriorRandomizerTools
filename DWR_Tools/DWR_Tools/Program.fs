@@ -583,26 +583,39 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
     let weaponTextBox = new RichTextBox(FontSize=16.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0),Focusable=false)
     let armorTextBox  = new RichTextBox(FontSize=16.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0),Focusable=false)
     let shieldTextBox = new RichTextBox(FontSize=16.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0),Focusable=false)
+    let makeAnimationBrush() =
+        let colorAnimation = new System.Windows.Media.Animation.ColorAnimation()
+        colorAnimation.From <- Nullable<_>(System.Windows.Media.Colors.Black)
+        colorAnimation.To <- Nullable<_>(System.Windows.Media.Color.FromRgb(0x6Fuy, 0x6Fuy, 0x00uy))
+        colorAnimation.Duration <- new Duration(TimeSpan.FromSeconds(1.5))
+        colorAnimation.AutoReverse <- true
+        let brush = new SolidColorBrush(Colors.Black)
+        brush, (fun () -> brush.BeginAnimation(SolidColorBrush.ColorProperty, colorAnimation))
     let appendRichText(box:RichTextBox, text, color) = 
         let range = new System.Windows.Documents.TextRange(box.Document.ContentEnd, box.Document.ContentEnd)
         range.Text <- text
         range.ApplyPropertyValue(System.Windows.Documents.TextElement.ForegroundProperty, color)
         range.ApplyPropertyValue(System.Windows.Documents.TextElement.FontWeightProperty, FontWeights.Bold)
+    let appendRichTextAnimate(box:RichTextBox, text, color) = 
+        appendRichText(box, text, color)
+        let brush, thunk = makeAnimationBrush()
+        box.Background <- brush
+        thunk()
     let updateWeapon() =
         heroWeaponIndex <- (heroWeaponIndex + 1) % Constants.WEAPONS.Length
         weaponTextBox.Document.Blocks.Clear()
         appendRichText(weaponTextBox, "weapon ", Brushes.Orange)
-        appendRichText(weaponTextBox, sprintf "%s" Constants.WEAPONS.[heroWeaponIndex], Brushes.White)
+        appendRichTextAnimate(weaponTextBox, sprintf "%s" Constants.WEAPONS.[heroWeaponIndex], Brushes.White)
     let updateArmor() =
         heroArmorIndex <- (heroArmorIndex + 1) % Constants.ARMOR.Length
         armorTextBox.Document.Blocks.Clear()
         appendRichText(armorTextBox, " armor ", Brushes.Orange)
-        appendRichText(armorTextBox, sprintf "%s" Constants.ARMOR.[heroArmorIndex], Brushes.White)
+        appendRichTextAnimate(armorTextBox, sprintf "%s" Constants.ARMOR.[heroArmorIndex], Brushes.White)
     let updateShield() =
         heroShieldIndex <- (heroShieldIndex + 1) % Constants.SHIELD.Length
         shieldTextBox.Document.Blocks.Clear()
         appendRichText(shieldTextBox, "shield ", Brushes.Orange)
-        appendRichText(shieldTextBox, sprintf "%s" Constants.SHIELD.[heroShieldIndex], Brushes.White)
+        appendRichTextAnimate(shieldTextBox, sprintf "%s" Constants.SHIELD.[heroShieldIndex], Brushes.White)
     let onCheckedChanged(resource) =
         if resource <> "" then
             let imageStream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream(resource)
@@ -618,7 +631,10 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
         label.Content <- new TextBox(Text=labelStr,FontSize=16.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0))
         sp.Children.Add(label) |> ignore
         for s,res in strs do
-            let cb = new CheckBox(Content=new TextBox(Text=s,FontSize=16.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0)))
+            let tb = new TextBox(Text=s,FontSize=16.0,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0))
+            let brush, thunk = makeAnimationBrush()
+            tb.Background <- brush
+            let cb = new CheckBox(Content=tb)
             cb.Checked.Add(fun _ -> 
                 if res = "E_SWORD" then 
                     heroWeaponIndex <- Constants.WEAPONS.Length-2
@@ -627,8 +643,11 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
                     heroArmorIndex <- Constants.ARMOR.Length-2
                     updateArmor()
                 else 
-                    onCheckedChanged(res))
-            cb.Unchecked.Add(fun _ -> onCheckedChanged(""))
+                    onCheckedChanged(res)
+                thunk())
+            cb.Unchecked.Add(fun _ -> 
+                onCheckedChanged("")
+                thunk())
             sp.Children.Add(cb) |> ignore
         sp
     let content = new Grid()
