@@ -5,6 +5,7 @@ open System.Windows.Media
 open System.Windows.Interop 
 
 // TODO add AP/DP/STR/AGI tracker (when that screen pops up?) also note weapon/armor/etc
+//   - could capture the level when it was taken, and always know current level, so could show how 'stale' the info was that way
 
 // TODO rainbow drop changes map, can no longer sync charlock
 // TODO consider adding 15x15 enemy zone map overlay thingy, when certain found a map edge
@@ -730,6 +731,11 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
                     // draw/animate overworld map
                     image1.Source <- Screenshot.BMPtoImage(image1Frames.[curFrame%NUM_ANIMATION_FRAMES])
                     image2.Source <- Screenshot.BMPtoImage(image2Frames.[curFrame%NUM_ANIMATION_FRAMES])
+            else
+                // auto-start mapping when we first see overworld
+                let bmps = Screenshot.GetInnerDWRBitmaps()
+                if bmps.Count = 1 then
+                    mapper0.StartFromScratch(bmps.[0])
             // update monster
             let matches = EnemyData.bestMatch(bmpScreenshot)
             if matches.Count > 0 then
