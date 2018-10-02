@@ -592,6 +592,12 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
         colorAnimation.AutoReverse <- true
         let brush = new SolidColorBrush(Colors.Black)
         brush, (fun () -> brush.BeginAnimation(SolidColorBrush.ColorProperty, colorAnimation))
+    let appendRichTextWithBackground(box:RichTextBox, text, color, bgcolor) = 
+        let range = new System.Windows.Documents.TextRange(box.Document.ContentEnd, box.Document.ContentEnd)
+        range.Text <- text
+        range.ApplyPropertyValue(System.Windows.Documents.TextElement.ForegroundProperty, color)
+        range.ApplyPropertyValue(System.Windows.Documents.TextElement.FontWeightProperty, FontWeights.Bold)
+        range.ApplyPropertyValue(System.Windows.Documents.TextElement.BackgroundProperty, bgcolor)
     let appendRichText(box:RichTextBox, text, color) = 
         let range = new System.Windows.Documents.TextRange(box.Document.ContentEnd, box.Document.ContentEnd)
         range.Text <- text
@@ -702,10 +708,11 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
         if changed then
             xpTextBox.Document.Blocks.Clear()
             for l = 0 to 17 do
+                let bg = if l=3||l=8||l=13 then new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x39uy, 0x39uy, 0x49uy)) else Brushes.Black // highlight levels 5,10,15
                 if heroLevelTimes.[l] <> null then
-                    appendRichText(xpTextBox, heroLevelTimes.[l], Brushes.White)
+                    appendRichTextWithBackground(xpTextBox, heroLevelTimes.[l], Brushes.White, bg)
                 else
-                    appendRichText(xpTextBox, sprintf "%-6d " Constants.DWR_XP_LEVEL_THRESHOLDS.[l], Brushes.Orange)
+                    appendRichTextWithBackground(xpTextBox, sprintf "%-6d " Constants.DWR_XP_LEVEL_THRESHOLDS.[l], Brushes.Orange, bg)
             for i = 0 to 9 do
                 appendRichText(xpTextBox, " " + PixelLayout.SPELL_NAMES.[i].Substring(0,6), if heroSpells.[i] then Brushes.White else Brushes.DarkSlateGray)
         if racingMode then
