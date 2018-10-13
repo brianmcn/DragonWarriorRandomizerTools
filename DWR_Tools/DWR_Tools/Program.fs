@@ -548,6 +548,8 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
     let mapper0 = new Mapper()
     let mapper1 = new Mapper()
     let mutable currentContinent = 0
+    let mutable src_cb : CheckBox = null  // staff of rain checkbox
+    let mutable jerk_cb : CheckBox = null  // jerk checkbox
     let CurrentMapper() = if currentContinent = 0 then mapper0 else mapper1
     let TryPaintOther(innerBMPs) =
          if currentContinent = 0 then 
@@ -642,7 +644,15 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
             let brush, thunk = makeAnimationBrush()
             tb.Background <- brush
             let cb = new CheckBox(Content=tb)
+            if s = "Staff Rain Cave (>)" then 
+                src_cb <- cb
+            if s = "Jerk Cave (<)" then 
+                jerk_cb <- cb
             cb.Checked.Add(fun _ -> 
+                if s = "Staff of Rain" then 
+                    src_cb.IsChecked <- System.Nullable.op_Implicit true
+                if s = "Rainbow Drop" then 
+                    jerk_cb.IsChecked <- System.Nullable.op_Implicit true
                 if res = "E_SWORD" then 
                     heroWeaponIndex <- Constants.WEAPONS.Length-2
                     updateWeapon()
@@ -651,9 +661,11 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
                     updateArmor()
                 else 
                     onCheckedChanged(res)
+                tb.Foreground <- Brushes.DarkSlateBlue 
                 thunk())
             cb.Unchecked.Add(fun _ -> 
                 onCheckedChanged("")
+                tb.Foreground <- Brushes.Orange
                 thunk())
             sp.Children.Add(cb) |> ignore
         sp
