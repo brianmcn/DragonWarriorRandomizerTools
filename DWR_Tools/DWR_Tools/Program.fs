@@ -4,6 +4,10 @@ open System.Windows.Controls
 open System.Windows.Media
 open System.Windows.Interop 
 
+// TODO way to deal with 'reset' without crashing (e.g. xp decreasing)
+
+// TODO maybe a checklist of 'explored branch' on each location, to help keep track of remain ways from locations? hmmm
+
 // TODO add AP/DP/STR/AGI tracker (when that screen pops up?) also note weapon/armor/etc
 //   - could capture the level when it was taken, and always know current level, so could show how 'stale' the info was that way
 
@@ -541,7 +545,7 @@ let gridAdd(g:Grid, x, c, r) =
     Grid.SetColumn(x, c)
     Grid.SetRow(x, r)
 
-type MyWindow(ihrs,imins,isecs,racingMode) as this = 
+type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this = 
     inherit Window()
     let nearbyCaption = new TextBox(Text="nearby world 0",FontSize=16.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(2.0))
     let allCaption = new TextBox(Text="all explored 0",FontSize=16.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(2.0))
@@ -701,7 +705,7 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
         match PixelLayout.identifyEXP(gp) with   
         | Some exp -> 
             heroExp <- exp
-            let newHeroLevel = (Constants.DWR_XP_LEVEL_THRESHOLDS |> Array.findIndex(fun z -> z > exp)) + 1
+            let newHeroLevel = (xp_thresholds |> Array.findIndex(fun z -> z > exp)) + 1
             if newHeroLevel <> heroLevel then
                 heroLevel <- newHeroLevel
                 heroLevelTimes.[heroLevel-2] <- sprintf "%03d:%02d " (60*h+m) s
@@ -720,11 +724,11 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
         if changed then
             xpTextBox.Document.Blocks.Clear()
             for l = 0 to 17 do
-                let bg = if l=3||l=8||l=13 then new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x39uy, 0x39uy, 0x49uy)) else Brushes.Black // highlight levels 5,10,15
+                let bg = if l=3||l=8||l=13 then new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x45uy, 0x45uy, 0x55uy)) else Brushes.Black // highlight levels 5,10,15
                 if heroLevelTimes.[l] <> null then
                     appendRichTextWithBackground(xpTextBox, heroLevelTimes.[l], Brushes.White, bg)
                 else
-                    appendRichTextWithBackground(xpTextBox, sprintf "%-6d " Constants.DWR_XP_LEVEL_THRESHOLDS.[l], Brushes.Orange, bg)
+                    appendRichTextWithBackground(xpTextBox, sprintf "%-6d " xp_thresholds.[l], Brushes.Orange, bg)
             for i = 0 to 9 do
                 appendRichText(xpTextBox, " " + PixelLayout.SPELL_NAMES.[i].Substring(0,6), if heroSpells.[i] then Brushes.White else Brushes.DarkSlateGray)
         if racingMode then
@@ -784,7 +788,7 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
     //let activate() =
     //    this.Activate() |> ignore
     do
-        let pretty = Constants.DWR_XP_LEVEL_THRESHOLDS |> Array.map (fun x -> let s = x.ToString() in (String.replicate (5-s.Length) " ") + s)
+        let pretty = xp_thresholds |> Array.map (fun x -> let s = x.ToString() in (String.replicate (5-s.Length) " ") + s)
         appendRichText(xpTextBox, "XP to level ", Brushes.Orange)
         appendRichText(xpTextBox, String.Join(" ",pretty), Brushes.White)
         updateWeapon()
@@ -841,8 +845,11 @@ type MyWindow(ihrs,imins,isecs,racingMode) as this =
         // picture area
         if racingMode then
             let sp = new StackPanel(Background=Brushes.Black,Orientation=Orientation.Vertical)
-            let kitty = makeKitty()
-            sp.Children.Add(kitty) |> ignore
+            if not leagueMode then
+                let kitty = makeKitty()
+                sp.Children.Add(kitty) |> ignore
+            else
+                sp.Children.Add(new TextBox(TextWrapping=TextWrapping.Wrap,Text="League mode, flags: CDGPRVWZks\nChanges:\n- no spell learning randomization\n- no keys\n- short Charlock\n- very fast XP\n\nSpells: Heal 3 / Hurt 4 / Sleep 7\nRadiant 9 / Stopspell 10 / Outside 12\nReturn 13 / Repel 15\nHealmore 17 / Hurtmore 19",FontSize=14.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(8.0))) |> ignore
             sp.Children.Add(new TextBox(TextWrapping=TextWrapping.Wrap,Text="Monster data and maps are disabled during this stream, since this is a race!\n\nNo hints/advice/spoilers in chat during the race!",FontSize=16.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(8.0))) |> ignore
             let kitty = makeKitty()
             sp.Children.Add(kitty) |> ignore
@@ -1018,5 +1025,7 @@ let main argv =
     *)
 
     let racingMode = argv.Length > 0
-    app.Run(MyWindow(0,0,0,racingMode)) |> ignore
+    let leagueMode = argv.Length > 1
+    let xp = if leagueMode then Constants.DWR_XP_LEVEL_THRESHOLDS_50_PERCENT else Constants.DWR_XP_LEVEL_THRESHOLDS 
+    app.Run(MyWindow(0,0,0,racingMode,leagueMode,xp)) |> ignore
     0
