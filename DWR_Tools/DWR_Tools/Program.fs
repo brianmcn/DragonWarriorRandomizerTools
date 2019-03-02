@@ -990,6 +990,20 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
 [<STAThread>]
 [<EntryPoint>]
 let main argv = 
+    let DISPLAY_MAP_OF_SEED = false
+    if DISPLAY_MAP_OF_SEED then
+        //let bmp = ROM.decode_rom("""C:\Users\Admin1\Desktop\fceux-2.2.3-win32\DWRando.3900483431572982.CDFGMPRWZ.nes""")
+        let bmp = ROM.decode_rom("""C:\Users\Admin1\Desktop\fceux-2.2.3-win32\DWRando.9965949828330852.CDFGMPRWZ.nes""")
+        let w = new Window()
+        let image = new Image()
+        image.Source <- Screenshot.BMPtoImage(bmp)
+        //w.SizeToContent <- SizeToContent.WidthAndHeight 
+        w.Width <- 960.0
+        w.Height <- 960.0
+        RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.NearestNeighbor)
+        w.Content <- image
+        (new Application()).Run(w)
+    else
     let app = new Application()
     let myAssembly = System.Reflection.Assembly.GetExecutingAssembly()
     let names = myAssembly.GetManifestResourceNames()
