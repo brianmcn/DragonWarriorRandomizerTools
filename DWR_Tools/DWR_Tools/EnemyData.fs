@@ -22,6 +22,7 @@ let ENEMY_DATA = [|
     "specter",                 47,   75,  40,  38,  33
     "wolflord",                52,   80,  50,  36,  37
     "druinlord",               58,   95,  47,  40,  35
+    // group 2
     "drollmagi",               58,  110,  52,  50,  44
     "wyvern",                  64,  105,  56,  48,  37
     "roguescorpion",           70,  110,  60,  90,  40
@@ -32,11 +33,13 @@ let ENEMY_DATA = [|
     "magiwyvern",              83,  135,  78,  68,  48
     "demonknight",             90,  148,  79,  64,  38
     "werewolf",                95,  155,  86,  70,  70
+    // group 3
     "greendragon",            135,  160,  88,  74,  72
     "starwyvern",             105,  169,  86,  80,  74
     "wizard",                 120,  185,  80,  70,  65
     "axeknight",              130,  165,  94,  82,  67
     "bluedragon",             180,  150,  98,  84,  98
+    // group 4
     "stoneman",               155,  148, 100,  40, 135
     "armoredknight",          172,  152, 105,  86,  99
     "reddragon",              255,  143, 120,  90, 106
