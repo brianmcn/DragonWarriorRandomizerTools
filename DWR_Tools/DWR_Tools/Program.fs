@@ -992,16 +992,28 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
 let main argv = 
     let DISPLAY_MAP_OF_SEED = false
     if DISPLAY_MAP_OF_SEED then
-        //let bmp = ROM.decode_rom("""C:\Users\Admin1\Desktop\fceux-2.2.3-win32\DWRando.3900483431572982.CDFGMPRWZ.nes""")
-        let bmp = ROM.decode_rom("""C:\Users\Admin1\Desktop\dwrandomizer-2.0.6-windows\DWRando.8523561777557155.CDFGMPRWZ.nes""")
+        //let bmp1,bmp2 = ROM.decode_rom("""C:\Users\Admin1\Desktop\fceux-2.2.3-win32\DWRando.3900483431572982.CDFGMPRWZ.nes""")
+        let bmp1,bmp2 = ROM.decode_rom("""C:\Users\Admin1\Desktop\dwrandomizer-2.0.6-windows\DWRando.8523561777557155.CDFGMPRWZ.nes""")
         let w = new Window()
-        let image = new Image()
-        image.Source <- Screenshot.BMPtoImage(bmp)
-        //w.SizeToContent <- SizeToContent.WidthAndHeight 
-        w.Width <- 960.0
-        w.Height <- 960.0
-        RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.NearestNeighbor)
-        w.Content <- image
+
+        let g = new Grid()
+        g.RowDefinitions.Add(new RowDefinition())
+        g.ColumnDefinitions.Add(new ColumnDefinition())
+        g.ColumnDefinitions.Add(new ColumnDefinition())
+
+        let image1 = new Image()
+        image1.Source <- Screenshot.BMPtoImage(bmp1)
+        RenderOptions.SetBitmapScalingMode(image1, BitmapScalingMode.NearestNeighbor)
+        let image2 = new Image()
+        image2.Source <- Screenshot.BMPtoImage(bmp2)
+        RenderOptions.SetBitmapScalingMode(image2, BitmapScalingMode.NearestNeighbor)
+
+        gridAdd(g, image1, 0, 0)
+        gridAdd(g, image2, 1, 0)
+
+        //w.Width <- 960.0
+        //w.Height <- 960.0
+        w.Content <- g
         (new Application()).Run(w)
     else
     let app = new Application()
