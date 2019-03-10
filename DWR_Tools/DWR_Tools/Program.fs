@@ -990,31 +990,42 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
 [<STAThread>]
 [<EntryPoint>]
 let main argv = 
-    let DISPLAY_MAP_OF_SEED = false
+    let DISPLAY_MAP_OF_SEED = argv.Length > 5
     if DISPLAY_MAP_OF_SEED then
-        //let bmp1,bmp2 = ROM.decode_rom("""C:\Users\Admin1\Desktop\fceux-2.2.3-win32\DWRando.3900483431572982.CDFGMPRWZ.nes""")
-        let bmp1,bmp2 = ROM.decode_rom("""C:\Users\Admin1\Desktop\dwrandomizer-2.0.6-windows\DWRando.8523561777557155.CDFGMPRWZ.nes""")
-        let w = new Window()
+        use fd = new System.Windows.Forms.OpenFileDialog()
+        fd.InitialDirectory <- """C:\Users\Admin1\Desktop\dwrandomizer-2.0.6-windows\"""
+        fd.ValidateNames <- true
+        fd.CheckFileExists <- true
+        fd.CheckPathExists <- true
+        if fd.ShowDialog() = System.Windows.Forms.DialogResult.OK then
+            //let bmp1,bmp2 = ROM.decode_rom("""C:\Users\Admin1\Desktop\fceux-2.2.3-win32\DWRando.3900483431572982.CDFGMPRWZ.nes""")
+            //let bmp1,bmp2 = ROM.decode_rom("""C:\Users\Admin1\Desktop\dwrandomizer-2.0.6-windows\DWRando.8523561777557155.CDFGMPRWZ.nes""")
+            let bmp1,bmp2 = ROM.decode_rom(fd.FileName)
+            let w = new Window()
 
-        let g = new Grid()
-        g.RowDefinitions.Add(new RowDefinition())
-        g.ColumnDefinitions.Add(new ColumnDefinition())
-        g.ColumnDefinitions.Add(new ColumnDefinition())
+            let g = new Grid()
+            g.RowDefinitions.Add(new RowDefinition())
+            g.ColumnDefinitions.Add(new ColumnDefinition())
+            g.ColumnDefinitions.Add(new ColumnDefinition())
 
-        let image1 = new Image()
-        image1.Source <- Screenshot.BMPtoImage(bmp1)
-        RenderOptions.SetBitmapScalingMode(image1, BitmapScalingMode.NearestNeighbor)
-        let image2 = new Image()
-        image2.Source <- Screenshot.BMPtoImage(bmp2)
-        RenderOptions.SetBitmapScalingMode(image2, BitmapScalingMode.NearestNeighbor)
+            let image1 = new Image()
+            image1.Source <- Screenshot.BMPtoImage(bmp1)
+            RenderOptions.SetBitmapScalingMode(image1, BitmapScalingMode.NearestNeighbor)
+            let image2 = new Image()
+            image2.Source <- Screenshot.BMPtoImage(bmp2)
+            RenderOptions.SetBitmapScalingMode(image2, BitmapScalingMode.NearestNeighbor)
 
-        gridAdd(g, image1, 0, 0)
-        gridAdd(g, image2, 1, 0)
+            gridAdd(g, image1, 0, 0)
+            gridAdd(g, image2, 1, 0)
 
-        //w.Width <- 960.0
-        //w.Height <- 960.0
-        w.Content <- g
-        (new Application()).Run(w)
+            //w.Width <- 960.0
+            //w.Height <- 960.0
+            w.Title <- System.IO.Path.GetFileNameWithoutExtension(fd.FileName)
+            w.Content <- g
+            (new Application()).Run(w)
+        else
+            printfn "bad file selection"
+            1
     else
     let app = new Application()
     let myAssembly = System.Reflection.Assembly.GetExecutingAssembly()
