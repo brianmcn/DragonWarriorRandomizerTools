@@ -4,6 +4,24 @@ let decode_rom(file) =
     let bytes = System.IO.File.ReadAllBytes(file)
     let content = bytes.[16..]   // first 16 bytes are a header
 
+    let location_text_bytes = bytes.[0xA236..0xA298]
+    let dw_alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\"\"'*>_:__.,-_?!;)(``_'___________  "
+    let chars = Array.init location_text_bytes.Length (fun i -> try dw_alphabet.[int location_text_bytes.[i]] with _ -> ' ')
+    let location_str = (new System.String(chars))
+    printfn "loc: %s" location_str 
+    // From Tantegel Castle travel 49 leagues to the north and 24 to the west
+    let to1 = location_str.IndexOf("to the")
+    let to2 = location_str.IndexOf("to the",to1+1)
+    let buried_dx, buried_dy = 
+        try
+            let num1 = int(location_str.Substring(to1 - 12,3))
+            let num2 = int(location_str.Substring(to2 - 4,3))
+            printfn "%d %d" num1 num2
+            let buried_dy = if location_str.[to1+7] = 'n' then -num1 else num1
+            let buried_dx = if location_str.[to2+7] = 'w' then -num2 else num2
+            buried_dx, buried_dy 
+        with _ -> -999, -999
+
     let map_pointers_0 = content.[0x2653]  // 120 16-bit pointers (subtract 0x9d5d from these pointers)
     let map_encoded_0 = content.[0x1d5d]   // RLE, top nibble tile, bottom nibble count
 
@@ -120,7 +138,9 @@ let decode_rom(file) =
         let to_map = warps.[153+d]
         let to_x = warps.[154+d]
         let to_y = warps.[155+d]
-        printf "%3d %3d %3d %3d %3d %3d " from_map from_x from_y to_map to_x to_y
+        let printIt = from_map = 1uy || from_map = 9uy || from_map = 4uy
+        if printIt then
+            printf "%3d %3d %3d %3d %3d %3d " from_map from_x from_y to_map to_x to_y
         let dest() = 
             match to_map with
             | 9uy -> "Garinham", false, [|"XXXXX";"X    ";"X XXX";"X   X";"XXXXX"|]
@@ -168,7 +188,11 @@ let decode_rom(file) =
             else
                 tf <- fun (tx,ty) -> tryAllPlace(tx, ty, isCave, a)
         else
-            printfn ""
+            if printIt then
+                printfn ""
+  
+    if buried_dx <> -999 then  
+        bmp2.SetPixel(EDGE+tx+buried_dx, EDGE+ty+buried_dy, System.Drawing.Color.Orange )
 
     bmp1, bmp2
 
