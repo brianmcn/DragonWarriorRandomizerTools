@@ -675,7 +675,7 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
         sp
     let content = new Grid()
     let xpTextBox = new RichTextBox(FontSize=16.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0),Focusable=false)
-    let hmsTimeTextBox = new TextBox(Text="timer",FontSize=20.0,Background=Brushes.Black,Foreground=Brushes.LightGreen,BorderThickness=Thickness(0.0))
+    let hmsTimeTextBox = new TextBox(Text="timer",FontSize=42.0,Background=Brushes.Black,Foreground=Brushes.LightGreen,BorderThickness=Thickness(0.0))
     let monsterName = new TextBox(Text="name",FontSize=20.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0))
     let monsterXP = new TextBox(Text="EXP",FontSize=20.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0))
     let monsterGold = new TextBox(Text="GOLD",FontSize=20.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0))
@@ -691,7 +691,7 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
         // update time
         let ts = DateTime.Now - startTime
         let h,m,s = ts.Hours, ts.Minutes, ts.Seconds
-        hmsTimeTextBox.Text <- sprintf "%02d:%02d:%02d  deaths:%3d" h m s numDeaths
+        hmsTimeTextBox.Text <- sprintf "%02d:%02d:%02d\r\ndeaths:%2d" h m s numDeaths
         // update XP & spell info
         let bmpScreenshot = Screenshot.GetDWRBitmap()
         let gp(x,y) =
@@ -828,16 +828,18 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
         // right grid
         let rightGrid = new Grid()
         rightGrid.ColumnDefinitions.Add(new ColumnDefinition())
-        rightGrid.RowDefinitions.Add(new RowDefinition(Height=GridLength(24.0)))
+        rightGrid.RowDefinitions.Add(new RowDefinition(Height=GridLength(108.0)))
         gridAdd(rightGrid,hmsTimeTextBox,0,0)
 
-        rightGrid.RowDefinitions.Add(new RowDefinition(Height=GridLength(416.0)))
-        let locationTextBox = makeCheckedStuff("LOCATIONS",Constants.LOCATIONS)
+        rightGrid.RowDefinitions.Add(new RowDefinition())
+        let locationTextBox = makeCheckedStuff("LOCATIONS FOUND",Constants.LOCATIONS)
         gridAdd(rightGrid,locationTextBox,0,1)
 
+        (* moved, but no longer fits in non-racing mode
         rightGrid.RowDefinitions.Add(new RowDefinition())
         let itemTextBox = makeCheckedStuff("ITEMS",Constants.ITEMS)
         gridAdd(rightGrid,itemTextBox,0,2)
+        *)
 
         // add right grid
         gridAdd(content,rightGrid,1,0)
@@ -850,9 +852,60 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
                 sp.Children.Add(kitty) |> ignore
             else
                 sp.Children.Add(new TextBox(TextWrapping=TextWrapping.Wrap,Text="League mode, flags: CDGPRVWZks\nChanges:\n- no spell learning randomization\n- no keys\n- short Charlock\n- very fast XP\n\nSpells: Heal 3 / Hurt 4 / Sleep 7\nRadiant 9 / Stopspell 10 / Outside 12\nReturn 13 / Repel 15\nHealmore 17 / Hurtmore 19",FontSize=14.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(8.0))) |> ignore
-            sp.Children.Add(new TextBox(TextWrapping=TextWrapping.Wrap,Text="Monster data and maps are disabled during this stream, since this is a race!\n\nNo hints/advice/spoilers in chat during the race!",FontSize=16.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(8.0))) |> ignore
-            let kitty = makeKitty()
-            sp.Children.Add(kitty) |> ignore
+            
+            // no longer used to free up screen space:
+            //sp.Children.Add(new TextBox(TextWrapping=TextWrapping.Wrap,Text="Monster data and maps are disabled during this stream, since this is a race!\n\nNo hints/advice/spoilers in chat during the race!",FontSize=16.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(8.0))) |> ignore
+
+            let itemTextBox = makeCheckedStuff("ITEMS",Constants.ITEMS)
+            sp.Children.Add(itemTextBox) |> ignore
+            
+            let shops = new Grid()
+            shops.ColumnDefinitions.Add(new ColumnDefinition(Width=GridLength(76.0)))
+            shops.ColumnDefinitions.Add(new ColumnDefinition())
+            shops.ColumnDefinitions.Add(new ColumnDefinition())
+            shops.ColumnDefinitions.Add(new ColumnDefinition())
+            shops.ColumnDefinitions.Add(new ColumnDefinition(Width=GridLength(14.0)))
+            shops.ColumnDefinitions.Add(new ColumnDefinition())
+            shops.ColumnDefinitions.Add(new ColumnDefinition(Width=GridLength(14.0)))
+            shops.ColumnDefinitions.Add(new ColumnDefinition())
+            shops.ColumnDefinitions.Add(new ColumnDefinition())
+            shops.ColumnDefinitions.Add(new ColumnDefinition())
+            shops.RowDefinitions.Add(new RowDefinition())
+            shops.RowDefinitions.Add(new RowDefinition(Height=GridLength(2.0)))
+            shops.RowDefinitions.Add(new RowDefinition())
+            shops.RowDefinitions.Add(new RowDefinition(Height=GridLength(2.0)))
+            shops.RowDefinitions.Add(new RowDefinition())
+            shops.RowDefinitions.Add(new RowDefinition(Height=GridLength(2.0)))
+            shops.RowDefinitions.Add(new RowDefinition())
+            shops.RowDefinitions.Add(new RowDefinition(Height=GridLength(2.0)))
+            shops.RowDefinitions.Add(new RowDefinition())
+            shops.RowDefinitions.Add(new RowDefinition(Height=GridLength(2.0)))
+            shops.RowDefinitions.Add(new RowDefinition())
+            //shops.ShowGridLines <- true
+            let makeText(txt) = new TextBox(Text=txt,FontSize=14.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0))
+            gridAdd(shops,makeText("HA"),1,0)
+            gridAdd(shops,makeText("BS"),2,0)
+            gridAdd(shops,makeText("FS"),3,0)
+            gridAdd(shops,makeText("MA"),5,0)
+            gridAdd(shops,makeText("LS"),7,0)
+            gridAdd(shops,makeText("SS"),8,0)
+            gridAdd(shops,makeText("Rimuldar"),0,2)
+            gridAdd(shops,makeText("Cantlin"),0,4)
+            gridAdd(shops,makeText("Kol"),0,6)
+            gridAdd(shops,makeText("Garinham"),0,8)
+            gridAdd(shops,makeText("Brecconary"),0,10)
+            for i = 0 to 8 do
+                for j = 1 to 10 do
+                    if j%2=0 then
+                        if i <> 0 && i <> 4 && i <> 6 then
+                            gridAdd(shops,new CheckBox(),i,j)
+                    else
+                        gridAdd(shops,new StackPanel(Background=Brushes.Orange),i,j)
+
+            let shopPanel = new StackPanel()
+            shopPanel.Children.Add(makeText("SHOPS")) |> ignore
+            shopPanel.Children.Add(shops) |> ignore
+            sp.Children.Add(shopPanel) |> ignore
             gridAdd(content,sp,2,0)
         else
             let maps = new TabItem(Background=Brushes.Black, Header="Maps")

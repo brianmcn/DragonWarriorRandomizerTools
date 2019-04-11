@@ -195,9 +195,11 @@ let LOCATIONS = [|
     "Brecconary (Motel 6)", ""
     "Rimuldar (keys)", ""
     "---Rimuldar (1box)", ""
-    "Cantlin (coordinates)", ""
+    "Cantlin", ""
+    "---Cantlin coordinates", ""
     "Kol (fountain)", ""
     "Hauksness (dead)", ""
+    "---Hauksness item", ""
     "Garinham (grave below)", ""
     "---Garinham (3box)", ""
     "Sun Stones Cave (v)", ""
@@ -206,9 +208,12 @@ let LOCATIONS = [|
     "Swamp Cave North", "DW_SwampCave.png"
     "Swamp Cave South", "DW_SwampCave.png"
     "Mountain Cave (5box)", "DW_MountainCave.png"
-    "Tablet Cave (1box)", "DW_TabletCave.png"
-    "Garin's Tomb (3box)", "DW_GarinTomb.png"
-    "---Garin's Tomb (2box)", "DW_GarinTomb.png"
+    "---all 5 box", "DW_MountainCave.png"
+    "Tablet Cave", "DW_TabletCave.png"
+    "---1 box", "DW_TabletCave.png"
+    "Garin's Tomb", "DW_GarinTomb.png"
+    "---top 3 box", "DW_GarinTomb.png"
+    "---bottom 2 box", "DW_GarinTomb.png"
     |]
 
 let ITEMS = [|

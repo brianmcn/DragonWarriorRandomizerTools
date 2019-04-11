@@ -37,6 +37,7 @@
     <DocumentationFile>bin\Release\DWR_Tools.XML</DocumentationFile>
     <Prefer32Bit>true</Prefer32Bit>
     <OtherFlags>--standalone</OtherFlags>
+    <StartArguments>1</StartArguments>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
