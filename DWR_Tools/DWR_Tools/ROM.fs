@@ -159,6 +159,7 @@ let decode_rom(file) =
             | 28uy -> "Tablet Cave", true, [|"XXXXX";"  X  ";"  X  ";"  X  ";"  X  "|]
             | 12uy -> "Sun Stones Cave", true, [|"     ";"X   X";" X X ";"  X  ";"     "|]
             | 24uy -> "Grave of Garin", true, [|"XXXXX";"X    ";"X XXX";"X   X";"XXXXX"|]
+            | 6uy -> "Charlock Throne", false, null  // in short-charlock
             | _ -> failwith "unexpected warp dest"
         if from_map = 1uy then
             let dest, isCave, a = dest()
