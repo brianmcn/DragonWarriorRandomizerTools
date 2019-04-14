@@ -1043,6 +1043,8 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
 [<STAThread>]
 [<EntryPoint>]
 let main argv = 
+    //ROM.test_rng()
+    //ROM.test_period(0x7c65)   // period was 32768, with 2 calls per frame and 60fps, every 4.5 mins this cycles
     let DISPLAY_MAP_OF_SEED = argv.Length > 5
     if DISPLAY_MAP_OF_SEED then
         use fd = new System.Windows.Forms.OpenFileDialog()
