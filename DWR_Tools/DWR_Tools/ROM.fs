@@ -195,6 +195,21 @@ let decode_rom(file) =
     if buried_dx <> -999 then  
         bmp2.SetPixel(EDGE+tx+buried_dx, EDGE+ty+buried_dy, System.Drawing.Color.Orange )
 
+    // gridlines
+    let darken(c:System.Drawing.Color) = 
+        let F(b:byte) = int b * 7 / 8
+        System.Drawing.Color.FromArgb(F c.R, F c.G, F c.B)
+    for i = 0 to 8 do
+        for y = EDGE+0 to EDGE+119 do
+            let x = EDGE+i*15
+            bmp1.SetPixel(x, y, darken(bmp1.GetPixel(x,y)))
+            bmp2.SetPixel(x, y, darken(bmp2.GetPixel(x,y)))
+    for x = EDGE+0 to EDGE+119 do
+        for j = 0 to 8 do
+            let y = EDGE+j*15
+            bmp1.SetPixel(x, y, darken(bmp1.GetPixel(x,y)))
+            bmp2.SetPixel(x, y, darken(bmp2.GetPixel(x,y)))
+
     bmp1, bmp2
 
 (*
