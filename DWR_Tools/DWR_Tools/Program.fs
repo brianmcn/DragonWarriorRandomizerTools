@@ -547,6 +547,7 @@ let gridAdd(g:Grid, x, c, r) =
 
 type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this = 
     inherit Window()
+    let voice = new System.Speech.Synthesis.SpeechSynthesizer()
     let nearbyCaption = new TextBox(Text="nearby world 0",FontSize=16.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(2.0))
     let allCaption = new TextBox(Text="all explored 0",FontSize=16.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(2.0))
     let mapper0 = new Mapper()
@@ -657,6 +658,14 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
                     src_cb.IsChecked <- System.Nullable.op_Implicit true
                 if s = "Rainbow Drop" then 
                     jerk_cb.IsChecked <- System.Nullable.op_Implicit true
+                if s = "Cantlin" then
+                    async { voice.Speak("If you don't have keys, write down the location") } |> Async.Start 
+                if s = "Garinham (grave below)" then
+                    async { voice.Speak("If you don't have keys, write down the location") } |> Async.Start 
+                if s = "Hauksness (dead)" then
+                    async { voice.Speak("If you aren't strong enough, write down the location") } |> Async.Start 
+                if s = "Garin's Tomb" then
+                    async { voice.Speak("Write down the location") } |> Async.Start 
                 if res = "E_SWORD" then 
                     heroWeaponIndex <- Constants.WEAPONS.Length-2
                     updateWeapon()
@@ -788,6 +797,7 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
     //let activate() =
     //    this.Activate() |> ignore
     do
+        voice.Volume <- 30
         let pretty = xp_thresholds |> Array.map (fun x -> let s = x.ToString() in (String.replicate (5-s.Length) " ") + s)
         appendRichText(xpTextBox, "XP to level ", Brushes.Orange)
         appendRichText(xpTextBox, String.Join(" ",pretty), Brushes.White)

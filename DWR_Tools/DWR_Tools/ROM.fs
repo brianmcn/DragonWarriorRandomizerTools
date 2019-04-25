@@ -44,6 +44,7 @@ let decode_rom(file) =
             let tile = cur_byte >>> 4
             let count = int(cur_byte &&& 0xfuy) + 1
 //            printfn "x %d tile %d count %d" x tile count
+// tantagel at 83 98
             for j = 0 to count-1 do
                 if x < 120 then  // TODO kludge
                     tiles.[row,x] <- tile
@@ -127,8 +128,11 @@ let decode_rom(file) =
         else
             darken(x+EDGE,y+EDGE-1)
 
-    let warps = bytes.[0xf3d8..]
+    let WARPS_INDEX_IN_BYTES = 0xf3d8
+    let warps = bytes.[WARPS_INDEX_IN_BYTES..]
     let mutable gx,gy,tx,ty = -1, -1, -1, -1  // garin and tantagel coords
+    let mutable uc1i, uc2i = -1, -1           // useless charlock warp index 1 & 2
+    let mutable rimi = -1                     // rimuldar index
     let mutable gf, tf = (fun _ -> ()), (fun _ -> ())  // thunks to backpatch basement labels when find topside coords later
     for i = 0 to 50 do
         let d = i*3
@@ -138,8 +142,19 @@ let decode_rom(file) =
         let to_map = warps.[153+d]
         let to_x = warps.[154+d]
         let to_y = warps.[155+d]
-        let printIt = from_map = 1uy || from_map = 9uy || from_map = 4uy
-        if printIt then
+        let printIt = from_map = 1uy || from_map = 9uy || from_map = 4uy 
+        let debugPrint = true
+(*
+ 15  13   7  16   4   4
+ 15  19   7  16   9   8
+ *)
+        if from_map = 15uy && from_x = 13uy && from_y = 7uy then
+            uc1i <- i
+        if from_map = 15uy && from_x = 19uy && from_y = 7uy then
+            uc2i <- i
+        if from_map = 1uy && from_x = 22uy && from_y = 47uy then // rimu is at 1  22  47  on that one seed
+            rimi <- i
+        if debugPrint || printIt then
             printf "%3d %3d %3d %3d %3d %3d " from_map from_x from_y to_map to_x to_y
         let dest() = 
             match to_map with
@@ -189,7 +204,7 @@ let decode_rom(file) =
             else
                 tf <- fun (tx,ty) -> tryAllPlace(tx, ty, isCave, a)
         else
-            if printIt then
+            if debugPrint || printIt then
                 printfn ""
   
     if buried_dx <> -999 then  
@@ -238,6 +253,15 @@ reset
 
 *)
 
+    let monster_data = bytes.[0x5E5B..0x60DB]
+    //Strength, Agility, HP, spells, resistance, dodge, xp, gold, 8 bytes of graphics
+    // sleep/stopspell rsists, sleep is high nibble
+    for x in [23; 24] do
+        let golem = monster_data.[16*x..16*x+15]
+        printfn "%s: str %d agi %d hp %d spells %d s_ss_resist %x dodge_mag_phys %x xp %d gold %d" (let n,_,_,_,_,_=EnemyData.ENEMY_DATA.[x] in n) golem.[0] golem.[1] golem.[2] golem.[3] golem.[4] golem.[5] golem.[6] golem.[7]
+        // golem: 68 56 40 234 80 52 72 120
+        // golem: 120 60 153 239 245 240 255 10
+
     let zone0 = content.[0xf54f..0xf54f+4]
     let zone1 = content.[0xf54f+5..0xf54f+9]
     let zone2 = content.[0xf54f+10..0xf54f+14]
@@ -251,7 +275,57 @@ reset
     for enemy in zone2 do
         printfn "%3d  %s" enemy (let name,_,_,_,_,_ = EnemyData.ENEMY_DATA.[int enemy] in name)
 
+    // make minor change to map warps
+    let new_bytes = Array.copy bytes
+    printfn "tantagel at %d %d" tx ty
+#if OVERWORLD_SHORTCUT
+    new_bytes.[WARPS_INDEX_IN_BYTES + uc1i*3] <- 1uy
+    new_bytes.[WARPS_INDEX_IN_BYTES + uc1i*3 + 1] <- byte tx + 2uy
+    new_bytes.[WARPS_INDEX_IN_BYTES + uc1i*3 + 2] <- byte ty
+    new_bytes.[WARPS_INDEX_IN_BYTES + uc1i*3 + 153] <- 1uy
+    new_bytes.[WARPS_INDEX_IN_BYTES + uc1i*3 + 154] <- byte tx + 2uy
+    new_bytes.[WARPS_INDEX_IN_BYTES + uc1i*3 + 155] <- byte ty + 2uy
 
+    new_bytes.[WARPS_INDEX_IN_BYTES + uc2i*3] <- 1uy
+    new_bytes.[WARPS_INDEX_IN_BYTES + uc2i*3 + 1] <- byte tx + 2uy
+    new_bytes.[WARPS_INDEX_IN_BYTES + uc2i*3 + 2] <- byte ty + 2uy
+    new_bytes.[WARPS_INDEX_IN_BYTES + uc2i*3 + 153] <- 1uy
+    new_bytes.[WARPS_INDEX_IN_BYTES + uc2i*3 + 154] <- byte tx + 2uy
+    new_bytes.[WARPS_INDEX_IN_BYTES + uc2i*3 + 155] <- byte ty
+#else
+    //  15  15   1  16   8   0
+    //  16   9   1  17   2   2
+    // put a warp next to start that goes to charlock mid-stairs
+    new_bytes.[WARPS_INDEX_IN_BYTES + uc1i*3] <- 1uy
+    new_bytes.[WARPS_INDEX_IN_BYTES + uc1i*3 + 1] <- byte tx + 2uy
+    new_bytes.[WARPS_INDEX_IN_BYTES + uc1i*3 + 2] <- byte ty
+    new_bytes.[WARPS_INDEX_IN_BYTES + uc1i*3 + 153] <- 16uy
+    new_bytes.[WARPS_INDEX_IN_BYTES + uc1i*3 + 154] <- 8uy
+    new_bytes.[WARPS_INDEX_IN_BYTES + uc1i*3 + 155] <- 0uy
+    // put a warp from second charlock stairs two steps away to rimuldar
+    new_bytes.[WARPS_INDEX_IN_BYTES + uc2i*3] <- 16uy
+    new_bytes.[WARPS_INDEX_IN_BYTES + uc2i*3 + 1] <- 9uy
+    new_bytes.[WARPS_INDEX_IN_BYTES + uc2i*3 + 2] <- 1uy
+    // rimu: 11  29  14
+    new_bytes.[WARPS_INDEX_IN_BYTES + uc2i*3 + 153] <- 11uy
+    new_bytes.[WARPS_INDEX_IN_BYTES + uc2i*3 + 154] <- 29uy
+    new_bytes.[WARPS_INDEX_IN_BYTES + uc2i*3 + 155] <- 14uy
+    // observed: when you step off rimuldar map, you are warped to outside it on overworld map
+    // but what if rimu not on overworld? make rimu overworld tile also go to elsewhere
+    new_bytes.[WARPS_INDEX_IN_BYTES + rimi*3 + 153] <- 16uy
+    new_bytes.[WARPS_INDEX_IN_BYTES + rimi*3 + 154] <- 8uy
+    new_bytes.[WARPS_INDEX_IN_BYTES + rimi*3 + 155] <- 0uy
+    // observed: then you step off rimuldar map, you are warped back to those charlock stairs
+    // thus it seems town exits simply search all the warps to find one that goes into town, and reverses it to exit... if more than one, chooses first
+    // thus town-inside-a-dungeon is possible
+#endif
+
+    // offset 1534 is one tile of grass (0,0), change to one tile of stairs (c,0)
+    new_bytes.[16 + 0x1d5d + 1534] <- 0xc0uy
+    new_bytes.[16 + 0x1d5d + 1568] <- 0xc0uy
+
+    let new_file = file+".new.nes"
+    System.IO.File.WriteAllBytes(new_file, new_bytes)
 
 
     bmp1, bmp2
