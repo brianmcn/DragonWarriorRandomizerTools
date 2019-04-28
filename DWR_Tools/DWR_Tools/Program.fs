@@ -547,7 +547,6 @@ let gridAdd(g:Grid, x, c, r) =
 
 type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this = 
     inherit Window()
-    let voice = new System.Speech.Synthesis.SpeechSynthesizer()
     let nearbyCaption = new TextBox(Text="nearby world 0",FontSize=16.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(2.0))
     let allCaption = new TextBox(Text="all explored 0",FontSize=16.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(2.0))
     let mapper0 = new Mapper()
@@ -638,34 +637,31 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
         else
             image1.Source <- null
             caveMapIsCurrentlyDisplayed <- false
-    let makeCheckedStuff(labelStr,strs) = 
+    let makeCheckedStuff(labelStr,strResEffects,cba:CheckBox[]) = 
         let sp = new StackPanel(Background=Brushes.Black)
         sp.Background<-Brushes.Black
         let label = new Label()
         label.Content <- new TextBox(Text=labelStr,FontSize=16.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0))
         sp.Children.Add(label) |> ignore
-        for s,res in strs do
+        let mutable index = 0
+        for s,res,effect in strResEffects do
             let tb = new TextBox(Text=s,FontSize=16.0,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0))
             let brush, thunk = makeAnimationBrush()
             tb.Background <- brush
             let cb = new CheckBox(Content=tb)
+            cb.IsChecked <- System.Nullable.op_Implicit false
+            cba.[index] <- cb
+            index <- index + 1
             if s = "Staff Rain Cave (>)" then 
                 src_cb <- cb
             if s = "Jerk Cave (<)" then 
                 jerk_cb <- cb
             cb.Checked.Add(fun _ -> 
+                effect()
                 if s = "Staff of Rain" then 
                     src_cb.IsChecked <- System.Nullable.op_Implicit true
                 if s = "Rainbow Drop" then 
                     jerk_cb.IsChecked <- System.Nullable.op_Implicit true
-                if s = "Cantlin" then
-                    async { voice.Speak("If you don't have keys, write down the location") } |> Async.Start 
-                if s = "Garinham (grave below)" then
-                    async { voice.Speak("If you don't have keys, write down the location") } |> Async.Start 
-                if s = "Hauksness (dead)" then
-                    async { voice.Speak("If you aren't strong enough, write down the location") } |> Async.Start 
-                if s = "Garin's Tomb" then
-                    async { voice.Speak("Write down the location") } |> Async.Start 
                 if res = "E_SWORD" then 
                     heroWeaponIndex <- Constants.WEAPONS.Length-2
                     updateWeapon()
@@ -797,7 +793,7 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
     //let activate() =
     //    this.Activate() |> ignore
     do
-        voice.Volume <- 30
+        Constants.voice.Volume <- 30
         let pretty = xp_thresholds |> Array.map (fun x -> let s = x.ToString() in (String.replicate (5-s.Length) " ") + s)
         appendRichText(xpTextBox, "XP to level ", Brushes.Orange)
         appendRichText(xpTextBox, String.Join(" ",pretty), Brushes.White)
@@ -842,7 +838,7 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
         gridAdd(rightGrid,hmsTimeTextBox,0,0)
 
         rightGrid.RowDefinitions.Add(new RowDefinition())
-        let locationTextBox = makeCheckedStuff("LOCATIONS FOUND",Constants.LOCATIONS)
+        let locationTextBox = makeCheckedStuff("LOCATIONS FOUND",Constants.LOCATIONS,Constants.LocationCheckboxes)
         gridAdd(rightGrid,locationTextBox,0,1)
 
         (* moved, but no longer fits in non-racing mode
@@ -866,7 +862,7 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
             // no longer used to free up screen space:
             //sp.Children.Add(new TextBox(TextWrapping=TextWrapping.Wrap,Text="Monster data and maps are disabled during this stream, since this is a race!\n\nNo hints/advice/spoilers in chat during the race!",FontSize=16.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(8.0))) |> ignore
 
-            let itemTextBox = makeCheckedStuff("ITEMS",Constants.ITEMS)
+            let itemTextBox = makeCheckedStuff("ITEMS",Constants.ITEMS,Array.zeroCreate Constants.ITEMS.Length)
             sp.Children.Add(itemTextBox) |> ignore
             
             let shops = new Grid()

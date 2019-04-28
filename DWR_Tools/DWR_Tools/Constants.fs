@@ -189,44 +189,70 @@ let DWR_XP_LEVEL_THRESHOLDS_50_PERCENT = [|
 ///////////////////////////////////////////////////////
 
 // locations and items are just for a manual 'checklist' - second string is optional image to bring up when clicked
+let voice = new System.Speech.Synthesis.SpeechSynthesizer()
+type LocationIDs = 
+    | TANTAGEL                = 0
+    | CHARLOCK                = 1
+    | BRECCONARY              = 2
+    | RIMULDAR                = 3
+    | RIMULDAR_BOX            = 4
+    | CANTLIN                 = 5
+    | CANTLIN_COORDS          = 6
+    | KOL                     = 7
+    | HAUKSNESS               = 8
+    | HAUKSNESS_ITEM          = 9
+    | GARINHAM                = 10
+    | GARINHAM_BOXES          = 11
+    | SUN_STONES_CAVE         = 12
+    | STAFF_OF_RAIN_CAVE      = 13
+    | JERK_CAVE               = 14
+    | SWAMP_NORTH             = 15
+    | SWAMP_SOUTH             = 16
+    | MOUNTAIN_CAVE           = 17
+    | MOUNTAIN_CAVE_5_BOXES   = 18
+    | TABLET_CAVE             = 19
+    | TABLET_CAVE_BOX         = 20
+    | GARINS_TOMB             = 21
+    | GARINS_TOMB_3_BOXES     = 22
+    | GARINS_TOMB_2_BOXES     = 23
+let LocationCheckboxes : System.Windows.Controls.CheckBox[] = Array.zeroCreate 24
 let LOCATIONS = [|
-    "---Tantagel (4box, cave)", ""
-    "Charlock Castle", "DW_Charlock.png"
-    "Brecconary (Motel 6)", ""
-    "Rimuldar (keys)", ""
-    "---Rimuldar (1box)", ""
-    "Cantlin", ""
-    "---Cantlin coordinates", ""
-    "Kol (fountain)", ""
-    "Hauksness (dead)", ""
-    "---Hauksness item", ""
-    "Garinham (grave below)", ""
-    "---Garinham (3box)", ""
-    "Sun Stones Cave (v)", ""
-    "Staff Rain Cave (>)", ""
-    "Jerk Cave (<)", ""
-    "Swamp Cave North", "DW_SwampCave.png"
-    "Swamp Cave South", "DW_SwampCave.png"
-    "Mountain Cave (5box)", "DW_MountainCave.png"
-    "---all 5 box", "DW_MountainCave.png"
-    "Tablet Cave", "DW_TabletCave.png"
-    "---1 box", "DW_TabletCave.png"
-    "Garin's Tomb", "DW_GarinTomb.png"
-    "---top 3 box", "DW_GarinTomb.png"
-    "---bottom 2 box", "DW_GarinTomb.png"
+    "---Tantagel (4box, cave)", ""                       , (fun () -> ())              
+    "Charlock Castle", "DW_Charlock.png"                 , (fun () -> ())
+    "Brecconary (Motel 6)", ""                           , (fun () -> ())
+    "Rimuldar (keys)", ""                                , (fun () -> ())
+    "---Rimuldar (1box)", ""                             , (fun () -> LocationCheckboxes.[int LocationIDs.RIMULDAR].IsChecked <- System.Nullable.op_Implicit true)
+    "Cantlin", ""                                        , (fun () -> if not LocationCheckboxes.[int LocationIDs.CANTLIN_COORDS].IsChecked.Value then async { voice.Speak("If you don't have keys, write down the location") } |> Async.Start)
+    "---Cantlin coordinates", ""                         , (fun () -> LocationCheckboxes.[int LocationIDs.CANTLIN].IsChecked <- System.Nullable.op_Implicit true)
+    "Kol (fountain)", ""                                 , (fun () -> ())
+    "Hauksness (dead)", ""                               , (fun () -> if not LocationCheckboxes.[int LocationIDs.HAUKSNESS_ITEM].IsChecked.Value then async { voice.Speak("If you aren't strong enough, write down the location") } |> Async.Start)
+    "---Hauksness item", ""                              , (fun () -> LocationCheckboxes.[int LocationIDs.HAUKSNESS].IsChecked <- System.Nullable.op_Implicit true)
+    "Garinham (grave below)", ""                         , (fun () -> if not LocationCheckboxes.[int LocationIDs.GARINHAM_BOXES].IsChecked.Value then async { voice.Speak("If you don't have keys, write down the location") } |> Async.Start)
+    "---Garinham (3box)", ""                             , (fun () -> LocationCheckboxes.[int LocationIDs.GARINHAM].IsChecked <- System.Nullable.op_Implicit true)
+    "Sun Stones Cave (v)", ""                            , (fun () -> ())
+    "Staff Rain Cave (>)", ""                            , (fun () -> ())
+    "Jerk Cave (<)", ""                                  , (fun () -> ())
+    "Swamp Cave North", "DW_SwampCave.png"               , (fun () -> ())
+    "Swamp Cave South", "DW_SwampCave.png"               , (fun () -> ())
+    "Mountain Cave (5box)", "DW_MountainCave.png"        , (fun () -> ())
+    "---all 5 box", "DW_MountainCave.png"                , (fun () -> LocationCheckboxes.[int LocationIDs.MOUNTAIN_CAVE].IsChecked <- System.Nullable.op_Implicit true)
+    "Tablet Cave", "DW_TabletCave.png"                   , (fun () -> ())
+    "---1 box", "DW_TabletCave.png"                      , (fun () -> LocationCheckboxes.[int LocationIDs.TABLET_CAVE].IsChecked <- System.Nullable.op_Implicit true)
+    "Garin's Tomb", "DW_GarinTomb.png"                   , (fun () -> async { voice.Speak("Write down the tomb location") } |> Async.Start)
+    "---top 3 box", "DW_GarinTomb.png"                   , (fun () -> LocationCheckboxes.[int LocationIDs.GARINS_TOMB].IsChecked <- System.Nullable.op_Implicit true)
+    "---bottom 2 box", "DW_GarinTomb.png"                , (fun () -> ())
     |]
-
 let ITEMS = [|
-    "Stones of Sunlight", ""
-    "Silver Harp", ""
-    "Staff of Rain", ""
-    "Erdrick Token (*)", ""
-    "Rainbow Drop", ""
-    "Erdrick Sword", "E_SWORD"
-    "Erdrick Armor (*)", "E_ARMOR"
-    "Fairy Flute (*)", ""
-    "Death Necklace", ""
-    "Princess' Love", ""
+    "Stones of Sunlight", ""             , (fun () -> ())
+    "Silver Harp", ""                    , (fun () -> ())
+    "Staff of Rain", ""                  , (fun () -> ())
+    "Erdrick Token (*)", ""              , (fun () -> ())
+    "Rainbow Drop", ""                   , (fun () -> ())
+    "Erdrick Sword", "E_SWORD"           , (fun () -> ())
+    "Erdrick Armor (*)", "E_ARMOR"       , (fun () -> ())
+    "Fairy Flute (*)", ""                , (fun () -> ())
+    "Death Necklace", ""                 , (fun () -> ())
+    "Princess' Love", ""                 , (fun () -> ())
     |]
 
 ///////////////////////////////////////////////////////
