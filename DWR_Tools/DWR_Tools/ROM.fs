@@ -256,24 +256,18 @@ reset
     let monster_data = bytes.[0x5E5B..0x60DB]
     //Strength, Agility, HP, spells, resistance, dodge, xp, gold, 8 bytes of graphics
     // sleep/stopspell rsists, sleep is high nibble
-    for x in [23; 24] do
+    for x in [23; 24; 37; 39] do
         let golem = monster_data.[16*x..16*x+15]
         printfn "%s: str %d agi %d hp %d spells %d s_ss_resist %x dodge_mag_phys %x xp %d gold %d" (let n,_,_,_,_,_=EnemyData.ENEMY_DATA.[x] in n) golem.[0] golem.[1] golem.[2] golem.[3] golem.[4] golem.[5] golem.[6] golem.[7]
         // golem: 68 56 40 234 80 52 72 120
         // golem: 120 60 153 239 245 240 255 10
 
-    let zone0 = content.[0xf54f..0xf54f+4]
-    let zone1 = content.[0xf54f+5..0xf54f+9]
-    let zone2 = content.[0xf54f+10..0xf54f+14]
-    printfn "enemies in zone 0 1 2"
-    for enemy in zone0 do
-        printfn "%3d  %s" enemy (let name,_,_,_,_,_ = EnemyData.ENEMY_DATA.[int enemy] in name)
-    printfn "-----"
-    for enemy in zone1 do
-        printfn "%3d  %s" enemy (let name,_,_,_,_,_ = EnemyData.ENEMY_DATA.[int enemy] in name)
-    printfn "-----"
-    for enemy in zone2 do
-        printfn "%3d  %s" enemy (let name,_,_,_,_,_ = EnemyData.ENEMY_DATA.[int enemy] in name)
+    for zone = 0 to 19 do
+        let data = content.[0xf54f+5*zone..0xf54f+5*zone+4]
+        printf "enemies in zone %2d: " zone
+        for enemy in data do
+            printf "%3d %-16s " enemy (let name,_,_,_,_,_ = EnemyData.ENEMY_DATA.[int enemy] in name)
+        printfn "-----"
 
     // make minor change to map warps
     let new_bytes = Array.copy bytes
