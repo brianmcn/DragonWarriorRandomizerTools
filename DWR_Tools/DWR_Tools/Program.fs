@@ -713,8 +713,13 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
             let newHeroLevel = (xp_thresholds |> Array.findIndex(fun z -> z > exp)) + 1
             if newHeroLevel <> heroLevel then
                 heroLevel <- newHeroLevel
-                heroLevelTimes.[heroLevel-2] <- sprintf "%03d:%02d " (60*h+m) s
                 changed <- true
+                if newHeroLevel = 1 then  // can be 1 on a reset
+                    // zero out all the auto-tracked progress (user can uncheck equipment/locations/etc if desired)
+                    (Array.create 30 null).CopyTo(heroLevelTimes, 0)
+                    (Array.create 10 false).CopyTo(heroSpells, 0)
+                else
+                    heroLevelTimes.[heroLevel-2] <- sprintf "%03d:%02d " (60*h+m) s
         | None -> ()
         match PixelLayout.identifyHP(gp) with   
         | Some 0 -> // HP = 0 - we are dying now
