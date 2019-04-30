@@ -1050,10 +1050,29 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
                 handled <- true
         IntPtr.Zero
 
+let neededAttacksTable() =
+    for mp in 56..8..160 do
+        let heals = mp / 8
+        let mutable ap = 120
+        let mutable foundLo = false
+        while ap <> -1 do
+            let mx = (ap-100) / 2
+            let mn = mx / 2
+            let av = (mx + mn) / 2
+            let numAttacksLo = (150 / av) + 1
+            let numAttacksHi = (165 / av) + 1
+            if not foundLo && (heals >= numAttacksLo - 2) then
+                printf "%3d mp - need %3d " mp ap
+                foundLo <- true
+            if heals >= numAttacksHi - 2 then
+                printfn "to %3d ap to win" ap
+                ap <- -2
+            ap <- ap + 1
 
 [<STAThread>]
 [<EntryPoint>]
 let main argv = 
+    //neededAttacksTable()
     //ROM.test_rng()
     //ROM.test_period(0x7c65)   // period was 32768, with 2 calls per frame and 60fps, every 4.5 mins this cycles
     let DISPLAY_MAP_OF_SEED = argv.Length > 5
@@ -1096,8 +1115,8 @@ let main argv =
     let app = new Application()
     let myAssembly = System.Reflection.Assembly.GetExecutingAssembly()
     let names = myAssembly.GetManifestResourceNames()
-    for n in names do
-        printfn "%s" n
+    //for n in names do
+    //    printfn "%s" n
 
     // load up known overworld map tiles
     for ow,kind in Constants.OVERWORLD_MAP_TILE_FILENAMES do
