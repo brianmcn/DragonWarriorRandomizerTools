@@ -30,6 +30,12 @@ module Winterop =
     [<DllImport("user32.dll")>]
     extern IntPtr GetForegroundWindow()
 
+    [<DllImport("user32.dll")>]
+    extern int SendMessage(IntPtr hWnd, int wMsg, IntPtr wParam, IntPtr lParam)
+
+    [<DllImport ("User32.dll")>]
+    extern int SetForegroundWindow(IntPtr hWnd)
+
     [<StructLayout(LayoutKind.Sequential)>]
     [<Struct>]
     type RECT =
@@ -1069,9 +1075,30 @@ let neededAttacksTable() =
                 ap <- -2
             ap <- ap + 1
 
+
+let testSendMessage() =
+    let fceuxProcess = System.Diagnostics.Process.GetProcessesByName("fceux").[0]
+    let h = fceuxProcess.MainWindowHandle 
+    
+    // https://github.com/wine-mirror/wine/blob/master/include/mmsystem.h
+    // MM_JOY1BUTTONDOWN   0x3B5
+    // MM_JOY1BUTTONUP     0x3B7
+    // JOY_BUTTON1         	0x0001
+    // JOY_BUTTON2         	0x0002
+    // JOY_BUTTON1CHG      	0x0100
+    // JOY_BUTTON2CHG      	0x0200
+    // does not work
+    // Winterop.SendMessage(h, 0x3B5, IntPtr(0x0100 ||| 0x0001), IntPtr(0) (* yPos/xPos are two words *) )
+
+    // below does work if remap FCEUX to e.g. read keyboard 'b' as B joypress
+    Winterop.SetForegroundWindow(h) |> ignore
+    System.Windows.Forms.SendKeys.SendWait("b")
+
+
 [<STAThread>]
 [<EntryPoint>]
 let main argv = 
+    //testSendMessage()
     //neededAttacksTable()
     //ROM.test_rng()
     //ROM.test_period(0x7c65)   // period was 32768, with 2 calls per frame and 60fps, every 4.5 mins this cycles
