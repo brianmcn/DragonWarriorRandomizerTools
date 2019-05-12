@@ -255,13 +255,74 @@ reset
 
     let monster_data = bytes.[0x5E5B..0x60DB]
     //Strength, Agility, HP, spells, resistance, dodge, xp, gold, 8 bytes of graphics
-    // spells: dl2 breath is e, 6e rare dl2, 1d sleep+dl2, 7b is stopspell+weakbreath (stop 75%), 24 sleep, 12 rare-sleep+hurt, 64 stopspell, 94 heal, 57 is dl1, 75%hurtmore,stopspell
-    // sleep/stopspell rsists, sleep is high nibble
+    // spells: dl2 breath is e, 6e rare dl2, 1d sleep+dl2, 7b is stopspell+weakbreath (stop 75%), 24 sleep, 12 rare-sleep+hurt, 64 stopspell, 94 heal, 
+    // 57 is dl1, 75%hurtmore,stopspell; 75->75% stop; 66 has stopspell; b2 has heal&hurt; 1a was a sometimes sleep; 82 is prob 50% hurt, maybe 75%
+    // 16 is hurtmore and sleep; 3c is common sleep
+
+    // 0001 1101    1d sleep+dl2
+    // 0010 0100    24 sleep
+    // 0001 0010    12 rare-sleep+hurt
+    // 0001 1010    1a was a sometimes sleep
+    // 0001 0110    16 is hurtmore and sleep
+    // 0011 1100    3c is common sleep
+
+    // 0000 1110    0e dl2 breath
+    // 0110 1110    6e rare dl2
+    // 0001 1101    1d sleep+dl2
+
+    // 0111 1011    7b is stopspell+weakbreath (stop 75%)
+    // 0110 0110    66 has stopspell
+    // 0111 0101    75->75% stop
+    // 0101 0111    57 is dl1, 75%hurtmore,stopspell
+
+    // 1001 0100    94 heal
+    // 1011 0010    b2 has heal&hurt
+    // 1000 0010    82 is prob 50% hurt, maybe 75%
+
+    // XX-- ----    00 = sleep, 01 = stopspell, 10 = heal, 11 = healmore
+    // ---- XX--    00 = hurt, 01 = hurtmore, 10 = weak breath, 11 = dl2 breath
+    // --XX ----    0, 25, 50, 75%
+    // ---- --XX    0, 25, 50, 75%
+
+    let spell(b) =
+        let util_spell = (b &&& 0xc0uy) / 64uy
+        let util_pct   = (b &&& 0x30uy) / 16uy
+        let attack     = (b &&& 0x0cuy) / 4uy
+        let attack_pct = (b &&& 0x03uy)
+        let pct(x) = 
+            match x with
+            | 0uy -> 0
+            | 1uy -> 25
+            | 2uy -> 50
+            | 3uy -> 75
+        let util(x) = 
+            match x with
+            | 0uy -> "SLEEP"
+            | 1uy -> "STOPSPELL"
+            | 2uy -> "HEAL"
+            | 3uy -> "HEALMORE"
+        let atk(x) = 
+            match x with
+            | 0uy -> "HURT"
+            | 1uy -> "HURTMORE"
+            | 2uy -> "WEAK BREATH"
+            | 3uy -> "DL2 BREATH"
+        let sb = new System.Text.StringBuilder()
+        let u = pct(util_pct)
+        let a = pct(attack_pct)
+        match u, a with
+        | 0, 0 -> ""
+        | 0, _ -> sprintf "%d%% %s" a (atk attack)
+        | _, 0 -> sprintf "%d%% %s" u (util util_spell)
+        | _, _ -> sprintf "%d%% %s, %d%% %s" a (atk attack) u (util util_spell)
+
+    // sleep/stopspell resists, sleep is high nibble
     for x in [0..39] do
         let golem = monster_data.[16*x..16*x+15]
         printfn "%16s: str %3d agi %3d hp %3d spells %2x s_ss_resist %2x dodge_mag_phys %2x xp %3d gold %3d" (let n,_,_,_,_,_=EnemyData.ENEMY_DATA.[x] in n) golem.[0] golem.[1] golem.[2] golem.[3] golem.[4] golem.[5] golem.[6] golem.[7]
-        // golem: 68 56 40 234 80 52 72 120
-        // golem: 120 60 153 239 245 240 255 10
+        match spell(golem.[3]) with
+        | "" -> ()
+        | s -> printfn "                                              %s" s
 
     for zone = 0 to 19 do
         let data = content.[0xf54f+5*zone..0xf54f+5*zone+4]
@@ -463,6 +524,16 @@ let simulate_prng_int(seed) =
     let na94, na95 = simulate_prng(a94, a95)
     let next = na94 * 0x0100 + na95
     next
+
+let show_rng() =
+    let SHOW_ONLY_EVERY_16 = false
+    let mutable x = 0 
+    for j = 1 to 1024 do
+        for i = 1 to 32 do
+            if not SHOW_ONLY_EVERY_16 || (i=16 || i=32) then
+                printfn "%10d     %8x" x x
+            x <- simulate_prng_int(x)
+        System.Console.ReadLine() |> ignore
 
 let test_period(init_seed) =
     let mutable count = 0

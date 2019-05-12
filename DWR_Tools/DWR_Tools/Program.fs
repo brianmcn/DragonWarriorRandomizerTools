@@ -1094,10 +1094,11 @@ let testSendMessage() =
     Winterop.SetForegroundWindow(h) |> ignore
     System.Windows.Forms.SendKeys.SendWait("b")
 
-
+#if !AD_HOC
 [<STAThread>]
 [<EntryPoint>]
-let main argv = 
+let xmain argv = 
+    //ROM.show_rng()
     //testSendMessage()
     //neededAttacksTable()
     //ROM.test_rng()
@@ -1178,3 +1179,46 @@ let main argv =
     let xp = if leagueMode then Constants.DWR_XP_LEVEL_THRESHOLDS_50_PERCENT else Constants.DWR_XP_LEVEL_THRESHOLDS 
     app.Run(MyWindow(0,0,0,racingMode,leagueMode,xp)) |> ignore
     0
+
+#else
+
+let defenseBrokenDl1() =
+    let rng = new System.Random()
+    let mutable wins = 0
+    for i = 1 to 1000 do
+        let herb() = rng.Next(8) + 23    // 23 - 30
+        let hurt() = rng.Next(11) + 20   // 20 - 30
+        let MAX = (90 + 4) / 6 // dl1 max attack
+        let phys() = rng.Next(MAX)
+        //let hit() // 132 ap -> 8-16
+        let PLAYER_HP = 104
+        let mutable hp = PLAYER_HP 
+        let dl1() = 
+            if rng.Next(4) = 0 then
+                () // stopspell, no damage
+            else
+                if rng.Next(4) = 0 then
+                    hp <- hp - phys()
+                else
+                    hp <- hp - hurt()
+        // player swings
+        dl1()
+        // player swings
+        dl1()
+        // now player tried to heal up and get a stopspell
+        let mutable herbs = 6
+        while hp < 97 && herbs > 0 do
+            hp <- hp + herb()
+            herbs <- herbs - 1
+            dl1()
+        if hp >= 97 then
+            wins <- wins + 1
+    printfn "win %d/1000" wins
+
+[<STAThread>]
+[<EntryPoint>]
+let main argv = 
+    defenseBrokenDl1()
+    0
+
+#endif
