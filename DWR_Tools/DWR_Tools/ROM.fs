@@ -331,6 +331,23 @@ reset
             printf "%3d %-16s " enemy (let name,_,_,_,_,_ = EnemyData.ENEMY_DATA.[int enemy] in name)
         printfn ""
 
+
+    printfn "LV     STR  AGI  HP   MP" 
+    for i = 0 to 29 do
+        let fives = (if i%5=4 then "-- " else "   ")
+        let b1 = bytes.[0x60DD+6*i+4]
+        let b2 = bytes.[0x60DD+6*i+5]
+        let s = if b2 &&&  1uy > 0uy then "HE " else fives 
+              + if b2 &&&  2uy > 0uy then "HU " else fives
+              + if b2 &&&  4uy > 0uy then "SL " else fives
+              + if b2 &&&  8uy > 0uy then "RA " else fives
+              + if b2 &&& 16uy > 0uy then "ST " else fives
+              + if b2 &&& 32uy > 0uy then "OU " else fives
+              + if b2 &&& 64uy > 0uy then "RT " else fives
+              + if b2 &&&128uy > 0uy then "RP " else fives
+              + if b1 &&&  1uy > 0uy then "HE " else fives
+              + if b1 &&&  2uy > 0uy then "HU " else fives
+        printfn "%3d %s%3d  %3d  %3d  %3d   %s" (i+1) fives bytes.[0x60DD+6*i+0] bytes.[0x60DD+6*i+1] bytes.[0x60DD+6*i+2] bytes.[0x60DD+6*i+3] s
 (*
     // make minor change to map warps
     let new_bytes = Array.copy bytes
