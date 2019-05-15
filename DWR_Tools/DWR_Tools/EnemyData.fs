@@ -2,7 +2,7 @@
 
 let ENEMY_DATA = [|
     // name                    XP  GOLD  STR  AGI   HP
-    "slime",                    1,    2,   5,   3,   2
+    "slime",                    1,    2,   5,   3,   2   // 0
     "redslime",                 2,    4,   7,   3,   3
     "drakee",                   3,    6,   9,   6,   5
     "ghost",                    4,    8,  11,   8,   7
@@ -12,7 +12,7 @@ let ENEMY_DATA = [|
     "druin",                   14,   21,  20,  18,  22
     "poltergeist",             15,   19,  18,  20,  23
     "droll",                   18,   30,  22,  24,  20
-    "drakeema",                20,   25,  24,  26,  16
+    "drakeema",                20,   25,  24,  26,  16  // 10
     "skeleton",                25,   42,  28,  22,  24
     "warlock",                 28,   50,  28,  22,  28
     "metalscorpion",           31,   48,  36,  42,  18
@@ -23,7 +23,7 @@ let ENEMY_DATA = [|
     "wolflord",                52,   80,  50,  36,  37
     "druinlord",               58,   95,  47,  40,  35
     // group 2
-    "drollmagi",               58,  110,  52,  50,  44
+    "drollmagi",               58,  110,  52,  50,  44  // 20
     "wyvern",                  64,  105,  56,  48,  37
     "roguescorpion",           70,  110,  60,  90,  40
     "wraithknight",            72,  120,  68,  56,  40
@@ -34,7 +34,7 @@ let ENEMY_DATA = [|
     "demonknight",             90,  148,  79,  64,  38
     "werewolf",                95,  155,  86,  70,  70
     // group 3
-    "greendragon",            135,  160,  88,  74,  72
+    "greendragon",            135,  160,  88,  74,  72  // 30
     "starwyvern",             105,  169,  86,  80,  74
     "wizard",                 120,  185,  80,  70,  65
     "axeknight",              130,  165,  94,  82,  67
@@ -44,7 +44,7 @@ let ENEMY_DATA = [|
     "armoredknight",          172,  152, 105,  86,  99
     "reddragon",              255,  143, 120,  90, 106
     "dragonlord1",              0,    0,  90,  75, 100
-    "dragonlord2",              0,    0, 140, 200, 165
+    "dragonlord2",              0,    0, 140, 200, 165  // 39
     |]
 
 let XP   = dict [| for name, xp, _gold,_str,_agi,_hp in ENEMY_DATA do yield name,xp |]

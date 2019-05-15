@@ -22,6 +22,44 @@ let decode_rom(file) =
             buried_dx, buried_dy 
         with _ -> -999, -999
 
+    let zone_has_charlock_enemy = Array.zeroCreate 20
+    let zone_has_metal_slime = Array.zeroCreate 20
+    for zone = 0 to 19 do
+        let data = content.[0xf54f+5*zone..0xf54f+5*zone+4]
+        let extra = 
+            match zone with
+            | 13 -> "HAUKS"
+            | 16 | 17 | 18 -> "CHAR "
+            | 19 -> "SWAMP"
+            | _  -> "     "
+        printf "zone %2d (%s): " zone extra
+        for enemy in data do
+            printf "%3d %-16s " enemy (let name,_,_,_,_,_ = EnemyData.ENEMY_DATA.[int enemy] in name)
+            if enemy = 16uy then
+                zone_has_metal_slime.[zone] <- zone_has_metal_slime.[zone] + 1
+            // golem is 24, werewolf is 29
+            if enemy = 24uy || enemy >= 29uy then
+                zone_has_charlock_enemy.[zone] <- zone_has_charlock_enemy.[zone] + 1
+        printfn ""
+
+    let overworld_zone_data = content.[0xf522..0xf522+31]
+    let ow_zones = Array2D.zeroCreate 8 8
+    for x = 0 to 7 do
+        for y = 0 to 7 do
+            let zone_index = x + 8*y
+            let i = zone_index / 2
+            if zone_index % 2 = 0 then
+                ow_zones.[x,y] <- (overworld_zone_data.[i] &&& 0xf0uy) >>> 4
+            else
+                ow_zones.[x,y] <- (overworld_zone_data.[i] &&& 0x0fuy)
+
+    printfn "OW ZONES"
+    for y = 0 to 7 do
+        for x = 0 to 7 do
+            printf "%3d" ow_zones.[x,y]
+        printfn ""
+    printfn ""
+
     let map_pointers_0 = content.[0x2653]  // 120 16-bit pointers (subtract 0x9d5d from these pointers)
     let map_encoded_0 = content.[0x1d5d]   // RLE, top nibble tile, bottom nibble count
 
@@ -224,7 +262,22 @@ let decode_rom(file) =
             let y = EDGE+j*15
             bmp1.SetPixel(x, y, darken(bmp1.GetPixel(x,y)))
             bmp2.SetPixel(x, y, darken(bmp2.GetPixel(x,y)))
-
+    // redden charlock-enemy zones
+    let redden(c:System.Drawing.Color) = 
+        let F(b:byte) = int b * 7 / 8
+        System.Drawing.Color.FromArgb(int c.R, F c.G, F c.B)
+    let bluen(c:System.Drawing.Color) = 
+        let F(b:byte) = int b * 7 / 8
+        System.Drawing.Color.FromArgb(F c.R, F c.G, int c.B)
+    for j = 0 to 7 do
+        for i = 0 to 7 do
+            for y = EDGE+15*j to EDGE+15*j+14 do
+                for x = EDGE+15*i to EDGE+15*i+14 do
+                    for r = 1 to zone_has_charlock_enemy.[ int ow_zones.[i,j] ] do
+                        bmp2.SetPixel(x, y, redden(bmp2.GetPixel(x,y)))
+                    if (x+y)%2=0 then
+                        for r = 1 to zone_has_metal_slime.[ int ow_zones.[i,j] ] do
+                            bmp2.SetPixel(x, y, bluen(bmp2.GetPixel(x,y)))
 
 (*
 // TODO extract enemy zones from seed DWRando.414823156739942.CDFGMPRWZ
@@ -323,14 +376,6 @@ reset
         match spell(golem.[3]) with
         | "" -> ()
         | s -> printfn "                                              %s" s
-
-    for zone = 0 to 19 do
-        let data = content.[0xf54f+5*zone..0xf54f+5*zone+4]
-        printf "zone %2d: " zone
-        for enemy in data do
-            printf "%3d %-16s " enemy (let name,_,_,_,_,_ = EnemyData.ENEMY_DATA.[int enemy] in name)
-        printfn ""
-
 
     printfn "LV     STR  AGI  HP   MP" 
     for i = 0 to 29 do
