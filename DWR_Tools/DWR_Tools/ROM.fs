@@ -24,6 +24,8 @@ let decode_rom(file) =
 
     let zone_has_charlock_enemy = Array.zeroCreate 20
     let zone_has_metal_slime = Array.zeroCreate 20
+    let zone_has_x = Array.zeroCreate 20  // for ad-hoc mapping
+    let zone_has_y = Array.zeroCreate 20  // for ad-hoc mapping
     for zone = 0 to 19 do
         let data = content.[0xf54f+5*zone..0xf54f+5*zone+4]
         let extra = 
@@ -40,6 +42,10 @@ let decode_rom(file) =
             // golem is 24, werewolf is 29
             if enemy = 24uy || enemy >= 29uy then
                 zone_has_charlock_enemy.[zone] <- zone_has_charlock_enemy.[zone] + 1
+            if enemy = 35uy then // stoneman
+                zone_has_x.[zone] <- zone_has_x.[zone] + 1
+            if enemy = 36uy then // armored_knight
+                zone_has_y.[zone] <- zone_has_y.[zone] + 1
         printfn ""
 
     let overworld_zone_data = content.[0xf522..0xf522+31]
@@ -262,7 +268,7 @@ let decode_rom(file) =
             let y = EDGE+j*15
             bmp1.SetPixel(x, y, darken(bmp1.GetPixel(x,y)))
             bmp2.SetPixel(x, y, darken(bmp2.GetPixel(x,y)))
-    // redden charlock-enemy zones
+    // redden charlock-enemy zones, bluen-grid metal-slime zones 
     let redden(c:System.Drawing.Color) = 
         let F(b:byte) = int b * 7 / 8
         System.Drawing.Color.FromArgb(int c.R, F c.G, F c.B)
@@ -273,11 +279,20 @@ let decode_rom(file) =
         for i = 0 to 7 do
             for y = EDGE+15*j to EDGE+15*j+14 do
                 for x = EDGE+15*i to EDGE+15*i+14 do
-                    for r = 1 to zone_has_charlock_enemy.[ int ow_zones.[i,j] ] do
-                        bmp2.SetPixel(x, y, redden(bmp2.GetPixel(x,y)))
-                    if (x+y)%2=0 then
-                        for r = 1 to zone_has_metal_slime.[ int ow_zones.[i,j] ] do
-                            bmp2.SetPixel(x, y, bluen(bmp2.GetPixel(x,y)))
+                    if true then // false to switch to ad-hoc
+                        if x%2=0 || y%2 = 0 then
+                            for r = 1 to zone_has_charlock_enemy.[ int ow_zones.[i,j] ] do
+                                bmp2.SetPixel(x, y, redden(bmp2.GetPixel(x,y)))
+                        if (x+y)%2=0 then
+                            for r = 1 to zone_has_metal_slime.[ int ow_zones.[i,j] ] do
+                                bmp2.SetPixel(x, y, bluen(bmp2.GetPixel(x,y)))
+                    else
+                        if x%2=0 || y%2 = 0 then
+                            for r = 1 to zone_has_x.[ int ow_zones.[i,j] ] do
+                                bmp2.SetPixel(x, y, redden(bmp2.GetPixel(x,y)))
+                        if (x+y)%2=0 then
+                            for r = 1 to zone_has_y.[ int ow_zones.[i,j] ] do
+                                bmp2.SetPixel(x, y, bluen(bmp2.GetPixel(x,y)))
 
 (*
 // TODO extract enemy zones from seed DWRando.414823156739942.CDFGMPRWZ
