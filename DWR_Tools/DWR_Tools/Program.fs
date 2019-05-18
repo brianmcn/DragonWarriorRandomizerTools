@@ -671,9 +671,15 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
                 if res = "E_SWORD" then 
                     heroWeaponIndex <- Constants.WEAPONS.Length-2
                     updateWeapon()
+                    let tb = cb.Content :?> TextBox
+                    let ts = DateTime.Now - startTime
+                    tb.Text <- tb.Text + sprintf " %02d:%02d:%02d" ts.Hours ts.Minutes ts.Seconds
                 elif res = "E_ARMOR" then 
                     heroArmorIndex <- Constants.ARMOR.Length-2
                     updateArmor()
+                    let tb = cb.Content :?> TextBox
+                    let ts = DateTime.Now - startTime
+                    tb.Text <- tb.Text + sprintf " %02d:%02d:%02d" ts.Hours ts.Minutes ts.Seconds
                 else 
                     onCheckedChanged(res)
                 tb.Foreground <- Brushes.DarkSlateBlue 
