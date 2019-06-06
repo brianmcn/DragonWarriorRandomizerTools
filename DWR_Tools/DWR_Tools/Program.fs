@@ -1221,10 +1221,72 @@ let defenseBrokenDl1() =
             wins <- wins + 1
     printfn "win %d/1000" wins
 
+let probabilityOkTokenOnMap() =
+    let rng = new System.Random()
+    // had 3 chests left, saw 0 cursed belts, cantlin only remain location
+    // 22 possible chests for token/belt
+    // token on map 2/3, in chest 1/3
+    // same for flute, but flute could also be in extra 7 charlock chests
+    (* WRONG
+    let NINETEEN = 0
+    let mutable seen_19_nothing = 0
+    let mutable token_on_map = 0
+    for i = 1 to 10000000 do
+        let t_map = rng.Next(3) <> 2
+        let f_map = rng.Next(3) <> 2
+        if t_map && f_map then
+            () // not the witnessed scenario, hauks was empty
+        else
+            if rng.Next(22) >= NINETEEN && rng.Next(29) >= NINETEEN then
+                seen_19_nothing <- seen_19_nothing + 1
+                if t_map then
+                    token_on_map <- token_on_map + 1
+    printfn "out of 10000000, seen 19 chests with nothing %d times, token was on map %d times of that, %f" seen_19_nothing token_on_map (float token_on_map / float seen_19_nothing)
+    // oh, of course
+    // if both have 2/3 chance of being on map
+    // and we know not both are, then we lose the 4/9 where both are
+    // remain 5/9 are 2 where token, 2 where flute, 1 neither
+    // so always 40% chance of x-on-map when one empty location (x = token or flute), regardless of how many non-x/belt chests you have seen (unless exhaust all chests, in which case must be token)
+    WRONG *)
+    (* WRONG
+    let mutable t_map, f_map, neither_map = 0, 0, 0
+    let CHESTS_OPENED, MAX = 19, 1000000
+    for i = 1 to MAX do
+        if i <= MAX*2/5 then
+            // token on map
+            if rng.Next(22) >= CHESTS_OPENED && rng.Next(29) >= CHESTS_OPENED then  // belt, flute
+                t_map <- t_map + 1
+        elif i <= MAX*4/5 then
+            // flute on map
+            if rng.Next(22) >= CHESTS_OPENED && rng.Next(29) >= CHESTS_OPENED then  // token, belt
+                f_map <- f_map + 1
+        else
+            // neither on map
+            if rng.Next(22) >= CHESTS_OPENED && rng.Next(29) >= CHESTS_OPENED then  // token, flute
+                neither_map <- neither_map + 1
+    let total = t_map + f_map + neither_map 
+    printfn "%f   %f   %f" (float t_map / float total) (float f_map / float total) (float neither_map / float total)
+    WRONG *)
+    for CHESTS_OPENED = 0 to 22 do
+        // case 1, token on map
+        let probability_not_find_any_in_chest_when_t_map = float (29-CHESTS_OPENED) / 29.0  // odds no flute item
+        // case 2, flute on map
+        let probability_not_find_any_in_chest_when_f_map = float (22-CHESTS_OPENED) / 22.0  // odds no token item
+        // case 3, neither map
+        let probability_not_find_any_in_chest_when_n_map = float (22-CHESTS_OPENED) / 22.0 * float (29-CHESTS_OPENED) / 29.0  // odds neither item
+        // weighted average 
+        let p = probability_not_find_any_in_chest_when_t_map * 0.4 
+              + probability_not_find_any_in_chest_when_f_map * 0.4 
+              + probability_not_find_any_in_chest_when_n_map * 0.2
+        // probability that token was on map, out of all those possibilities
+        let r = probability_not_find_any_in_chest_when_t_map * 0.4 / p
+        printfn "%d chests, prob token on map = %f" CHESTS_OPENED r
+
 [<STAThread>]
 [<EntryPoint>]
 let main argv = 
-    defenseBrokenDl1()
+    //defenseBrokenDl1()
+    probabilityOkTokenOnMap()
     0
 
 #endif
