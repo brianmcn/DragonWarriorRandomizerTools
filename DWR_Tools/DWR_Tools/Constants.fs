@@ -204,18 +204,19 @@ type LocationIDs =
     | GARINHAM                = 10
     | GARINHAM_BOXES          = 11
     | SUN_STONES_CAVE         = 12
-    | STAFF_OF_RAIN_CAVE      = 13
-    | JERK_CAVE               = 14
-    | SWAMP_NORTH             = 15
-    | SWAMP_SOUTH             = 16
-    | MOUNTAIN_CAVE           = 17
-    | MOUNTAIN_CAVE_5_BOXES   = 18
-    | TABLET_CAVE             = 19
-    | TABLET_CAVE_BOX         = 20
-    | GARINS_TOMB             = 21
-    | GARINS_TOMB_3_BOXES     = 22
-    | GARINS_TOMB_2_BOXES     = 23
-let LocationCheckboxes : System.Windows.Controls.CheckBox[] = Array.zeroCreate 24
+    | SUN_STONES_CAVE_BOX     = 13
+    | STAFF_OF_RAIN_CAVE      = 14
+    | JERK_CAVE               = 15
+    | SWAMP_NORTH             = 16
+    | SWAMP_SOUTH             = 17
+    | MOUNTAIN_CAVE           = 18
+    | MOUNTAIN_CAVE_5_BOXES   = 19
+    | TABLET_CAVE             = 20
+    | TABLET_CAVE_BOX         = 21
+    | GARINS_TOMB             = 22
+    | GARINS_TOMB_3_BOXES     = 23
+    | GARINS_TOMB_2_BOXES     = 24
+let LocationCheckboxes : System.Windows.Controls.CheckBox[] = Array.zeroCreate 25
 let LOCATIONS = [|
     "---Tantagel (4box, cave)", ""                       , (fun () -> ())              
     "Charlock Castle", "DW_Charlock.png"                 , (fun () -> ())
@@ -229,7 +230,8 @@ let LOCATIONS = [|
     "---Hauksness item", ""                              , (fun () -> LocationCheckboxes.[int LocationIDs.HAUKSNESS].IsChecked <- System.Nullable.op_Implicit true)
     "Garinham (grave below)", ""                         , (fun () -> if not LocationCheckboxes.[int LocationIDs.GARINHAM_BOXES].IsChecked.Value then async { voice.Speak("If you don't have keys, write down the location") } |> Async.Start)
     "---Garinham (3box)", ""                             , (fun () -> LocationCheckboxes.[int LocationIDs.GARINHAM].IsChecked <- System.Nullable.op_Implicit true)
-    "Sun Stones Cave (v)", ""                            , (fun () -> ())
+    "Sun Stones Cave (v)", ""                            , (fun () -> LocationCheckboxes.[int LocationIDs.SUN_STONES_CAVE_BOX].IsChecked <- System.Nullable.op_Implicit true)
+    "---1 box", ""                                       , (fun () -> LocationCheckboxes.[int LocationIDs.SUN_STONES_CAVE].IsChecked <- System.Nullable.op_Implicit true)
     "Staff Rain Cave (>)", ""                            , (fun () -> ())
     "Jerk Cave (<)", ""                                  , (fun () -> ())
     "Swamp Cave North", "DW_SwampCave.png"               , (fun () -> ())
@@ -238,9 +240,10 @@ let LOCATIONS = [|
     "---all 5 box", "DW_MountainCave.png"                , (fun () -> LocationCheckboxes.[int LocationIDs.MOUNTAIN_CAVE].IsChecked <- System.Nullable.op_Implicit true)
     "Tablet Cave", "DW_TabletCave.png"                   , (fun () -> ())
     "---1 box", "DW_TabletCave.png"                      , (fun () -> LocationCheckboxes.[int LocationIDs.TABLET_CAVE].IsChecked <- System.Nullable.op_Implicit true)
-    "Garin's Tomb", "DW_GarinTomb.png"                   , (fun () -> async { voice.Speak("Write down the tomb location") } |> Async.Start)
+    "Garin's Tomb", "DW_GarinTomb.png"                   , (fun () -> if not LocationCheckboxes.[int LocationIDs.GARINS_TOMB_2_BOXES].IsChecked.Value then async { voice.Speak("Write down the tomb location") } |> Async.Start)
     "---top 3 box", "DW_GarinTomb.png"                   , (fun () -> LocationCheckboxes.[int LocationIDs.GARINS_TOMB].IsChecked <- System.Nullable.op_Implicit true)
-    "---bottom 2 box", "DW_GarinTomb.png"                , (fun () -> ())
+    "---bottom 2 box", "DW_GarinTomb.png"                , (fun () -> LocationCheckboxes.[int LocationIDs.GARINS_TOMB].IsChecked <- System.Nullable.op_Implicit true
+                                                                      LocationCheckboxes.[int LocationIDs.GARINS_TOMB_3_BOXES].IsChecked <- System.Nullable.op_Implicit true)
     |]
 let ITEMS = [|
     "Stones of Sunlight", ""             , (fun () -> ())
