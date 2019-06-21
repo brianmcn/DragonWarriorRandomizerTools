@@ -1,5 +1,65 @@
 ﻿module ROM
 
+let MAPS = [|
+    "NO_MAP"
+    "OVERWORLD"
+    "CHARLOCK"
+    "HAUKSNESS"
+    "TANTEGEL"
+    "TANTEGEL_THRONE_ROOM" // 5 
+    "CHARLOCK_THRONE_ROOM"
+    "KOL"
+    "BRECCONARY"
+    "GARINHAM"
+    "CANTLIN" // 10 
+    "RIMULDAR"
+    "TANTEGEL_BASEMENT"
+    "NORTHERN_SHRINE"
+    "SOUTHERN_SHRINE"
+    "CHARLOCK_CAVE_1" // 15 
+    "CHARLOCK_CAVE_2"
+    "CHARLOCK_CAVE_3"
+    "CHARLOCK_CAVE_4"
+    "CHARLOCK_CAVE_5"
+    "CHARLOCK_CAVE_6" // 20 
+    "SWAMP_CAVE"
+    "MOUNTAIN_CAVE"
+    "MOUNTAIN_CAVE_2"
+    "GARINS_GRAVE_1"
+    "GARINS_GRAVE_2" // 25 
+    "GARINS_GRAVE_3"
+    "GARINS_GRAVE_4"
+    "ERDRICKS_CAVE"
+    "ERDRICKS_CAVE_2"
+    |]
+
+let CHESTS = [|
+    "unused"
+    "unused"
+    "HERB"
+    "KEY"
+    "TORCH"
+    "FAIRY_WATER"
+    "WINGS"
+    "DRAGON_SCALE"
+    "FLUTE"
+    "RING"
+    "TOKEN"
+    "GWAELINS_LOVE"
+    "CURSED_BELT"
+    "HARP"
+    "NECKLACE"
+    "STONES"
+    "STAFF"
+    "SWORD"
+    "GOLD_5"
+    "GOLD_6"
+    "GOLD_10"
+    "GOLD_500"
+    "GOLD_120"
+    "TABLET"
+    |]
+
 let decode_rom(file) =
     let bytes = System.IO.File.ReadAllBytes(file)
     let content = bytes.[16..]   // first 16 bytes are a header
@@ -22,6 +82,36 @@ let decode_rom(file) =
             buried_dx, buried_dy 
         with _ -> -999, -999
 
+    // spike tile enemies
+    printfn ""
+    printfn "SPIKE TILES"
+    let hauks_enemy    = int content.[0xcd64]
+    let swamp_enemy    = int content.[0xcd81]
+    let charlock_enemy = int content.[0xcd9e]
+    printfn "  hauks: %2d %s" hauks_enemy (EnemyData.ENEMY_NAME hauks_enemy)
+    printfn "  swamp: %2d %s" swamp_enemy (EnemyData.ENEMY_NAME swamp_enemy)
+    printfn "  charl: %2d %s" charlock_enemy (EnemyData.ENEMY_NAME charlock_enemy)
+
+    // chests
+    // each chest data is 4 bytes: map, x, y, item
+    let chest_bytes = content.[0x5dcd..0x5dcd+4*31]
+    let sb = new System.Text.StringBuilder()
+    let ksb = new System.Text.StringBuilder()
+    printfn ""
+    printfn "ALL CHESTS"
+    for i = 0 to 30 do
+        let map, item = chest_bytes.[i*4], chest_bytes.[i*4+3] 
+        let s = sprintf "  %20s    %20s" MAPS.[int map] CHESTS.[int item]
+        printfn "%s" s
+        match item with
+        | 8uy | 9uy | 10uy | 13uy | 14uy | 15uy | 17uy -> sb.AppendLine(s) |> ignore
+        | 3uy -> if map <> 5uy then ksb.Append(MAPS.[int map]).Append("  ") |> ignore
+        | _ -> ()
+    printfn "SUMMARY"
+    printf "%s" (sb.ToString())
+    printfn "KEYS: %s" (ksb.ToString())
+
+    printfn ""
     let zone_has_charlock_enemy = Array.zeroCreate 20
     let zone_has_metal_slime = Array.zeroCreate 20
     let zone_has_x = Array.zeroCreate 20  // for ad-hoc mapping
@@ -186,17 +276,13 @@ let decode_rom(file) =
         let to_map = warps.[153+d]
         let to_x = warps.[154+d]
         let to_y = warps.[155+d]
-        let printIt = from_map = 1uy || from_map = 9uy || from_map = 4uy 
-        let debugPrint = true
-(*
- 15  13   7  16   4   4
- 15  19   7  16   9   8
- *)
+        let printIt = false //from_map = 1uy || from_map = 9uy || from_map = 4uy 
+        let debugPrint = false
         if from_map = 15uy && from_x = 13uy && from_y = 7uy then
             uc1i <- i
         if from_map = 15uy && from_x = 19uy && from_y = 7uy then
             uc2i <- i
-        if from_map = 1uy && from_x = 22uy && from_y = 47uy then // rimu is at 1  22  47  on that one seed
+        if from_map = 1uy && from_x = 22uy && from_y = 47uy then
             rimi <- i
         if debugPrint || printIt then
             printf "%3d %3d %3d %3d %3d %3d " from_map from_x from_y to_map to_x to_y
@@ -323,30 +409,6 @@ reset
 
     let monster_data = bytes.[0x5E5B..0x60DB]
     //Strength, Agility, HP, spells, resistance, dodge, xp, gold, 8 bytes of graphics
-    // spells: dl2 breath is e, 6e rare dl2, 1d sleep+dl2, 7b is stopspell+weakbreath (stop 75%), 24 sleep, 12 rare-sleep+hurt, 64 stopspell, 94 heal, 
-    // 57 is dl1, 75%hurtmore,stopspell; 75->75% stop; 66 has stopspell; b2 has heal&hurt; 1a was a sometimes sleep; 82 is prob 50% hurt, maybe 75%
-    // 16 is hurtmore and sleep; 3c is common sleep
-
-    // 0001 1101    1d sleep+dl2
-    // 0010 0100    24 sleep
-    // 0001 0010    12 rare-sleep+hurt
-    // 0001 1010    1a was a sometimes sleep
-    // 0001 0110    16 is hurtmore and sleep
-    // 0011 1100    3c is common sleep
-
-    // 0000 1110    0e dl2 breath
-    // 0110 1110    6e rare dl2
-    // 0001 1101    1d sleep+dl2
-
-    // 0111 1011    7b is stopspell+weakbreath (stop 75%)
-    // 0110 0110    66 has stopspell
-    // 0111 0101    75->75% stop
-    // 0101 0111    57 is dl1, 75%hurtmore,stopspell
-
-    // 1001 0100    94 heal
-    // 1011 0010    b2 has heal&hurt
-    // 1000 0010    82 is prob 50% hurt, maybe 75%
-
     // XX-- ----    00 = sleep, 01 = stopspell, 10 = heal, 11 = healmore
     // ---- XX--    00 = hurt, 01 = hurtmore, 10 = weak breath, 11 = dl2 breath
     // --XX ----    0, 25, 50, 75%

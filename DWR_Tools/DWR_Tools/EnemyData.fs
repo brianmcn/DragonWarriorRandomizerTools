@@ -47,6 +47,7 @@ let ENEMY_DATA = [|
     "dragonlord2",              0,    0, 140, 200, 165  // 39
     |]
 
+let ENEMY_NAME(i) = let name, _xp, _gold,_str,_agi,_hp = ENEMY_DATA.[i] in name
 let XP   = dict [| for name, xp, _gold,_str,_agi,_hp in ENEMY_DATA do yield name,xp |]
 let GOLD = dict [| for name, _xp, gold,_str,_agi,_hp in ENEMY_DATA do yield name,gold |]
 let STR  = dict [| for name, _xp, _gold,str,_agi,_hp in ENEMY_DATA do yield name,str |]
