@@ -108,6 +108,16 @@ let decode_rom(file) =
             buried_dx, buried_dy 
         with _ -> -999, -999
 
+    // buried items
+    printfn ""
+    printfn "BURIED ITEMS"    
+    for thing, address in ["armor", 0xe160; "flute", 0xe14a; "token", 0xe10b] do
+        let data = content.[address..address+15]
+        let thing_map = data.[3]
+        let thing_x = data.[9]
+        let thing_y = data.[15]
+        printfn "%s %s %d %d" thing MAPS.[int thing_map] thing_x thing_y
+
     // shops
     printfn ""
     printfn "SHOPS"
