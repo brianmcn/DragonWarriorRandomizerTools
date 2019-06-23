@@ -60,6 +60,32 @@ let CHESTS = [|
     "TABLET"
     |]
 
+let SHOP_ITEM = [|
+    "BAMBOO_POLE"
+    "CLUB"
+    "COPPER_SWORD"
+    "HAND_AXE"
+    "BROAD_SWORD"
+    "FLAME_SWORD"
+    "ERDRICKS_SWORD"
+    "CLOTHES"
+    "LEATHER_ARMOR"
+    "CHAIN_MAIL"
+    "HALF_PLATE"
+    "FULL_PLATE"
+    "MAGIC_ARMOR"
+    "ERDRICKS_ARMOR"
+    "SMALL_SHIELD"
+    "LARGE_SHIELD"
+    "SILVER_SHIELD"
+    "SHOP_HERB"
+    "unused"
+    "SHOP_TORCH"
+    "unused"
+    "SHOP_WINGS"
+    "SHOP_DRAGON_SCALE"
+    |]
+
 let decode_rom(file) =
     let bytes = System.IO.File.ReadAllBytes(file)
     let content = bytes.[16..]   // first 16 bytes are a header
@@ -82,6 +108,30 @@ let decode_rom(file) =
             buried_dx, buried_dy 
         with _ -> -999, -999
 
+    // shops
+    printfn ""
+    printfn "SHOPS"
+    printfn "kol"
+    let shops = content.[0x1991..0x1991+80]
+    let mutable shop_count = 0
+    for item in shops do
+        if shop_count < 7 then
+            if item = 253uy then
+                printfn " ---"  // shop end
+                shop_count <- shop_count + 1
+                let desc = 
+                    match shop_count with
+                    | 1 -> "brecc"
+                    | 2 -> "garin"
+                    | 3 | 4 -> "cantlin open"
+                    | 5 -> "cantlin locked"
+                    | 6 -> "rimu"
+                    | 7 -> ""
+                    | _ -> failwith "bad shop"
+                printfn "%s" desc
+            else
+                printfn "%2d  %s" item SHOP_ITEM.[int item]
+    
     // spike tile enemies
     printfn ""
     printfn "SPIKE TILES"
