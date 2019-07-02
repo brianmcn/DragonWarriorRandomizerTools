@@ -285,13 +285,14 @@ let decode_rom(file) =
             bmp1.SetPixel(y+EDGE, x+EDGE, tiles.[x,y].ProjectionColor)
             bmp2.SetPixel(y+EDGE, x+EDGE, tiles.[x,y].AltProjectionColor)
 
-
+    let pixelsWhereLabelsHaveModified = new System.Collections.Generic.HashSet<_>()
     let tryAllPlace(x,y,isCave,a:string[]) =
         let darken(x,y) =
             let c = bmp2.GetPixel(x,y)
-            let K = 6
+            let K = 7
             bmp2.SetPixel(x,y, System.Drawing.Color.FromArgb(int c.R*K/8, int c.G*K/8, int c.B*K/8))
-        let ok(c:System.Drawing.Color) = 
+            pixelsWhereLabelsHaveModified.Add(x,y) |> ignore
+        let ok(c:System.Drawing.Color) = // TODO could just use not-in-pixelsWhereLabelsHaveModified now
             c.ToArgb() = Constants.OverworldMapTile.Desert.AltProjectionColor.ToArgb() ||
             c.ToArgb() = Constants.OverworldMapTile.Mountain.AltProjectionColor.ToArgb()
         let tryPlace(x,y,isCave,a:string[]) =
@@ -305,6 +306,7 @@ let decode_rom(file) =
                     for j = 0 to 4 do
                         if a.[j].[i] = 'X' then
                             bmp2.SetPixel(x+i,y+j, if isCave then Constants.OverworldMapTile.Cave.AltProjectionColor else Constants.OverworldMapTile.Town.AltProjectionColor)
+                            pixelsWhereLabelsHaveModified.Add(x+i,y+j) |> ignore
                         else
                             darken(x+i,y+j)
             works            
@@ -397,8 +399,9 @@ let decode_rom(file) =
             if debugPrint || printIt then
                 printfn ""
   
+    let BURIED_COLOR = System.Drawing.Color.Orange
     if buried_dx <> -999 then  
-        bmp2.SetPixel(EDGE+tx+buried_dx, EDGE+ty+buried_dy, System.Drawing.Color.Orange )
+        bmp2.SetPixel(EDGE+tx+buried_dx, EDGE+ty+buried_dy, BURIED_COLOR)
 
     // gridlines
     let darken(c:System.Drawing.Color) = 
@@ -408,7 +411,10 @@ let decode_rom(file) =
         for y = EDGE+0 to EDGE+119 do
             let x = EDGE+i*15
             bmp1.SetPixel(x, y, darken(bmp1.GetPixel(x,y)))
-            bmp2.SetPixel(x, y, darken(bmp2.GetPixel(x,y)))
+            if pixelsWhereLabelsHaveModified.Contains(x,y) then
+                () // do nothing, dont re-color labels
+            else
+                bmp2.SetPixel(x, y, darken(bmp2.GetPixel(x,y)))
     for x = EDGE+0 to EDGE+119 do
         for j = 0 to 8 do
             let y = EDGE+j*15
@@ -416,29 +422,32 @@ let decode_rom(file) =
             bmp2.SetPixel(x, y, darken(bmp2.GetPixel(x,y)))
     // redden charlock-enemy zones, bluen-grid metal-slime zones 
     let redden(c:System.Drawing.Color) = 
-        let F(b:byte) = int b * 7 / 8
+        let F(b:byte) = int b * 29 / 32
         System.Drawing.Color.FromArgb(int c.R, F c.G, F c.B)
     let bluen(c:System.Drawing.Color) = 
-        let F(b:byte) = int b * 7 / 8
+        let F(b:byte) = int b * 29 / 32
         System.Drawing.Color.FromArgb(F c.R, F c.G, int c.B)
     for j = 0 to 7 do
         for i = 0 to 7 do
             for y = EDGE+15*j to EDGE+15*j+14 do
                 for x = EDGE+15*i to EDGE+15*i+14 do
-                    if true then // false to switch to ad-hoc
-                        if x%2=0 || y%2 = 0 then
-                            for r = 1 to zone_has_charlock_enemy.[ int ow_zones.[i,j] ] do
-                                bmp2.SetPixel(x, y, redden(bmp2.GetPixel(x,y)))
-                        if (x+y)%2=0 then
-                            for r = 1 to zone_has_metal_slime.[ int ow_zones.[i,j] ] do
-                                bmp2.SetPixel(x, y, bluen(bmp2.GetPixel(x,y)))
+                    if pixelsWhereLabelsHaveModified.Contains(x,y) then
+                        () // do nothing, dont re-color labels
                     else
-                        if x%2=0 || y%2 = 0 then
-                            for r = 1 to zone_has_x.[ int ow_zones.[i,j] ] do
-                                bmp2.SetPixel(x, y, redden(bmp2.GetPixel(x,y)))
-                        if (x+y)%2=0 then
-                            for r = 1 to zone_has_y.[ int ow_zones.[i,j] ] do
-                                bmp2.SetPixel(x, y, bluen(bmp2.GetPixel(x,y)))
+                        if true then // false to switch to ad-hoc
+                            if x%2=0 || y%2 = 0 then
+                                for r = 1 to zone_has_charlock_enemy.[ int ow_zones.[i,j] ] do
+                                    bmp2.SetPixel(x, y, redden(bmp2.GetPixel(x,y)))
+                            if (x+y)%2=0 then
+                                for r = 1 to zone_has_metal_slime.[ int ow_zones.[i,j] ] do
+                                    bmp2.SetPixel(x, y, bluen(bmp2.GetPixel(x,y)))
+                        else
+                            if x%2=0 || y%2 = 0 then
+                                for r = 1 to zone_has_x.[ int ow_zones.[i,j] ] do
+                                    bmp2.SetPixel(x, y, redden(bmp2.GetPixel(x,y)))
+                            if (x+y)%2=0 then
+                                for r = 1 to zone_has_y.[ int ow_zones.[i,j] ] do
+                                    bmp2.SetPixel(x, y, bluen(bmp2.GetPixel(x,y)))
 
 (*
 // TODO extract enemy zones from seed DWRando.414823156739942.CDFGMPRWZ

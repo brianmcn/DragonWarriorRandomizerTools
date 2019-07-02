@@ -61,35 +61,37 @@ type OverworldMapTile =
         | Water_xxES  -> System.Drawing.Color.FromArgb(0,0,0xF1)
         | Water_xxxS  -> System.Drawing.Color.FromArgb(0,0,0xF0)
     member this.AltProjectionColor =
-        let WALK = System.Drawing.Color.ForestGreen
+        let NO_WALK = System.Drawing.Color.LightGray
+        let WALK = System.Drawing.Color.LightSlateGray 
+        let TOWNY = System.Drawing.Color.Red
         match this with
         | Bridge      -> WALK
-        | Castle      -> System.Drawing.Color.Red
+        | Castle      -> TOWNY
         | Cave        -> System.Drawing.Color.Black
         | Desert      -> WALK
         | Forest      -> WALK
         | Hills       -> WALK
-        | Mountain    -> System.Drawing.Color.LightGray
+        | Mountain    -> NO_WALK
         | Plains      -> WALK
         | Swamp       -> WALK
-        | Town        -> System.Drawing.Color.Red
+        | Town        -> TOWNY
         | Wall        -> System.Drawing.Color.DarkGray 
-        | Water_xxxx  -> System.Drawing.Color.LightGray
-        | Water_Nxxx  -> System.Drawing.Color.LightGray
-        | Water_NWxx  -> System.Drawing.Color.LightGray
-        | Water_NxEx  -> System.Drawing.Color.LightGray
-        | Water_NxxS  -> System.Drawing.Color.LightGray
-        | Water_NWEx  -> System.Drawing.Color.LightGray
-        | Water_NWxS  -> System.Drawing.Color.LightGray
-        | Water_NxES  -> System.Drawing.Color.LightGray
-        | Water_NWES  -> System.Drawing.Color.LightGray
-        | Water_xWxx  -> System.Drawing.Color.LightGray
-        | Water_xWEx  -> System.Drawing.Color.LightGray
-        | Water_xWxS  -> System.Drawing.Color.LightGray
-        | Water_xWES  -> System.Drawing.Color.LightGray
-        | Water_xxEx  -> System.Drawing.Color.LightGray
-        | Water_xxES  -> System.Drawing.Color.LightGray
-        | Water_xxxS  -> System.Drawing.Color.LightGray
+        | Water_xxxx  -> NO_WALK
+        | Water_Nxxx  -> NO_WALK
+        | Water_NWxx  -> NO_WALK
+        | Water_NxEx  -> NO_WALK
+        | Water_NxxS  -> NO_WALK
+        | Water_NWEx  -> NO_WALK
+        | Water_NWxS  -> NO_WALK
+        | Water_NxES  -> NO_WALK
+        | Water_NWES  -> NO_WALK
+        | Water_xWxx  -> NO_WALK
+        | Water_xWEx  -> NO_WALK
+        | Water_xWxS  -> NO_WALK
+        | Water_xWES  -> NO_WALK
+        | Water_xxEx  -> NO_WALK
+        | Water_xxES  -> NO_WALK
+        | Water_xxxS  -> NO_WALK
     static member AnimationColors = [| OverworldMapTile.Cave.ProjectionColor; OverworldMapTile.Town.ProjectionColor |]
     static member IsAnimationColor(c:System.Drawing.Color) = 
         if c.ToArgb() = OverworldMapTile.Cave.ProjectionColor.ToArgb() || c.ToArgb() = OverworldMapTile.Town.ProjectionColor.ToArgb() then
