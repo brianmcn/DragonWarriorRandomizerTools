@@ -523,7 +523,8 @@ reset
         | "" -> ()
         | s -> printfn "                                              %s" s
 
-    printfn "LV     STR  AGI  HP   MP" 
+    printfn "for build 'Z' (STR+HP)..."
+    printfn "LV     STR  AGI   HP   MP  rawAG rawMP" 
     for i = 0 to 29 do
         let fives = (if i%5=4 then "-- " else "   ")
         let b1 = bytes.[0x60DD+6*i+4]
@@ -538,7 +539,10 @@ reset
               + if b2 &&&128uy > 0uy then "RP " else fives
               + if b1 &&&  1uy > 0uy then "HE " else fives
               + if b1 &&&  2uy > 0uy then "HU " else fives
-        printfn "%3d %s%3d  %3d  %3d  %3d   %s" (i+1) fives bytes.[0x60DD+6*i+0] bytes.[0x60DD+6*i+1] bytes.[0x60DD+6*i+2] bytes.[0x60DD+6*i+3] s
+        let str, ag, hp, mp = bytes.[0x60DD+6*i+0], bytes.[0x60DD+6*i+1], bytes.[0x60DD+6*i+2], bytes.[0x60DD+6*i+3] 
+        let agZ = ag - ((ag+9uy)/10uy) + 3uy
+        let mpZ = mp - ((mp+9uy)/10uy) + 3uy
+        printfn "%3d %s%3d  %3d  %3d  %3d  %3d  %3d   %s" (i+1) fives str agZ hp mpZ ag mp s
 (*
     // make minor change to map warps
     let new_bytes = Array.copy bytes
