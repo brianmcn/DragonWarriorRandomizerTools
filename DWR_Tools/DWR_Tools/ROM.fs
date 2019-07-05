@@ -436,6 +436,17 @@ let decode_rom(file) =
     if buried_dx <> -999 then  
         bmp2.SetPixel(EDGE+tx+buried_dx, EDGE+ty+buried_dy, BURIED_COLOR)
 
+    // remove unreachable continents
+    // TODO ideally do this before applying labels, both to avoid edge-of-unreachable-under-letter appearing, and also so could color two continents two different colors
+    for x = 0 to 119 do
+        for y = 0 to 119 do
+            if reachable_continents.[x,y] = 0 && bmp2.GetPixel(x+EDGE,y+EDGE).ToArgb() = Constants.OverworldMapTile.Desert.AltProjectionColor.ToArgb() then
+                // charlock is 'unreachable', but dont uncolor it
+                let cx,cy = mapCoords.[Constants.MAP_LOCATIONS.CHARLOCK]
+                if abs(x-cx) < 4 && abs(y-cy) < 4 then
+                    () // do nothing, dont discolor charlock
+                else
+                    bmp2.SetPixel(x+EDGE,y+EDGE, Constants.OverworldMapTile.Mountain.AltProjectionColor)
     // gridlines
     let darken(c:System.Drawing.Color) = 
         let F(b:byte) = int b * 7 / 8
