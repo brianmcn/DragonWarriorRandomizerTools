@@ -92,6 +92,35 @@ type OverworldMapTile =
         | Water_xxEx  -> NO_WALK
         | Water_xxES  -> NO_WALK
         | Water_xxxS  -> NO_WALK
+    member this.IsWalkable =
+        match this with
+        | Bridge      -> true
+        | Castle      -> true
+        | Cave        -> true
+        | Desert      -> true
+        | Forest      -> true
+        | Hills       -> true
+        | Mountain    -> false
+        | Plains      -> true
+        | Swamp       -> true
+        | Town        -> true
+        | Wall        -> false 
+        | Water_xxxx  -> false
+        | Water_Nxxx  -> false
+        | Water_NWxx  -> false
+        | Water_NxEx  -> false
+        | Water_NxxS  -> false
+        | Water_NWEx  -> false
+        | Water_NWxS  -> false
+        | Water_NxES  -> false
+        | Water_NWES  -> false
+        | Water_xWxx  -> false
+        | Water_xWEx  -> false
+        | Water_xWxS  -> false
+        | Water_xWES  -> false
+        | Water_xxEx  -> false
+        | Water_xxES  -> false
+        | Water_xxxS  -> false
     static member AnimationColors = [| OverworldMapTile.Cave.ProjectionColor; OverworldMapTile.Town.ProjectionColor |]
     static member IsAnimationColor(c:System.Drawing.Color) = 
         if c.ToArgb() = OverworldMapTile.Cave.ProjectionColor.ToArgb() || c.ToArgb() = OverworldMapTile.Town.ProjectionColor.ToArgb() then

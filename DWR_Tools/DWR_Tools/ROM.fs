@@ -327,6 +327,8 @@ let decode_rom(file) =
     let WARPS_INDEX_IN_BYTES = 0xf3d8
     let warps = bytes.[WARPS_INDEX_IN_BYTES..]
     let mutable gx,gy,tx,ty = -1, -1, -1, -1  // garin and tantagel coords
+    let mutable nx,ny,sx,sy = -1, -1, -1, -1  // swamp north and south coords, if directly on overworld
+    let mutable bx,by,kx,ky = -1, -1, -1, -1  // brecc and kol coords
     let mutable uc1i, uc2i = -1, -1           // useless charlock warp index 1 & 2
     let mutable rimi = -1                     // rimuldar index
     let mutable gf, tf = (fun _ -> ()), (fun _ -> ())  // thunks to backpatch basement labels when find topside coords later
@@ -381,6 +383,19 @@ let decode_rom(file) =
                 tx <- int from_x
                 ty <- int from_y
                 tf(tx,ty)
+            // TODO make a better array factoring of destination xys
+            if dest="Swamp Cave North" then
+                nx <- int from_x
+                ny <- int from_y
+            if dest="Swamp Cave South" then
+                sx <- int from_x
+                sy <- int from_y
+            if dest="Brecconary" then
+                bx <- int from_x
+                by <- int from_y
+            if dest="Kol" then
+                kx <- int from_x
+                ky <- int from_y
         elif from_map = 9uy then
             let dest, isCave, a = dest()
             printfn "under Garin: %s" dest
@@ -398,6 +413,37 @@ let decode_rom(file) =
         else
             if debugPrint || printIt then
                 printfn ""
+
+    let reachable_continents = Array2D.zeroCreate 120 120
+    let walk(x, y, label) =
+        let rec loop(x, y, label, acc, k) = 
+            if x < 0 || y < 0 || x > 119 || y > 119 then  // outside map
+                k acc
+            elif reachable_continents.[x,y] <> 0 then     // already marked
+                k acc
+            elif not(tiles.[y,x].IsWalkable) then         // can't be walked
+                k acc
+            else
+                reachable_continents.[x,y] <- label
+                loop(x-1,y,label,acc, (fun acc -> 
+                loop(x+1,y,label,acc, (fun acc -> 
+                loop(x,y-1,label,acc, (fun acc -> 
+                loop(x,y+1,label,acc, (fun acc -> k (acc+1)))))))))
+        if reachable_continents.[x,y] <> 0 then
+            failwith "bad walk() call"
+        loop(x, y, label, 0, fun s -> s)
+    let cont_1_size = walk(tx, ty, 1)  // label tantagel as continent 1
+    let cont_2_size = 
+        if nx <> -1 && reachable_continents.[nx,ny]=0 then
+            walk(nx, ny, 2)  // swamp N not on tantagel continent, label 2
+        elif sx <> -1 && reachable_continents.[sx,sy]=0 then
+            walk(sx, sy, 2)  // swamp S not on tantagel continent, label 2
+        elif reachable_continents.[gx,gy]=0 then
+            walk(gx, gy, 2)  // garinham not on tantagel continent, label 2
+        else
+            failwith "impossible map layout?"
+    printfn "Kol   is on continent %d" reachable_continents.[kx,ky]
+    printfn "Brecc is on continent %d" reachable_continents.[bx,by]
   
     let BURIED_COLOR = System.Drawing.Color.Orange
     if buried_dx <> -999 then  
