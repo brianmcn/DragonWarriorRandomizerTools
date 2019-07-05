@@ -219,6 +219,36 @@ let DWR_XP_LEVEL_THRESHOLDS_50_PERCENT = [|
 
 ///////////////////////////////////////////////////////
 
+// locations that can appear on the overworld map
+module MAP_LOCATIONS =
+    // 6 towns
+    let GARINHAM = "Garinham"
+    let KOL = "Kol"
+    let BRECCONARY = "Brecconary"
+    let RIMULDAR = "Rimuldar"
+    let CANTLIN = "Cantlin"
+    let HAUKSNESS = "Hauksness"
+    // 2 castles
+    let TANTAGEL = "Tantagel Castle"
+    let CHARLOCK = "Charlock Castle"
+    // 3 old men
+    let STAFF_CAVE = "Staff of Rain Shrine"
+    let JERK_CAVE = "Jerk Cave"
+    let SUN_STONES_CAVE = "Sun Stones Cave"
+    // 5 caves
+    let SWAMP_NORTH = "Swamp Cave North"
+    let SWAMP_SOUTH = "Swamp Cave South"
+    let MOUNTAIN_CAVE = "Mountain Cave"
+    let TABLET_CAVE = "Tablet Cave"
+    let GARINS_TOMB = "Grave of Garin"
+    let IsLocation(s) = 
+        [|GARINHAM; KOL; BRECCONARY; RIMULDAR; CANTLIN; HAUKSNESS; 
+          TANTAGEL; CHARLOCK; 
+          STAFF_CAVE; JERK_CAVE; SUN_STONES_CAVE; 
+          SWAMP_NORTH; SWAMP_SOUTH; MOUNTAIN_CAVE; TABLET_CAVE; GARINS_TOMB|] |> Array.contains s
+
+///////////////////////////////////////////////////////
+
 // locations and items are just for a manual 'checklist' - second string is optional image to bring up when clicked
 let voice = new System.Speech.Synthesis.SpeechSynthesizer()
 type LocationIDs = 

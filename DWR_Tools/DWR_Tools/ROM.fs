@@ -326,9 +326,7 @@ let decode_rom(file) =
 
     let WARPS_INDEX_IN_BYTES = 0xf3d8
     let warps = bytes.[WARPS_INDEX_IN_BYTES..]
-    let mutable gx,gy,tx,ty = -1, -1, -1, -1  // garin and tantagel coords
-    let mutable nx,ny,sx,sy = -1, -1, -1, -1  // swamp north and south coords, if directly on overworld
-    let mutable bx,by,kx,ky = -1, -1, -1, -1  // brecc and kol coords
+    let mapCoords = new System.Collections.Generic.Dictionary<_,_>()
     let mutable uc1i, uc2i = -1, -1           // useless charlock warp index 1 & 2
     let mutable rimi = -1                     // rimuldar index
     let mutable gf, tf = (fun _ -> ()), (fun _ -> ())  // thunks to backpatch basement labels when find topside coords later
@@ -352,64 +350,47 @@ let decode_rom(file) =
             printf "%3d %3d %3d %3d %3d %3d " from_map from_x from_y to_map to_x to_y
         let dest() = 
             match to_map with
-            | 9uy -> "Garinham", false, [|"XXXXX";"X    ";"X XXX";"X   X";"XXXXX"|]
-            | 13uy -> "Staff of Rain Shrine", true, [|" X   ";"  X  ";"   X ";"  X  ";" X   "|]
-            | 7uy -> "Kol", false, [|"X  X ";"X X  ";"XX   ";"X X  ";"X  X "|]
-            | 8uy -> "Brecconary", false, [|"XXXX ";"X  X ";"XXXXX";"X   X";"XXXXX"|]
-            | 4uy -> "Tantagel Castle", false, [|"XXXXX";"  X  ";"  X  ";"  X  ";"  X  "|]
-            | 21uy when to_y = 0uy -> "Swamp Cave North", true, [|"X   X";"XX  X"; "X X X";"X  XX";"X   X"|]
-            | 21uy when to_y <> 0uy -> "Swamp Cave South", true, [|"XXXXX"; "X    ";"XXXXX";"    X";"XXXXX"|]
-            | 2uy -> "Charlock Castle", false, null
-            | 22uy -> "Mountain Cave", true, [|"X   X";"XX XX";"X X X";"X   X";"X   X"|]
-            | 11uy -> "Rimuldar", false, [|"XXXXX";"X   X";"XXXX ";"X   X";"X   X"|]
-            | 3uy -> "Hauksness", false, [|"X   X";"X   X";"XXXXX";"X   X";"X   X"|]
-            | 10uy -> "Cantlin", false, [|"XXXXX";"X    ";"X    ";"X    ";"XXXXX"|]
-            | 14uy -> "Jerk Cave", true, [|"   X ";"  X  ";" X   ";"  X  ";"   X "|]
-            | 28uy -> "Tablet Cave", true, [|"XXXXX";"  X  ";"  X  ";"  X  ";"  X  "|]
-            | 12uy -> "Sun Stones Cave", true, [|"     ";"X   X";" X X ";"  X  ";"     "|]
-            | 24uy -> "Grave of Garin", true, [|"XXXXX";"X    ";"X XXX";"X   X";"XXXXX"|]
-            | 6uy -> "Charlock Throne", false, null  // in short-charlock
+            | 9uy  -> Constants.MAP_LOCATIONS.GARINHAM, false, [|"XXXXX";"X    ";"X XXX";"X   X";"XXXXX"|]
+            | 13uy -> Constants.MAP_LOCATIONS.STAFF_CAVE, true, [|" X   ";"  X  ";"   X ";"  X  ";" X   "|]
+            | 7uy  -> Constants.MAP_LOCATIONS.KOL, false, [|"X  X ";"X X  ";"XX   ";"X X  ";"X  X "|]
+            | 8uy  -> Constants.MAP_LOCATIONS.BRECCONARY, false, [|"XXXX ";"X  X ";"XXXXX";"X   X";"XXXXX"|]
+            | 4uy  -> Constants.MAP_LOCATIONS.TANTAGEL, false, [|"XXXXX";"  X  ";"  X  ";"  X  ";"  X  "|]
+            | 21uy when to_y = 0uy -> Constants.MAP_LOCATIONS.SWAMP_NORTH, true, [|"X   X";"XX  X"; "X X X";"X  XX";"X   X"|]
+            | 21uy when to_y <> 0uy -> Constants.MAP_LOCATIONS.SWAMP_SOUTH, true, [|"XXXXX"; "X    ";"XXXXX";"    X";"XXXXX"|]
+            | 2uy  -> Constants.MAP_LOCATIONS.CHARLOCK, false, null
+            | 22uy -> Constants.MAP_LOCATIONS.MOUNTAIN_CAVE, true, [|"X   X";"XX XX";"X X X";"X   X";"X   X"|]
+            | 11uy -> Constants.MAP_LOCATIONS.RIMULDAR, false, [|"XXXXX";"X   X";"XXXX ";"X   X";"X   X"|]
+            | 3uy  -> Constants.MAP_LOCATIONS.HAUKSNESS, false, [|"X   X";"X   X";"XXXXX";"X   X";"X   X"|]
+            | 10uy -> Constants.MAP_LOCATIONS.CANTLIN, false, [|"XXXXX";"X    ";"X    ";"X    ";"XXXXX"|]
+            | 14uy -> Constants.MAP_LOCATIONS.JERK_CAVE, true, [|"   X ";"  X  ";" X   ";"  X  ";"   X "|]
+            | 28uy -> Constants.MAP_LOCATIONS.TABLET_CAVE, true, [|"XXXXX";"  X  ";"  X  ";"  X  ";"  X  "|]
+            | 12uy -> Constants.MAP_LOCATIONS.SUN_STONES_CAVE, true, [|"     ";"X   X";" X X ";"  X  ";"     "|]
+            | 24uy -> Constants.MAP_LOCATIONS.GARINS_TOMB, true, [|"XXXXX";"X    ";"X XXX";"X   X";"XXXXX"|]
+            | 6uy  -> "Charlock Throne", false, null  // in short-charlock
             | _ -> failwith "unexpected warp dest"
         if from_map = 1uy then
             let dest, isCave, a = dest()
             printfn "at %3d %3d : %s" from_x from_y dest
+            if Constants.MAP_LOCATIONS.IsLocation(dest) then
+                mapCoords.Add(dest, (int from_x,int from_y) )
             if a <> null then
                 tryAllPlace(int from_x, int from_y, isCave, a)
-            if dest="Garinham" then
-                gx <- int from_x
-                gy <- int from_y
-                gf(gx,gy)
-            if dest="Tantagel Castle" then
-                tx <- int from_x
-                ty <- int from_y
-                tf(tx,ty)
-            // TODO make a better array factoring of destination xys
-            if dest="Swamp Cave North" then
-                nx <- int from_x
-                ny <- int from_y
-            if dest="Swamp Cave South" then
-                sx <- int from_x
-                sy <- int from_y
-            if dest="Brecconary" then
-                bx <- int from_x
-                by <- int from_y
-            if dest="Kol" then
-                kx <- int from_x
-                ky <- int from_y
+            if dest=Constants.MAP_LOCATIONS.GARINHAM then
+                gf(int from_x,int from_y)
+            if dest=Constants.MAP_LOCATIONS.TANTAGEL then
+                tf(int from_x,int from_y)
         elif from_map = 9uy then
             let dest, isCave, a = dest()
             printfn "under Garin: %s" dest
-            if gx <> -1 then
-                tryAllPlace(gx, gy, isCave, a)
-            else
-                gf <- fun (gx,gy) -> tryAllPlace(gx, gy, isCave, a)
+            match mapCoords.TryGetValue(Constants.MAP_LOCATIONS.GARINHAM) with
+            | true, (gx,gy) -> tryAllPlace(gx, gy, isCave, a)
+            | _ -> gf <- fun (gx,gy) -> tryAllPlace(gx, gy, isCave, a)
         elif from_map = 4uy then
             let dest, isCave, a = dest()
             printfn "under Tantagel: %s" dest
-            if tx <> -1 then
-                tryAllPlace(tx, ty, isCave, a)
-            else
-                tf <- fun (tx,ty) -> tryAllPlace(tx, ty, isCave, a)
+            match mapCoords.TryGetValue(Constants.MAP_LOCATIONS.TANTAGEL) with
+            | true, (tx,ty) -> tryAllPlace(tx, ty, isCave, a)
+            | _ -> tf <- fun (tx,ty) -> tryAllPlace(tx, ty, isCave, a)
         else
             if debugPrint || printIt then
                 printfn ""
@@ -432,6 +413,10 @@ let decode_rom(file) =
         if reachable_continents.[x,y] <> 0 then
             failwith "bad walk() call"
         loop(x, y, label, 0, fun s -> s)
+    let tx,ty = mapCoords.[Constants.MAP_LOCATIONS.TANTAGEL]
+    let nx,ny = try mapCoords.[Constants.MAP_LOCATIONS.SWAMP_NORTH] with _ -> -1,-1
+    let sx,sy = try mapCoords.[Constants.MAP_LOCATIONS.SWAMP_SOUTH] with _ -> -1,-1
+    let gx,gy = mapCoords.[Constants.MAP_LOCATIONS.GARINHAM]
     let cont_1_size = walk(tx, ty, 1)  // label tantagel as continent 1
     let cont_2_size = 
         if nx <> -1 && reachable_continents.[nx,ny]=0 then
@@ -442,6 +427,8 @@ let decode_rom(file) =
             walk(gx, gy, 2)  // garinham not on tantagel continent, label 2
         else
             failwith "impossible map layout?"
+    let kx,ky = mapCoords.[Constants.MAP_LOCATIONS.KOL]
+    let bx,by = mapCoords.[Constants.MAP_LOCATIONS.BRECCONARY]
     printfn "Kol   is on continent %d" reachable_continents.[kx,ky]
     printfn "Brecc is on continent %d" reachable_continents.[bx,by]
   
