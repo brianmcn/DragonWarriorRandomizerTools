@@ -1109,6 +1109,65 @@ let xmain argv =
     //neededAttacksTable()
     //ROM.test_rng()
     //ROM.test_period(0x7c65)   // period was 32768, with 2 calls per frame and 60fps, every 4.5 mins this cycles
+    if false then //argv.Length > 10 then
+        let mutable count = 0
+        let mutable cont1, cont2 = 0, 0
+        let mutable g1, k1, b1, r1, c1, h1 = 0,0,0,0,0,0
+        let mutable single_continent_count = 0
+        let debug_files = ResizeArray()
+        for file in System.IO.Directory.EnumerateFiles("""C:\Users\Admin1\Desktop\dwrandomizer-2.0.6-windows\""", "*.CDFGMPRWZ.nes") do
+            let _bmp1,_bmp2,reachable_continents,mapCoords,cont_1_size,cont_2_size  = ROM.decode_rom(file)
+            count <- count + 1
+            cont1 <- cont1 + cont_1_size
+            if cont_2_size = 0 then
+                single_continent_count <- single_continent_count + 1
+                debug_files.Add(file)
+            else
+                cont2 <- cont2 + cont_2_size
+                let gx,gy = mapCoords.[Constants.MAP_LOCATIONS.GARINHAM]
+                let kx,ky = mapCoords.[Constants.MAP_LOCATIONS.KOL]
+                let bx,by = mapCoords.[Constants.MAP_LOCATIONS.BRECCONARY]
+                let rx,ry = mapCoords.[Constants.MAP_LOCATIONS.RIMULDAR]
+                let cx,cy = mapCoords.[Constants.MAP_LOCATIONS.CANTLIN]
+                let hx,hy = mapCoords.[Constants.MAP_LOCATIONS.HAUKSNESS]
+                if reachable_continents.[gx,gy] = 1 then
+                    g1 <- g1 + 1
+                if reachable_continents.[kx,ky] = 1 then
+                    k1 <- k1 + 1
+                if reachable_continents.[bx,by] = 1 then
+                    b1 <- b1 + 1
+                if reachable_continents.[rx,ry] = 1 then
+                    r1 <- r1 + 1
+                if reachable_continents.[cx,cy] = 1 then
+                    c1 <- c1 + 1
+                if reachable_continents.[hx,hy] = 1 then
+                    h1 <- h1 + 1
+        let multi_count = count - single_continent_count 
+        printfn "Summary statistics of %d seeds" count
+        printfn ""
+        printfn "Tantagel Continent average size: %d" (cont1 / count)
+        printfn "Other Continent average size:    %d" (cont2 / count)
+        printfn ""
+        printfn "Single continent chance:   %f (%d of %d)" (float single_continent_count/float count) single_continent_count count
+        printfn ""
+        printfn "Chance of being on Tantagel Continent (when 2 continents):"
+        printfn " - Garinham:   %2d%%" (g1*100/multi_count)
+        printfn " - Kol:        %2d%%" (k1*100/multi_count)
+        printfn " - Brecconary: %2d%%" (b1*100/multi_count)
+        printfn " - Rimuldar:   %2d%%" (r1*100/multi_count)
+        printfn " - Cantlin:    %2d%%" (c1*100/multi_count)
+        printfn " - Hauksness:  %2d%%" (k1*100/multi_count)
+        printfn ""
+        for file in debug_files do
+            printfn "single cont: %s" file
+            (*
+DWRando.4614027807516651.CDFGMPRWZ.nes
+DWRando.5343880208466324698.CDFGMPRWZ.nes
+DWRando.82671621.CDFGMPRWZ.nes
+            *)
+        0
+    else
+
     let DISPLAY_MAP_OF_SEED = argv.Length > 5
     if DISPLAY_MAP_OF_SEED then
         use fd = new System.Windows.Forms.OpenFileDialog()
@@ -1119,7 +1178,7 @@ let xmain argv =
         if fd.ShowDialog() = System.Windows.Forms.DialogResult.OK then
             //let bmp1,bmp2 = ROM.decode_rom("""C:\Users\Admin1\Desktop\fceux-2.2.3-win32\DWRando.3900483431572982.CDFGMPRWZ.nes""")
             //let bmp1,bmp2 = ROM.decode_rom("""C:\Users\Admin1\Desktop\dwrandomizer-2.0.6-windows\DWRando.8523561777557155.CDFGMPRWZ.nes""")
-            let bmp1,bmp2 = ROM.decode_rom(fd.FileName)
+            let bmp1,bmp2,_reachable_continents,_mapCoords,_cont_1_size,_cont_2_size  = ROM.decode_rom(fd.FileName)
             let w = new Window()
 
             let g = new Grid()

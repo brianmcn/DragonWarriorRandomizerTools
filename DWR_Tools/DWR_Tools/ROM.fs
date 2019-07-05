@@ -426,7 +426,7 @@ let decode_rom(file) =
         elif reachable_continents.[gx,gy]=0 then
             walk(gx, gy, 2)  // garinham not on tantagel continent, label 2
         else
-            failwith "impossible map layout?"
+            0  // single continent
     let kx,ky = mapCoords.[Constants.MAP_LOCATIONS.KOL]
     let bx,by = mapCoords.[Constants.MAP_LOCATIONS.BRECCONARY]
     printfn "Kol   is on continent %d" reachable_continents.[kx,ky]
@@ -641,7 +641,7 @@ reset
     System.IO.File.WriteAllBytes(new_file, new_bytes)
 *)
 
-    bmp1, bmp2
+    bmp1, bmp2, reachable_continents, mapCoords, cont_1_size, cont_2_size
 
 (*
 
