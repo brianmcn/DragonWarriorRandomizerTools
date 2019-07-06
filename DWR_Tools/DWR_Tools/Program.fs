@@ -1109,16 +1109,18 @@ let xmain argv =
     //neededAttacksTable()
     //ROM.test_rng()
     //ROM.test_period(0x7c65)   // period was 32768, with 2 calls per frame and 60fps, every 4.5 mins this cycles
-    if false then //argv.Length > 10 then
+    if false then
         let mutable count = 0
         let mutable cont1, cont2 = 0, 0
         let mutable g1, k1, b1, r1, c1, h1 = 0,0,0,0,0,0
         let mutable single_continent_count = 0
+        let mutable charlock_inn_dist = 0
         let debug_files = ResizeArray()
         for file in System.IO.Directory.EnumerateFiles("""C:\Users\Admin1\Desktop\dwrandomizer-2.0.6-windows\""", "*.CDFGMPRWZ.nes") do
-            let _bmp1,_bmp2,reachable_continents,mapCoords,cont_1_size,cont_2_size  = ROM.decode_rom(file)
+            let _bmp1,_bmp2,reachable_continents,mapCoords,cont_1_size,cont_2_size,ch_dist_inn = ROM.decode_rom(file)
             count <- count + 1
             cont1 <- cont1 + cont_1_size
+            charlock_inn_dist <- charlock_inn_dist + ch_dist_inn
             if cont_2_size = 0 then
                 single_continent_count <- single_continent_count + 1
                 debug_files.Add(file)
@@ -1147,6 +1149,7 @@ let xmain argv =
         printfn ""
         printfn "Tantagel Continent average size: %d" (cont1 / count)
         printfn "Other Continent average size:    %d" (cont2 / count)
+        printfn "Avg dist charlock to inn:    %d" (charlock_inn_dist / count)
         printfn ""
         printfn "Single continent chance:   %f (%d of %d)" (float single_continent_count/float count) single_continent_count count
         printfn ""
@@ -1165,6 +1168,8 @@ DWRando.4614027807516651.CDFGMPRWZ.nes
 DWRando.5343880208466324698.CDFGMPRWZ.nes
 DWRando.82671621.CDFGMPRWZ.nes
             *)
+        printfn "press enter"
+        System.Console.ReadLine() |> ignore
         0
     else
 
@@ -1178,7 +1183,7 @@ DWRando.82671621.CDFGMPRWZ.nes
         if fd.ShowDialog() = System.Windows.Forms.DialogResult.OK then
             //let bmp1,bmp2 = ROM.decode_rom("""C:\Users\Admin1\Desktop\fceux-2.2.3-win32\DWRando.3900483431572982.CDFGMPRWZ.nes""")
             //let bmp1,bmp2 = ROM.decode_rom("""C:\Users\Admin1\Desktop\dwrandomizer-2.0.6-windows\DWRando.8523561777557155.CDFGMPRWZ.nes""")
-            let bmp1,bmp2,_reachable_continents,_mapCoords,_cont_1_size,_cont_2_size  = ROM.decode_rom(fd.FileName)
+            let bmp1,bmp2,_reachable_continents,_mapCoords,_cont_1_size,_cont_2_size,_ch_inn_dist  = ROM.decode_rom(fd.FileName)
             let w = new Window()
 
             let g = new Grid()

@@ -427,10 +427,36 @@ let decode_rom(file) =
             walk(gx, gy, 2)  // garinham not on tantagel continent, label 2
         else
             0  // single continent
+    (*
     let kx,ky = mapCoords.[Constants.MAP_LOCATIONS.KOL]
     let bx,by = mapCoords.[Constants.MAP_LOCATIONS.BRECCONARY]
     printfn "Kol   is on continent %d" reachable_continents.[kx,ky]
     printfn "Brecc is on continent %d" reachable_continents.[bx,by]
+    *)
+    let compute_charlock_distance_to_inn() =
+        let visited = Array2D.zeroCreate 120 120
+        let cx,cy = mapCoords.[Constants.MAP_LOCATIONS.CHARLOCK]
+        let hx,hy = mapCoords.[Constants.MAP_LOCATIONS.HAUKSNESS]
+        let cx = cx + 3 // reachable location on start map across to-be-created bridge
+        let q = new System.Collections.Generic.Queue<_>()
+        q.Enqueue( (cx,cy,3) )
+        let mutable distance, finished = 999, false
+        while not finished && not(q.Count = 0) do
+            let x, y, dist = q.Dequeue()
+            distance <- dist
+            if not visited.[x,y] then
+                visited.[x,y] <- true
+                match tiles.[x,y] with
+                | Constants.OverworldMapTile.Castle -> finished <- true  // must be tantagel, charlock not reachable
+                | Constants.OverworldMapTile.Town when not(x=hx && y=hy) -> finished <- true // in town
+                | _ -> ()
+                let can_walk(x,y) = x>=0 && y>=0 && x<=119 && y<=119 && tiles.[x,y].IsWalkable 
+                if not finished then
+                    if can_walk(x+1,y) then q.Enqueue(x+1,y,dist+1)
+                    if can_walk(x-1,y) then q.Enqueue(x-1,y,dist+1)
+                    if can_walk(x,y+1) then q.Enqueue(x,y+1,dist+1)
+                    if can_walk(x,y-1) then q.Enqueue(x,y-1,dist+1)
+        distance
   
     let BURIED_COLOR = System.Drawing.Color.Orange
     if buried_dx <> -999 then  
@@ -641,7 +667,7 @@ reset
     System.IO.File.WriteAllBytes(new_file, new_bytes)
 *)
 
-    bmp1, bmp2, reachable_continents, mapCoords, cont_1_size, cont_2_size
+    bmp1, bmp2, reachable_continents, mapCoords, cont_1_size, cont_2_size, compute_charlock_distance_to_inn()
 
 (*
 
