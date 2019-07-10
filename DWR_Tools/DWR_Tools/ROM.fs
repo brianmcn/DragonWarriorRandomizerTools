@@ -5,7 +5,7 @@ let MAPS = [|
     "OVERWORLD"
     "CHARLOCK"
     "HAUKSNESS"
-    "TANTEGEL"
+    "TANTEGEL_TREASURY"   // TANTEGEL
     "TANTEGEL_THRONE_ROOM" // 5 
     "CHARLOCK_THRONE_ROOM"
     "KOL"
@@ -13,7 +13,7 @@ let MAPS = [|
     "GARINHAM"
     "CANTLIN" // 10 
     "RIMULDAR"
-    "TANTEGEL_BASEMENT"
+    "SUN_STONES_CAVE"    // TANTEGEL_BASEMENT
     "NORTHERN_SHRINE"
     "SOUTHERN_SHRINE"
     "CHARLOCK_CAVE_1" // 15 
@@ -39,22 +39,22 @@ let CHESTS = [|
     "HERB"
     "KEY"
     "TORCH"
-    "FAIRY_WATER"
+    "FAIRY_WATER"  // 5
     "WINGS"
     "DRAGON_SCALE"
     "FLUTE"
     "RING"
-    "TOKEN"
+    "TOKEN"        // 10
     "GWAELINS_LOVE"
     "CURSED_BELT"
     "HARP"
     "NECKLACE"
-    "STONES"
+    "STONES"       // 15
     "STAFF"
     "SWORD"
     "GOLD_5"
     "GOLD_6"
-    "GOLD_10"
+    "GOLD_10"      // 20
     "GOLD_500"
     "GOLD_120"
     "TABLET"
@@ -94,7 +94,7 @@ let decode_rom(file) =
     let dw_alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\"\"'*>_:__.,-_?!;)(``_'___________  "
     let chars = Array.init location_text_bytes.Length (fun i -> try dw_alphabet.[int location_text_bytes.[i]] with _ -> ' ')
     let location_str = (new System.String(chars))
-    printfn "loc: %s" location_str 
+    //printfn "loc: %s" location_str 
     // From Tantegel Castle travel 49 leagues to the north and 24 to the west
     let to1 = location_str.IndexOf("to the")
     let to2 = location_str.IndexOf("to the",to1+1)
@@ -102,21 +102,64 @@ let decode_rom(file) =
         try
             let num1 = int(location_str.Substring(to1 - 12,3))
             let num2 = int(location_str.Substring(to2 - 4,3))
-            printfn "%d %d" num1 num2
+            //printfn "%d %d" num1 num2
             let buried_dy = if location_str.[to1+7] = 'n' then -num1 else num1
             let buried_dx = if location_str.[to2+7] = 'w' then -num2 else num2
             buried_dx, buried_dy 
         with _ -> -999, -999
 
     // buried items
-    printfn ""
     printfn "BURIED ITEMS"    
     for thing, address in ["armor", 0xe160; "flute", 0xe14a; "token", 0xe10b] do
         let data = content.[address..address+15]
         let thing_map = data.[3]
         let thing_x = data.[9]
         let thing_y = data.[15]
-        printfn "%s %s %d %d" thing MAPS.[int thing_map] thing_x thing_y
+        printfn "  %s %s %d %d" thing MAPS.[int thing_map] thing_x thing_y
+
+    // spike tile enemies
+    printfn ""
+    printfn "SPIKE TILES"
+    let hauks_enemy    = int content.[0xcd64]
+    let swamp_enemy    = int content.[0xcd81]
+    let charlock_enemy = int content.[0xcd9e]
+    printfn "  hauks: %2d %s" hauks_enemy (EnemyData.ENEMY_NAME hauks_enemy)
+    printfn "  swamp: %2d %s" swamp_enemy (EnemyData.ENEMY_NAME swamp_enemy)
+    printfn "  charl: %2d %s" charlock_enemy (EnemyData.ENEMY_NAME charlock_enemy)
+
+    // chests
+    // each chest data is 4 bytes: map, x, y, item
+    printfn ""
+    let chest_bytes = content.[0x5dcd..0x5dcd+4*31]
+    let all = new System.Text.StringBuilder()
+    let sra = ResizeArray()
+    let ksb = new System.Text.StringBuilder()
+    for i = 0 to 30 do
+        let map, item = chest_bytes.[i*4], chest_bytes.[i*4+3] 
+        all.AppendLine(sprintf "  %20s    %-20s" MAPS.[int map] CHESTS.[int item]) |> ignore
+        match item with
+        | 8uy | 9uy | 10uy | 13uy | 14uy | 15uy | 17uy -> sra.Add(CHESTS.[int item], MAPS.[int map])
+        | 3uy -> if map <> 5uy then ksb.Append(MAPS.[int map]).Append("  ") |> ignore
+        | _ -> ()
+    printfn "SUMMARY"
+    let sorted = sra.ToArray() |> Array.sortBy (fun (item,_loc) ->
+        match item with
+        | "STONES" -> 1
+        | "HARP" -> 2
+        | "TOKEN" -> 3
+        | "SWORD" -> 4
+        | "RING" -> 5
+        | "FLUTE" -> 6
+        | "NECKLACE" -> 7
+        | _ -> failwith "bad summary item"
+        )
+    for item,loc in sorted do
+        printfn "  %12s   %s" item loc
+    printfn ""
+    printfn "KEYS: %s" (ksb.ToString())
+    printfn ""
+    printfn "ALL CHESTS"
+    printf "%s" (all.ToString())
 
     // shops
     printfn ""
@@ -142,36 +185,6 @@ let decode_rom(file) =
             else
                 printfn "%2d  %s" item SHOP_ITEM.[int item]
     
-    // spike tile enemies
-    printfn ""
-    printfn "SPIKE TILES"
-    let hauks_enemy    = int content.[0xcd64]
-    let swamp_enemy    = int content.[0xcd81]
-    let charlock_enemy = int content.[0xcd9e]
-    printfn "  hauks: %2d %s" hauks_enemy (EnemyData.ENEMY_NAME hauks_enemy)
-    printfn "  swamp: %2d %s" swamp_enemy (EnemyData.ENEMY_NAME swamp_enemy)
-    printfn "  charl: %2d %s" charlock_enemy (EnemyData.ENEMY_NAME charlock_enemy)
-
-    // chests
-    // each chest data is 4 bytes: map, x, y, item
-    let chest_bytes = content.[0x5dcd..0x5dcd+4*31]
-    let sb = new System.Text.StringBuilder()
-    let ksb = new System.Text.StringBuilder()
-    printfn ""
-    printfn "ALL CHESTS"
-    for i = 0 to 30 do
-        let map, item = chest_bytes.[i*4], chest_bytes.[i*4+3] 
-        let s = sprintf "  %20s    %20s" MAPS.[int map] CHESTS.[int item]
-        printfn "%s" s
-        match item with
-        | 8uy | 9uy | 10uy | 13uy | 14uy | 15uy | 17uy -> sb.AppendLine(s) |> ignore
-        | 3uy -> if map <> 5uy then ksb.Append(MAPS.[int map]).Append("  ") |> ignore
-        | _ -> ()
-    printfn "SUMMARY"
-    printf "%s" (sb.ToString())
-    printfn "KEYS: %s" (ksb.ToString())
-
-    printfn ""
     let zone_has_charlock_enemy = Array.zeroCreate 20
     let zone_has_metal_slime = Array.zeroCreate 20
     let zone_has_x = Array.zeroCreate 20  // for ad-hoc mapping
@@ -594,7 +607,7 @@ reset
         | s -> printfn "                                              %s" s
 
     printfn "for build 'Z' (STR+HP)..."
-    printfn "LV     STR  AGI   HP   MP  rawAG rawMP" 
+    printfn "   LV     STR  AGI   HP   MP  rawAG rawMP" 
     for i = 0 to 29 do
         let fives = (if i%5=4 then "-- " else "   ")
         let b1 = bytes.[0x60DD+6*i+4]
@@ -610,9 +623,13 @@ reset
               + if b1 &&&  1uy > 0uy then "HE " else fives
               + if b1 &&&  2uy > 0uy then "HU " else fives
         let str, ag, hp, mp = bytes.[0x60DD+6*i+0], bytes.[0x60DD+6*i+1], bytes.[0x60DD+6*i+2], bytes.[0x60DD+6*i+3] 
+        let max_dl = ((int str + 42) - 100) / 2
+        let avg_dl = max_dl * 3 / 4
+        let go_mode = int hp > 96 && ((int mp/8)+1)*avg_dl > 149  // quick approx
+        let go_mode = go_mode || int hp > 129 && ((int mp/8)+1)*(avg_dl+3) > 149  // quick approx with DN
         let agZ = ag - ((ag+9uy)/10uy) + 3uy
         let mpZ = mp - ((mp+9uy)/10uy) + 3uy
-        printfn "%3d %s%3d  %3d  %3d  %3d  %3d  %3d   %s" (i+1) fives str agZ hp mpZ ag mp s
+        printfn "%s %3d %s%3d  %3d  %3d  %3d  %3d  %3d   %s" (if go_mode then "GO " else "   ") (i+1) fives str agZ hp mpZ ag mp s 
 (*
     // make minor change to map warps
     let new_bytes = Array.copy bytes
