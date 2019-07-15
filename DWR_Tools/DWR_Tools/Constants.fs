@@ -241,11 +241,12 @@ module MAP_LOCATIONS =
     let MOUNTAIN_CAVE = "Mountain Cave"
     let TABLET_CAVE = "Tablet Cave"
     let GARINS_TOMB = "Grave of Garin"
-    let IsLocation(s) = 
+    let ALL = 
         [|GARINHAM; KOL; BRECCONARY; RIMULDAR; CANTLIN; HAUKSNESS; 
           TANTAGEL; CHARLOCK; 
           STAFF_CAVE; JERK_CAVE; SUN_STONES_CAVE; 
-          SWAMP_NORTH; SWAMP_SOUTH; MOUNTAIN_CAVE; TABLET_CAVE; GARINS_TOMB|] |> Array.contains s
+          SWAMP_NORTH; SWAMP_SOUTH; MOUNTAIN_CAVE; TABLET_CAVE; GARINS_TOMB|]
+    let IsLocation(s) = ALL |> Array.contains s
 
 ///////////////////////////////////////////////////////
 

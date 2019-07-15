@@ -607,7 +607,8 @@ reset
         | s -> printfn "                                              %s" s
 
     printfn "for build 'Z' (STR+HP)..."
-    printfn "   LV     STR  AGI   HP   MP  rawAG rawMP" 
+    let header = "     LV    STR  AGI  HP   MP  rawAG rawMP" 
+    printfn "%s" header
     for i = 0 to 29 do
         let fives = (if i%5=4 then "-- " else "   ")
         let b1 = bytes.[0x60DD+6*i+4]
@@ -630,6 +631,9 @@ reset
         let agZ = ag - ((ag+9uy)/10uy) + 3uy
         let mpZ = mp - ((mp+9uy)/10uy) + 3uy
         printfn "%s %3d %s%3d  %3d  %3d  %3d  %3d  %3d   %s" (if go_mode then "GO " else "   ") (i+1) fives str agZ hp mpZ ag mp s 
+        if i=14 then
+            printfn "%s" header
+
 (*
     // make minor change to map warps
     let new_bytes = Array.copy bytes

@@ -1112,11 +1112,15 @@ let xmain argv =
     if false then
         let mutable count = 0
         let mutable cont1, cont2 = 0, 0
-        let mutable g1, k1, b1, r1, c1, h1 = 0,0,0,0,0,0
+        let N = Constants.MAP_LOCATIONS.ALL.Length 
+        let on_cont1_count = Array.zeroCreate N
+        let not_overworld_count = Array.zeroCreate N
+        let num_cont2_locations = ResizeArray()
         let mutable single_continent_count = 0
         let mutable charlock_inn_dist = 0
         let debug_files = ResizeArray()
-        for file in System.IO.Directory.EnumerateFiles("""C:\Users\Admin1\Desktop\dwrandomizer-2.0.6-windows\""", "*.CDFGMPRWZ.nes") do
+        //for file in System.IO.Directory.EnumerateFiles("""C:\Users\Admin1\Desktop\dwrandomizer-2.0.6-windows\""", "*.CDFGMPRWZ.nes") do
+        for file in System.IO.Directory.EnumerateFiles("""C:\Users\Admin1\Desktop\dwrandomizer-2.1-beta-402\""", "*.CDFGMPRWZ.nes") do
             let _bmp1,_bmp2,reachable_continents,mapCoords,cont_1_size,cont_2_size,ch_dist_inn = ROM.decode_rom(file)
             count <- count + 1
             cont1 <- cont1 + cont_1_size
@@ -1125,25 +1129,19 @@ let xmain argv =
                 single_continent_count <- single_continent_count + 1
                 debug_files.Add(file)
             else
+                let mutable num_c2_loc = 0
                 cont2 <- cont2 + cont_2_size
-                let gx,gy = mapCoords.[Constants.MAP_LOCATIONS.GARINHAM]
-                let kx,ky = mapCoords.[Constants.MAP_LOCATIONS.KOL]
-                let bx,by = mapCoords.[Constants.MAP_LOCATIONS.BRECCONARY]
-                let rx,ry = mapCoords.[Constants.MAP_LOCATIONS.RIMULDAR]
-                let cx,cy = mapCoords.[Constants.MAP_LOCATIONS.CANTLIN]
-                let hx,hy = mapCoords.[Constants.MAP_LOCATIONS.HAUKSNESS]
-                if reachable_continents.[gx,gy] = 1 then
-                    g1 <- g1 + 1
-                if reachable_continents.[kx,ky] = 1 then
-                    k1 <- k1 + 1
-                if reachable_continents.[bx,by] = 1 then
-                    b1 <- b1 + 1
-                if reachable_continents.[rx,ry] = 1 then
-                    r1 <- r1 + 1
-                if reachable_continents.[cx,cy] = 1 then
-                    c1 <- c1 + 1
-                if reachable_continents.[hx,hy] = 1 then
-                    h1 <- h1 + 1
+                for i = 0 to N-1 do
+                    let loc = Constants.MAP_LOCATIONS.ALL.[i]
+                    try
+                        let x,y = if loc = Constants.MAP_LOCATIONS.CHARLOCK then let x,y = mapCoords.[loc] in x+3,y else mapCoords.[loc]
+                        if reachable_continents.[x,y] = 1 then
+                            on_cont1_count.[i] <- on_cont1_count.[i] + 1
+                        else
+                            num_c2_loc <- num_c2_loc + 1
+                    with _ -> // under tantagel/garinham caves
+                        not_overworld_count.[i] <- not_overworld_count.[i] + 1
+                num_cont2_locations.Add(num_c2_loc)
         let multi_count = count - single_continent_count 
         printfn "Summary statistics of %d seeds" count
         printfn ""
@@ -1154,12 +1152,18 @@ let xmain argv =
         printfn "Single continent chance:   %f (%d of %d)" (float single_continent_count/float count) single_continent_count count
         printfn ""
         printfn "Chance of being on Tantagel Continent (when 2 continents):"
-        printfn " - Garinham:   %2d%%" (g1*100/multi_count)
-        printfn " - Kol:        %2d%%" (k1*100/multi_count)
-        printfn " - Brecconary: %2d%%" (b1*100/multi_count)
-        printfn " - Rimuldar:   %2d%%" (r1*100/multi_count)
-        printfn " - Cantlin:    %2d%%" (c1*100/multi_count)
-        printfn " - Hauksness:  %2d%%" (k1*100/multi_count)
+        for i = 0 to N-1 do
+            let loc = Constants.MAP_LOCATIONS.ALL.[i]
+            printfn " - %-25s:   %2d%%" loc (on_cont1_count.[i]*100/(multi_count - not_overworld_count.[i]))
+        printfn ""
+        let a = num_cont2_locations |> Seq.countBy id |> Seq.toArray 
+        printfn "Histogram of number of locations on continent 2:"
+        for i = 0 to N-1 do
+            let n = 
+                match a |> Array.tryFind (fun (l,c) -> l=i) with
+                | Some (_,c) -> c
+                | None -> 0
+            printfn "%2d locations: %3d  %s" i n (String.replicate n "X")
         printfn ""
         for file in debug_files do
             printfn "single cont: %s" file
