@@ -1100,6 +1100,17 @@ let testSendMessage() =
     Winterop.SetForegroundWindow(h) |> ignore
     System.Windows.Forms.SendKeys.SendWait("b")
 
+
+let inverted_power_curve(min, max, power, rand:System.Random) =
+    let p_range= System.Math.Pow((double)(max - min), 1.0 / power)
+    int(float max - System.Math.Pow(rand.NextDouble() * p_range, power) + 0.5)
+(*
+        str[i] = inverted_power_curve(4, 155, 1.18);
+        agi[i] = inverted_power_curve(4, 145, 1.32);
+        hp[i] =  inverted_power_curve(10, 230, 0.98);
+        mp[i] =  inverted_power_curve(0, 220, 0.95);
+*)
+
 #if !AD_HOC
 [<STAThread>]
 [<EntryPoint>]
@@ -1109,6 +1120,12 @@ let xmain argv =
     //neededAttacksTable()
     //ROM.test_rng()
     //ROM.test_period(0x7c65)   // period was 32768, with 2 calls per frame and 60fps, every 4.5 mins this cycles
+    if false then
+        let rng = new System.Random()
+        let hp = Array.init 200 (fun _ -> inverted_power_curve(10, 230, 0.98, rng))
+        let hp = Array.sort hp
+        for x in hp do
+            printfn "%d" x
     if false then
         let mutable count = 0
         let mutable cont1, cont2 = 0, 0
