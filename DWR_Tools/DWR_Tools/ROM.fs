@@ -624,12 +624,12 @@ reset
               + if b1 &&&  1uy > 0uy then "HE " else fives
               + if b1 &&&  2uy > 0uy then "HU " else fives
         let str, ag, hp, mp = bytes.[0x60DD+6*i+0], bytes.[0x60DD+6*i+1], bytes.[0x60DD+6*i+2], bytes.[0x60DD+6*i+3] 
-        let max_dl = ((int str + 42) - 100) / 2
-        let avg_dl = max_dl * 3 / 4
-        let go_mode = int hp > 96 && ((int mp/8)+1)*avg_dl > 149  // quick approx
-        let go_mode = go_mode || int hp > 129 && ((int mp/8)+1)*(avg_dl+3) > 149  // quick approx with DN
         let agZ = ag - ((ag+9uy)/10uy) + 3uy
         let mpZ = mp - ((mp+9uy)/10uy) + 3uy
+        let max_dl = ((int str + 42) - 100) / 2
+        let avg_dl = max_dl * 3 / 4
+        let go_mode = int hp > 96 && ((int mpZ/8)+2)*avg_dl > 155  // quick approx
+        let go_mode = go_mode || int hp > 129 && ((int mpZ/8)+2)*(avg_dl+3) > 155  // quick approx with DN
         printfn "%s %3d %s%3d  %3d  %3d  %3d  %3d  %3d   %s" (if go_mode then "GO " else "   ") (i+1) fives str agZ hp mpZ ag mp s 
         if i=14 then
             printfn "%s" header

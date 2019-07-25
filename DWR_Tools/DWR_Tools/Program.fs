@@ -1121,11 +1121,51 @@ let xmain argv =
     //ROM.test_rng()
     //ROM.test_period(0x7c65)   // period was 32768, with 2 calls per frame and 60fps, every 4.5 mins this cycles
     if false then
-        let rng = new System.Random()
-        let hp = Array.init 200 (fun _ -> inverted_power_curve(10, 230, 0.98, rng))
-        let hp = Array.sort hp
-        for x in hp do
-            printfn "%d" x
+        let mutable le_count, le_total = 0,0
+        let mutable ge_count, ge_total = 0,0
+        let LO = 8
+        let HI = 18
+        //let name, f = "HP", (fun rng -> inverted_power_curve(10, 230, 0.98, rng))
+        //let name, f = "AG", (fun rng -> inverted_power_curve(4, 145, 1.32, rng))
+        //let name, f = "STR", (fun rng -> inverted_power_curve(4, 155, 1.18, rng))
+        let name, f = "MP", (fun rng -> inverted_power_curve(0, 220, 0.95, rng))
+        for i = 0 to 10000000 do
+            let rng = new System.Random()
+            let a = Array.init 30 (fun _ -> f(rng))
+            let a = Array.sort a
+            if a.[0] <= LO then
+                le_count <- le_count + 1
+                le_total <- le_total + a.[16]
+            elif a.[0] >= HI then
+                ge_count <- ge_count + 1
+                ge_total <- ge_total + a.[16]
+        printfn "start with <=%d %s, at L17 had on average: %f   (%d samples)" LO name (float le_total / float le_count) le_count
+        printfn "start with >=%d %s, at L17 had on average: %f   (%d samples)" HI name (float ge_total / float ge_count) ge_count
+    if false then
+        let mutable hp_less_count, hp_less_diff = 0,0
+        let mutable hp_gr_count, hp_gr_diff = 0,0
+        let mutable hp_diff = 0
+        let hist = ResizeArray()
+        for i = 0 to 10000000 do
+            let rng = new System.Random()
+            let hp = Array.init 30 (fun _ -> inverted_power_curve(10, 230, 0.98, rng))
+            //let hp = Array.init 30 (fun _ -> inverted_power_curve(4, 155, 1.18, rng)) 
+            let hp = Array.sort hp
+            if hp.[15] < 90 then
+                hp_less_count <- hp_less_count + 1
+                hp_less_diff <- hp_less_diff + hp.[16] - hp.[15]
+            if hp.[15] > 110 then
+                hp_gr_count <- hp_gr_count + 1
+                hp_gr_diff <- hp_gr_diff + hp.[16] - hp.[15]
+            hp_diff <- hp_diff + hp.[16] - hp.[15]
+            hist.Add(hp.[16] - hp.[15])
+        printfn "when hp < 90 at L16, average next hp boost is: %f (based on %d samples)" (float hp_less_diff / float hp_less_count) hp_less_count
+        printfn "when hp > 110 at L16, average next hp boost is: %f (based on %d samples)" (float hp_gr_diff / float hp_gr_count) hp_gr_count
+        printfn "all L17 hp boost average is: %f (based on %d samples)" (float hp_diff / float 10000000) 10000000
+        let a = hist |> Seq.countBy id |> Seq.toArray |> Array.sort 
+        for k,v in a do
+            printfn "%2d: %5d %s" k v (String.replicate (v/10000) "X")
+
     if false then
         let mutable count = 0
         let mutable cont1, cont2 = 0, 0
