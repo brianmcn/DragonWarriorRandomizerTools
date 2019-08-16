@@ -929,6 +929,11 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
             shopPanel.Children.Add(makeText("SHOPS")) |> ignore
             shopPanel.Children.Add(shops) |> ignore
             sp.Children.Add(shopPanel) |> ignore
+            let cb = new CheckBox(Content=makeText("Audio reminders"))
+            cb.IsChecked <- System.Nullable.op_Implicit true
+            cb.Checked.Add(fun _ -> Constants.voice.Volume <- 30)
+            cb.Unchecked.Add(fun _ -> Constants.voice.Volume <- 0)
+            sp.Children.Add(cb) |> ignore
             gridAdd(content,sp,2,0)
         else
             let maps = new TabItem(Background=Brushes.Black, Header="Maps")
@@ -1120,6 +1125,33 @@ let xmain argv =
     //neededAttacksTable()
     //ROM.test_rng()
     //ROM.test_period(0x7c65)   // period was 32768, with 2 calls per frame and 60fps, every 4.5 mins this cycles
+    if false then
+        let rng = new System.Random()
+        let trials = ResizeArray() // to see 9 red slimes
+        let firsts = ResizeArray() // to see first red slime
+        for i = 1 to 10000 do
+            let mutable count = 0
+            let mutable hits = 0
+            while hits < 9 do
+                count <- count + 1
+                if rng.Next(5) = 1 then
+                    hits <- hits + 1
+                    if hits = 1 then
+                        firsts.Add(count)
+            trials.Add(count)
+        let trials = trials |> Array.ofSeq |> Array.sort
+        let firsts = firsts |> Array.ofSeq |> Array.sort 
+        
+        printfn "TRIALS"
+        for i = 0 to 100 do
+            let num = trials |> Array.map (fun x -> if x=i then 1 else 0) |> Array.sum
+            printfn "    %3d - %4d %s" i num (String.replicate (num/20) "X")
+        printfn "FIRSTS"
+        for i = 0 to 40 do
+            let num = firsts |> Array.map (fun x -> if x=i then 1 else 0) |> Array.sum
+            printfn "    %3d - %4d %s" i num (String.replicate (num/20) "X")
+        0
+    else
     if false then
         let mutable le_count, le_total = 0,0
         let mutable ge_count, ge_total = 0,0

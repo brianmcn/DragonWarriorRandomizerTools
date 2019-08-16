@@ -194,6 +194,8 @@ let decode_rom(file) =
         let extra = 
             match zone with
             | 13 -> "HAUKS"
+            | 14 -> "M2/G1"
+            | 15 -> "GTLOW"
             | 16 | 17 | 18 -> "CHAR "
             | 19 -> "SWAMP"
             | _  -> "     "
