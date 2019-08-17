@@ -609,7 +609,8 @@ reset
         | s -> printfn "                                              %s" s
 
     printfn "for build 'Z' (STR+HP)..."
-    let header = "     LV    STR  AGI  HP   MP  rawAG rawMP" 
+    let header = "        LV    STR   AGI   HP    MP   rawAG rawMP" 
+    let mutable p_str, p_ag, p_hp, p_mp, p_hu, hu = 0, 0, 0, 0, 0, 0
     printfn "%s" header
     for i = 0 to 29 do
         let fives = (if i%5=4 then "-- " else "   ")
@@ -624,15 +625,28 @@ reset
               + if b2 &&& 64uy > 0uy then "RT " else fives
               + if b2 &&&128uy > 0uy then "RP " else fives
               + if b1 &&&  1uy > 0uy then "HE " else fives
-              + if b1 &&&  2uy > 0uy then "HU " else fives
+              + if b1 &&&  2uy > 0uy then (hu <- 1; "HU ") else fives
         let str, ag, hp, mp = bytes.[0x60DD+6*i+0], bytes.[0x60DD+6*i+1], bytes.[0x60DD+6*i+2], bytes.[0x60DD+6*i+3] 
         let agZ = ag - ((ag+9uy)/10uy) + 3uy
         let mpZ = mp - ((mp+9uy)/10uy) + 3uy
+        let big_str = i<>0 && int str - p_str > 12
+        let big_ag = i<>0 && int agZ - p_ag > 12
+        let big_hp = i<>0 && int hp - p_hp > 16
+        let big_mp = i<>0 && int mpZ - p_mp > 12
+        let big_hu = hu = 1 && p_hu = 0
+        let big_any = big_str || big_ag || big_hp || big_mp || big_hu
+        p_str <- int str
+        p_ag <- int agZ
+        p_hp <- int hp
+        p_mp <- int mpZ
+        p_hu <- hu
         let max_dl = ((int str + 42) - 100) / 2
         let avg_dl = max_dl * 3 / 4
         let go_mode = int hp > 96 && ((int mpZ/8)+2)*avg_dl > 155  // quick approx
         let go_mode = go_mode || int hp > 129 && ((int mpZ/8)+2)*(avg_dl+3) > 155  // quick approx with DN
-        printfn "%s %3d %s%3d  %3d  %3d  %3d  %3d  %3d   %s" (if go_mode then "GO " else "   ") (i+1) fives str agZ hp mpZ ag mp s 
+        let x(b) = if b then "+" else " "
+        printfn "%s %s %3d %s%3d%s  %3d%s  %3d%s  %3d%s  %3d  %3d   %s" 
+            (if big_any then "**" else "  ") (if go_mode then "GO " else "   ") (i+1) fives str (x big_str) agZ (x big_ag) hp (x big_hp) mpZ (x big_mp) ag mp s 
         if i=14 then
             printfn "%s" header
 
