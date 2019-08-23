@@ -373,6 +373,7 @@ let decode_rom(file) =
             | 21uy when to_y = 0uy -> Constants.MAP_LOCATIONS.SWAMP_NORTH, true, [|"X   X";"XX  X"; "X X X";"X  XX";"X   X"|]
             | 21uy when to_y <> 0uy -> Constants.MAP_LOCATIONS.SWAMP_SOUTH, true, [|"XXXXX"; "X    ";"XXXXX";"    X";"XXXXX"|]
             | 2uy  -> Constants.MAP_LOCATIONS.CHARLOCK, false, null
+            | n when n=6uy || (n >= 15uy && n <= 20uy) -> Constants.MAP_LOCATIONS.CHARLOCK, false, null  // short charlock (or anywhere in charlock)
             | 22uy -> Constants.MAP_LOCATIONS.MOUNTAIN_CAVE, true, [|"X   X";"XX XX";"X X X";"X   X";"X   X"|]
             | 11uy -> Constants.MAP_LOCATIONS.RIMULDAR, false, [|"XXXXX";"X   X";"XXXX ";"X   X";"X   X"|]
             | 3uy  -> Constants.MAP_LOCATIONS.HAUKSNESS, false, [|"X   X";"X   X";"XXXXX";"X   X";"X   X"|]
