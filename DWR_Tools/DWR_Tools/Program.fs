@@ -1126,6 +1126,10 @@ let xmain argv =
     //ROM.test_rng()
     //ROM.test_period(0x7c65)   // period was 32768, with 2 calls per frame and 60fps, every 4.5 mins this cycles
     if false then
+        ROM_mods.patch_rom("""C:\Users\Admin1\Desktop\dwrandomizer-2.1.2-windows\DWRando.2082083747464582.CDFGMPRWZbks.nes""")
+        0
+    else
+    if false then
         let rng = new System.Random()
         let trials = ResizeArray() // to see 9 red slimes
         let firsts = ResizeArray() // to see first red slime

@@ -127,6 +127,22 @@ type OverworldMapTile =
             true
         else
             false
+    static member FromROMByte b =
+        match b with
+        | 0uy -> OverworldMapTile.Plains
+        | 1uy -> OverworldMapTile.Desert
+        | 2uy -> OverworldMapTile.Hills
+        | 3uy -> OverworldMapTile.Mountain
+        | 4uy -> OverworldMapTile.Water_xxxx 
+        | 5uy -> OverworldMapTile.Wall 
+        | 6uy -> OverworldMapTile.Forest
+        | 7uy -> OverworldMapTile.Swamp
+        | 8uy -> OverworldMapTile.Town
+        | 9uy -> OverworldMapTile.Cave 
+        | 10uy -> OverworldMapTile.Castle 
+        | 11uy -> OverworldMapTile.Bridge
+        | 12uy -> OverworldMapTile.Cave // STAIRS
+        | z -> OverworldMapTile.Water_NWES  // TODO failwithf "bad tiles data: %A" z
 
 let OVERWORLD_MAP_TILE_FILENAMES = 
     [|

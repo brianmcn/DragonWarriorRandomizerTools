@@ -270,23 +270,7 @@ let decode_rom(file) =
     printfn ""
 *)
 
-    let tiles = Array2D.init 120 120 (fun x y -> 
-        match tiles.[x,y] with
-        | 0uy -> Constants.OverworldMapTile.Plains
-        | 1uy -> Constants.OverworldMapTile.Desert
-        | 2uy -> Constants.OverworldMapTile.Hills
-        | 3uy -> Constants.OverworldMapTile.Mountain
-        | 4uy -> Constants.OverworldMapTile.Water_xxxx 
-        | 5uy -> Constants.OverworldMapTile.Wall 
-        | 6uy -> Constants.OverworldMapTile.Forest
-        | 7uy -> Constants.OverworldMapTile.Swamp
-        | 8uy -> Constants.OverworldMapTile.Town
-        | 9uy -> Constants.OverworldMapTile.Cave 
-        | 10uy -> Constants.OverworldMapTile.Castle 
-        | 11uy -> Constants.OverworldMapTile.Bridge
-        | 12uy -> Constants.OverworldMapTile.Cave // STAIRS
-        | z -> Constants.OverworldMapTile.Water_NWES  // TODO failwithf "bad tiles data: %A" z
-        )
+    let tiles = Array2D.init 120 120 (fun x y -> Constants.OverworldMapTile.FromROMByte tiles.[x,y])
 
     let EDGE = 6
     let bmp1 = new System.Drawing.Bitmap(120+2*EDGE,120+2*EDGE)
