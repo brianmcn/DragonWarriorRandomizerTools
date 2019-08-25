@@ -628,11 +628,14 @@ reset
         let max_dl = ((int str + 42) - 100) / 2
         let avg_dl = max_dl * 3 / 4
         let go_mode = int hp > 96 && ((int mpZ/8)+2)*avg_dl > 155  // quick approx
-        let go_mode = go_mode || int hp > 129 && ((int mpZ/8)+2)*(avg_dl+3) > 155  // quick approx with DN
+        let mini_go_mode = int hp > 96 && ((int mpZ/8)+2)*avg_dl > 150  // quick approx
+        let go_mode = go_mode || int hp >= 129 && ((int mpZ/8)+2)*(avg_dl+3) > 155  // quick approx with DN
+        let mini_go_mode = mini_go_mode || int hp >= 129 && ((int mpZ/8)+2)*(avg_dl+3) > 150  // quick approx with DN
         let go_mode = go_mode && (s.[24] = 'H') // need healmore
+        let mini_go_mode = mini_go_mode && (s.[24] = 'H') // need healmore
         let x(b) = if b then "+" else " "
         printfn "%s %s %3d %s%3d%s  %3d%s  %3d%s  %3d%s  %3d  %3d   %s" 
-            (if big_any then "**" else "  ") (if go_mode then "GO " else "   ") (i+1) fives str (x big_str) agZ (x big_ag) hp (x big_hp) mpZ (x big_mp) ag mp s 
+            (if big_any then "**" else "  ") (if go_mode then "GO " elif mini_go_mode then "go " else "   ") (i+1) fives str (x big_str) agZ (x big_ag) hp (x big_hp) mpZ (x big_mp) ag mp s 
         if i=14 then
             printfn "%s" header
 
