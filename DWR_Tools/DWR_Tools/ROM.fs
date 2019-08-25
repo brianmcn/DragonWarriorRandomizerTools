@@ -164,26 +164,43 @@ let decode_rom(file) =
     // shops
     printfn ""
     printfn "SHOPS"
-    printfn "kol"
+    let mutable cur_shop = "kol"
     let shops = content.[0x1991..0x1991+80]
     let mutable shop_count = 0
+    let shop_items = new System.Collections.Generic.Dictionary<_,_>()
+    let cur_items = ResizeArray()
     for item in shops do
         if shop_count < 7 then
             if item = 253uy then
-                printfn " ---"  // shop end
                 shop_count <- shop_count + 1
                 let desc = 
                     match shop_count with
                     | 1 -> "brecc"
                     | 2 -> "garin"
-                    | 3 | 4 -> "cantlin open"
+                    | 3 -> "cantlin open 1"
+                    | 4 -> "cantlin open 2"
                     | 5 -> "cantlin locked"
                     | 6 -> "rimu"
                     | 7 -> ""
                     | _ -> failwith "bad shop"
-                printfn "%s" desc
+                cur_items.Add("") // ensure always at least 6
+                shop_items.Add(cur_shop, cur_items.ToArray())
+                cur_items.Clear()
+                cur_shop <- desc
             else
-                printfn "%2d  %s" item SHOP_ITEM.[int item]
+                cur_items.Add(SHOP_ITEM.[int item])
+    let s1,s2,s3,s4 = "kol", "brecc", "garin", "rimu"
+    printfn ""
+    printfn "%-26s %-26s %-26s %-26s" s1 s2 s3 s4
+    printfn ""
+    for i = 0 to 5 do
+        printfn "%-26s %-26s %-26s %-26s" shop_items.[s1].[i] shop_items.[s2].[i] shop_items.[s3].[i] shop_items.[s4].[i] 
+    let s1,s2,s3 = "cantlin open 1", "cantlin open 2", "cantlin locked"
+    printfn ""
+    printfn "%-26s %-26s %-26s" s1 s2 s3
+    printfn ""
+    for i = 0 to 5 do
+        printfn "%-26s %-26s %-26s" shop_items.[s1].[i] shop_items.[s2].[i] shop_items.[s3].[i] 
     
     let zone_has_charlock_enemy = Array.zeroCreate 20
     let zone_has_metal_slime = Array.zeroCreate 20

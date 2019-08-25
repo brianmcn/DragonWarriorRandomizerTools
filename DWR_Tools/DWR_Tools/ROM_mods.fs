@@ -121,6 +121,21 @@ let makePatchedBytes(length) =
         bytes.Add(0xEAuy) // EA = NOP
     bytes.ToArray()
 
+(*
+
+TODO - it appears that swamp damage is computed here
+
+ 03:CDDF:A5 C5     LDA $00C5 = #$00
+ 03:CDE1:38        SEC
+ 03:CDE2:E9 02     SBC #$02
+ 03:CDE4:B0 02     BCS $CDE8
+ 03:CDE6:A9 00     LDA #$00
+ 03:CDE8:85 C5     STA $00C5 = #$00
+
+C5 is the player health, and this subtracts 2 from it
+
+*)
+
 let patch_rom(file) =
     let bytes = System.IO.File.ReadAllBytes(file)
     // want to write [$02CF1..$02D23)
