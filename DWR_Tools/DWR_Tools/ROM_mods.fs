@@ -136,6 +136,68 @@ C5 is the player health, and this subtracts 2 from it
 
 *)
 
+(*
+
+[9:13 AM] Lorgon111: Another architecture question, if you don't mind.  How do cross-bank JMP/JSRs work (or do they)?  I need space to author new code, and I know there is blank space after $7000, 
+                     but I don't know how to call it from $2xxx ($Axxx at runtime).  (Alternatively, do you know if there is unused space in bank 0? I expect not.)
+[9:16 AM] Thilotilo: That's more complicated.  I could answer it better this evening, when I have code in front of me, but it's done via the BRK command.  I explained it to mcgrew sometime last year.  
+                     Let me see if I can dig that up.
+[9:17 AM] Thilotilo: Here it is:
+[9:17 AM] Thilotilo: Also, for the BRK instruction - The way the BRK ultimately works in the dragon warrior code is that it uses the two bytes after the BRK instruction to determine the bank and 
+                     location to jump to.  You'll get something like at $F9AC ($39AC in bank 3)  00 10 17.
+[9:17 AM] Thilotilo: The 10 defines a word offset (meaning 0x10 2-byte segments), and the upper nibble of the 17 defines the bank (bank 1 in this case).   This code will thus put bank 1 in $8000-$BFFF 
+                     and then use the address at $8021$8020 as a vector to call with JSR, in this case, that address is $A194.
+[9:19 AM] Thilotilo: Once the subroutine at $A194 reaches the RTS instruction, we will restore the original bank into $8000-$BFFF, restore all registers at the time of the BRK, and return to the 
+                     instruction after the two bytes that the BRK uses.
+[9:29 AM] Lorgon111: So if I can rephrase what you said, it sounds like at the start of the bank, there's an effectively an address-jump-table of routines which can be called from outside the bank.  
+                     So I could find a word of unused space somewhere in e.g. $4000-$41FF of the ROM, and then use 00 nn 17 to load up bank 1 and then look up bytes (nn*2+1,nn*2) as an address in 
+                     the $8000-$BFFF range where the bank is loaded to call e.g. code located at $7000 in the rom (which would be $B000 in the call).  
+                     What is the '17'?  The upper nibble '1' is the bank to load ($4000-$7FFF) but what is the lower nibble?
+[9:33 AM] Thilotilo: I have yet to figure that lower nibble out.  It always seems to be 7 in every call I've hit so far.  It does something, iirc, but I was never able to figure out what they were 
+                     aiming for.  I'd have to have the code in front of me to give any more detail, but for your purposes, you can just leave it at 7.
+[9:33 AM] Lorgon111: Ok good enough
+[9:33 AM] Thilotilo: Your rephrase sounds right to me.
+
+
+So, knowing that, if there is unused space in 4000-41FF (yes, tons), then I can add some code somewhere in unused 7000 block which will
+ - be called via BRK interrupt in swamp-damage code (replacing code at CDDF), and
+ - go something like this
+
+do actual swamp damage (code overwritten to insert my BRK subroutine call)
+if player health is 0
+   if map is overworld
+     if $TILE_INDEX < TILE_MAX               // tile index can be a byte which stores 'next Y' offset into my $7000 coordinate array, TILE_MAX could be 16 or something, e.g. 8 coord pairs
+       load $TILE_INDEX into Y
+       store $PLAYER_X into $7000,Y
+       INY
+       store $PLAYER_Y into $7000,Y
+       INY
+       store Y into $TILE_INDEX
+RTS
+
+[9:36 AM] Lorgon111: still will be just 'proof of concept' - i am surely breaking hidden-stairs and gwaelin-tile code, and dunno if I can use the 'interrupt trick' in the tile loop (because it is 
+                     called SOOOOOO frequently - I expect the interrupt is expensive)... but if get concept proof code working, surely will motivate me to rewrite tile code and squeeze it in somehow
+[9:43 AM] Thilotilo: I know there is some unused code in bank 3, but I also know mcgrew has made use of some of it, so I don't know how much is remaining.  That would be the first place I'd look, 
+                     though.  He zeros that section out in the rando code, so you can probably figure out what is available.  I would tend to agree that doing the interrupt in the loop would seem 
+                     prohibitively expensive.
+
+bank 3
+
+ 03:C288:FF    
+ ...
+ 03:C4F4:FF 
+
+ is all FFs... i see mcgrew patching in new routines in latest betas towards the end of that range
+
+also bank 0
+
+  00:A574:FF   
+  ...
+  00:A652:FF      
+
+
+*)
+
 let patch_rom(file) =
     let bytes = System.IO.File.ReadAllBytes(file)
     // want to write [$02CF1..$02D23)

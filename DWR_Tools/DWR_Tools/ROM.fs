@@ -656,6 +656,8 @@ reset
         if i=14 then
             printfn "%s" header
 
+// TODO how fast is start (keys, sword, zones, swamp, hurtmore ...)
+
 (*
     // make minor change to map warps
     let new_bytes = Array.copy bytes
