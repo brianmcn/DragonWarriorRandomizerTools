@@ -52,13 +52,12 @@ let I3 x y z = Instr3(byte x, byte y, byte z)
 let swampToDesertAssembly = 
     // goal - keep an array of overworld tiles that have been transformed swamp to desert.
     // look them up and decode them on the fly during map decode tile lookup.
-    // for proof of concept, this code could replace existing gwaelin & hidden stairs tile-replacement code (and break those features).
     [|
         I2 0xC9 0x06        // CMP #$06           ;C9 06             compare swamp  (swamp is 'border tile 6' as per https://github.com/mcgrew/dwrandomizer/blob/master/notes/maps.txt )
-        BNE 9               // BNE $02D23         ;D0 TODO           if not, go on to treasure chests
+        BNE 9               // BNE $02D23         ;D0 TODO           if not, done
         I2 0xA5 0x45        // LDA $45            ;A5 45             load map
         I2 0xC9 0x01        // CMP #$01           ;C9 01             compare overworld
-        BNE 9               // BNE $02D3C         ;D0 TODO           if not, go on to treasure chests
+        BNE 9               // BNE $02D3C         ;D0 TODO           if not, done
         I2 0xA0 0x00        // LDY #$00           ;A0 00             set Y to 0
         Label 0
         I2 0xA5 0x42        // LDA $42            ;A5 42             load x coord
@@ -80,7 +79,9 @@ let swampToDesertAssembly =
         I2 0xC0 0x10        // CPY #$10           ;C0 10             compare Y - TODO decide how large an array of swamp->desert tiles we want, '10' means 8 tileswaps (16 coords = 8 xy pairs)
         BNE 0               // BNE $TODO          ;D0 TODO           if not at end of array, go back up to LDA $42 
         Label 9
-        I1 0xEA             // NOP                ; TODO as many NOPs as needed to take up same size instruction space as what we replaced/overwrote to hack this in
+        I1 0x68             // PLA                ;68                |
+        I1 0xA8             // TAY                ;A8                |- subroutine exit
+        I1 0x60             // RTS                ;60                |
     |]
 
 let showBackpatch() =
@@ -97,8 +98,8 @@ let showBackpatch() =
         | Instr3(x,y,z) ->
             printfn "%02X %02X %02X" x y z
 
-let makePatchedBytes(length) =
-    let patched = backpatch(swampToDesertAssembly)
+let makePatchedBytes(code,length) =
+    let patched = backpatch(code)
     let bytes = ResizeArray()
     for x in patched do
         match x with
@@ -131,10 +132,50 @@ TODO - it appears that swamp damage is computed here
  03:CDE4:B0 02     BCS $CDE8
  03:CDE6:A9 00     LDA #$00
  03:CDE8:85 C5     STA $00C5 = #$00
+ 03:CDEA:20 74 FF  JSR $FF74
+ 03:CDED:20 28 EE  JSR $EE28
 
 C5 is the player health, and this subtracts 2 from it
 
+So i could replace the first JSR with a JMP to my own code that does:
+    if player health = 0 then
+        if map = overworld then
+            if num converted tiles < max then
+                store map x,y into my array at 7000
+                increment converted tiles count
+    original JSR
+    JMP back
+
+which looks something like:
 *)
+let swampToDesertAssemblyWrite = 
+    [|
+        I2 0xA5 0xC5        // LDA $C5            ;A5 C5             load player health
+        I2 0xC9 0x00        // CMP #$00           ;C9 00             compare to zero
+        BNE 9               // BNE $0TODO         ;D0 TODO           if not, done
+        I2 0xA5 0x45        // LDA $45            ;A5 45             load map
+        I2 0xC9 0x01        // CMP #$01           ;C9 01             compare overworld
+        BNE 9               // BNE $0TODO         ;D0 TODO           if not, done
+        I2 0xA0 0x10        // LDY #$10           ;A0 10             set Y to 10  // TODO first byte after array will store num-converted-tiles max currently 8 (16 coords = 0x10)
+        I2 0xA9 0x10        // LDA #$10           ;A9 10             load MAX
+        I3 0xD9 0x00 0x70   // CMP $7000,Y        ;D9 00 70          compare (have we already written 0x10 bytes of desert coords?)
+        BNE 1               // BNE $TODO          ;D0 TODO           if no, do stuff further below
+        Label 9             //                                       else fallthru to common exit                                         
+        I3 0x20 0x74 0xFF   // JSR $FF74          ;20 74 FF          original JSR that I overwrote
+        I3 0x4C 0xED 0xCD   // JMP $CDED          ;4C ED CD          jump back to instruction after one I overwrote
+        Label 1
+        I2 0xA2 0x10        // LDX #$10           ;A2 10             load MAX (to X)
+        I3 0xBC 0x00 0x70   // LDY $7000,X        ;BC 00 70          read in (to Y) num-written-desert-bytes
+        I2 0xA5 0x42        // LDA $42            ;A5 42             load map x coord
+        I3 0x99 0x00 0x70   // STA $7000,Y        ;99 00 70          store it to my array
+        I1 0xC8             // INY                ;C8                inc y
+        I2 0xA5 0x43        // LDA $43            ;A5 43             load map y coord
+        I3 0x99 0x00 0x70   // STA $7000,Y        ;99 00 70          store it to my array
+        I1 0xC8             // INY                ;C8                inc y
+        I3 0x8C 0x10 0x70   // STY $7010          ;8C 10 70          store new Y back into my num-written-desert-bytes cell
+        I3 0x20 0x74 0xFF   // JSR $FF74          ;20 74 FF          original JSR that I overwrote
+        I3 0x4C 0xED 0xCD   // JMP $CDED          ;4C ED CD          jump back to instruction after one I overwrote
+    |]
 
 (*
 
@@ -200,27 +241,50 @@ also bank 0
 
 let patch_rom(file) =
     let bytes = System.IO.File.ReadAllBytes(file)
-    // want to write [$02CF1..$02D23)
-    let length = 0x02D23 - 0x02CF1
-    let offset = 0x02CF1 + 16 // first 16 bytes are a header
+    // when reading overworld map, load my extra desert tiles
+    // want to write [$02580..$02640)
+    let length = 0x02640 - 0x02580
+    let offset = 0x02580 + 16 // first 16 bytes are a header
     // do minor verification that the code we expect to be there is there
-    if bytes.[offset..offset+11] = Array.map byte [| 0xC9; 0x17; 0xD0; 0x0C; 0xA5; 0xDF; 0x29; 0x03; 0xF0; 0x41; 0xA9; 0x04 |] then
-        let replacementBytes = makePatchedBytes(length)
+    if bytes.[offset..offset+length-1] = Array.create length 0xFFuy then
+        let replacementBytes = makePatchedBytes(swampToDesertAssembly,length)
         for i = 0 to length-1 do
             bytes.[offset+i] <- replacementBytes.[i]
-        // but it turns out the code I patched in only runs in the non-overworld-map branch.  so to continue the hack, change the 'return' at the end of the overworld map part, namely
+        // change the 'return' at the end of the overworld map part, namely
         //    $02C95: PLA TAY RTS
         // to a jump to my code which will also eventually end the subroutine similarly
-        //    JMP ACF1    // 4C F1 AC
-        // NOTE: this means we are changing the code path a bit.  the treasure-chest and magic-door code does not inspect the map, so it will be running here, but given that
-        // transition-to-overworld is the thing that resets those banks, I don't think it should interact.  but i've not looked into debugger to verify that those locations are already reset.
+        //    JMP A580    // 4C 80 A5
         let offset = 0x02C95 + 16
         if bytes.[offset..offset+2] = [| 0x68uy; 0xA8uy; 0x60uy |] then
             bytes.[offset+0] <- 0x4Cuy // JMP
-            bytes.[offset+1] <- 0xF1uy // 
-            bytes.[offset+2] <- 0xACuy // ACF1 is the location 2CF1 in my code to JMP to
+            bytes.[offset+1] <- 0x80uy // 
+            bytes.[offset+2] <- 0xA5uy // A580 is the location 2580 in my code to JMP to
         else
             failwith "unexpected ROM code found"
-        System.IO.File.WriteAllBytes(file+".patched.nes", bytes)
     else
         failwith "unexpected ROM code found"
+
+    // when dying in swamp, write my extra desert tiles
+    // want to write [$0C2A0..$0C2F0)
+    let length = 0x0C2F0 - 0x0C2A0
+    let offset = 0x0C2A0 + 16 // first 16 bytes are a header
+    // do minor verification that the code we expect to be there is there
+    if bytes.[offset..offset+length-1] = Array.create length 0xFFuy then
+        let replacementBytes = makePatchedBytes(swampToDesertAssemblyWrite,length)
+        for i = 0 to length-1 do
+            bytes.[offset+i] <- replacementBytes.[i]
+        // change the JSR after swamp damage, namely
+        //    03:CDEA:20 74 FF  JSR $FF74
+        // to a JSR to my code which will also eventually JMP back
+        //    20 A0 C2          JSR $C2A0
+        let offset = 0x0CDEA + 16
+        if bytes.[offset..offset+2] = [| 0x20uy; 0x74uy; 0xFFuy |] then
+            bytes.[offset+0] <- 0x20uy // JSR
+            bytes.[offset+1] <- 0xA0uy // 
+            bytes.[offset+2] <- 0xC2uy // C2A0 is the location C2A0 in my code to JSR to
+        else
+            failwith "unexpected ROM code found"
+    else
+        failwith "unexpected ROM code found"
+
+    System.IO.File.WriteAllBytes(file+".patched.nes", bytes)
