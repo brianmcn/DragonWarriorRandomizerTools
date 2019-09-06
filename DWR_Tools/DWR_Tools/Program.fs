@@ -1211,9 +1211,16 @@ let xmain argv =
         let num_cont2_locations = ResizeArray()
         let mutable single_continent_count = 0
         let mutable charlock_inn_dist = 0
+        let mutable str_hp_wins,str_ag_wins = 0,0
         let debug_files = ResizeArray()
         //for file in System.IO.Directory.EnumerateFiles("""C:\Users\Admin1\Desktop\dwrandomizer-2.0.6-windows\""", "*.CDFGMPRWZ.nes") do
-        for file in System.IO.Directory.EnumerateFiles("""C:\Users\Admin1\Desktop\dwrandomizer-2.1-beta-402\""", "*.CDFGMPRWZ.nes") do
+        for file in System.IO.Directory.EnumerateFiles("""C:\Users\Admin1\Desktop\dwrandomizer-2.1.2-windows\""", "*.CDFGMPRWZ.nes") do
+            let bytes = System.IO.File.ReadAllBytes(file)
+            let strhp,strag = ROM.show_go_mode_stats(bytes,false)
+            if strhp < strag then
+                str_hp_wins <- str_hp_wins+1
+            if strhp > strag then
+                str_ag_wins <- str_ag_wins+1
             let _bmp1,_bmp2,reachable_continents,mapCoords,cont_1_size,cont_2_size,ch_dist_inn = ROM.decode_rom(file)
             count <- count + 1
             cont1 <- cont1 + cont_1_size
@@ -1237,6 +1244,9 @@ let xmain argv =
                 num_cont2_locations.Add(num_c2_loc)
         let multi_count = count - single_continent_count 
         printfn "Summary statistics of %d seeds" count
+        printfn ""
+        printfn "STR-HP wins: %d" str_hp_wins
+        printfn "STR-AG wins: %d" str_ag_wins
         printfn ""
         printfn "Tantagel Continent average size: %d" (cont1 / count)
         printfn "Other Continent average size:    %d" (cont2 / count)

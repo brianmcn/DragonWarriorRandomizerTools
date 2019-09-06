@@ -86,6 +86,68 @@ let SHOP_ITEM = [|
     "SHOP_DRAGON_SCALE"
     |]
 
+let compute_go_mode(str, hp, mp, s:string) =
+    let max_dl = ((int str + 42) - 100) / 2
+    let avg_dl = max_dl * 3 / 4
+    let go_mode = int hp > 96 && ((int mp/8)+2)*avg_dl > 155  // quick approx
+    let mini_go_mode = int hp > 96 && ((int mp/8)+2)*avg_dl > 150  // quick approx
+    let go_mode = go_mode || int hp >= 129 && ((int mp/8)+2)*(avg_dl+3) > 155  // quick approx with DN
+    let mini_go_mode = mini_go_mode || int hp >= 129 && ((int mp/8)+2)*(avg_dl+3) > 150  // quick approx with DN
+    let go_mode = go_mode && (s.[24] = 'H') // need healmore
+    let mini_go_mode = mini_go_mode && (s.[24] = 'H') // need healmore
+    go_mode, mini_go_mode
+
+let show_go_mode_stats(bytes:byte[], print) =
+    if print then
+        printfn "for build 'Z' (STR+HP)..."
+    let header = "        LV    STR   AGI   HP    MP   rawAG rawMP" 
+    let mutable p_str, p_ag, p_hp, p_mp, p_hu, hu = 0, 0, 0, 0, 0, 0
+    let mutable go_mode_str_hp,go_mode_str_ag = 31, 31
+    if print then
+        printfn "%s" header
+    for i = 0 to 29 do
+        let fives = (if i%5=4 then "-- " else "   ")
+        let b1 = bytes.[0x60DD+6*i+4]
+        let b2 = bytes.[0x60DD+6*i+5]
+        let s = if b2 &&&  1uy > 0uy then "HE " else fives 
+              + if b2 &&&  2uy > 0uy then "HU " else fives
+              + if b2 &&&  4uy > 0uy then "SL " else fives
+              + if b2 &&&  8uy > 0uy then "RA " else fives
+              + if b2 &&& 16uy > 0uy then "ST " else fives
+              + if b2 &&& 32uy > 0uy then "OU " else fives
+              + if b2 &&& 64uy > 0uy then "RT " else fives
+              + if b2 &&&128uy > 0uy then "RP " else fives
+              + if b1 &&&  1uy > 0uy then "HE " else fives
+              + if b1 &&&  2uy > 0uy then (hu <- 1; "HU ") else fives
+        let str, ag, hp, mp = bytes.[0x60DD+6*i+0], bytes.[0x60DD+6*i+1], bytes.[0x60DD+6*i+2], bytes.[0x60DD+6*i+3] 
+        let agZ = ag - ((ag+9uy)/10uy) + 3uy
+        let mpZ = mp - ((mp+9uy)/10uy) + 3uy
+        let hpSTRAG = hp - ((hp+9uy)/10uy) + 3uy
+        let big_str = i<>0 && int str - p_str > 12
+        let big_ag = i<>0 && int agZ - p_ag > 12
+        let big_hp = i<>0 && int hp - p_hp > 16
+        let big_mp = i<>0 && int mpZ - p_mp > 12
+        let big_hu = hu = 1 && p_hu = 0
+        let big_any = big_str || big_ag || big_hp || big_mp || big_hu
+        p_str <- int str
+        p_ag <- int agZ
+        p_hp <- int hp
+        p_mp <- int mpZ
+        p_hu <- hu
+        let go_mode,mini_go_mode = compute_go_mode(str, hp, mpZ, s)
+        let strag_go_mode,strag_mini_go_mode = compute_go_mode(str, hpSTRAG, mpZ, s)
+        let x(b) = if b then "+" else " "
+        if go_mode && go_mode_str_hp=31 then
+            go_mode_str_hp <- i+1
+        if strag_go_mode && go_mode_str_ag=31 then
+            go_mode_str_ag <- i+1
+        if print then
+            printfn "%s %s %3d %s%3d%s  %3d%s  %3d%s  %3d%s  %3d  %3d   %s" 
+                (if big_any then "**" else "  ") (if go_mode then "GO " elif mini_go_mode then "go " else "   ") (i+1) fives str (x big_str) agZ (x big_ag) hp (x big_hp) mpZ (x big_mp) ag mp s 
+        if i=14 && print then
+            printfn "%s" header
+    go_mode_str_hp, go_mode_str_ag 
+
 let decode_rom(file) =
     let bytes = System.IO.File.ReadAllBytes(file)
     let content = bytes.[16..]   // first 16 bytes are a header
@@ -610,51 +672,7 @@ reset
         | "" -> ()
         | s -> printfn "                                              %s" s
 
-    printfn "for build 'Z' (STR+HP)..."
-    let header = "        LV    STR   AGI   HP    MP   rawAG rawMP" 
-    let mutable p_str, p_ag, p_hp, p_mp, p_hu, hu = 0, 0, 0, 0, 0, 0
-    printfn "%s" header
-    for i = 0 to 29 do
-        let fives = (if i%5=4 then "-- " else "   ")
-        let b1 = bytes.[0x60DD+6*i+4]
-        let b2 = bytes.[0x60DD+6*i+5]
-        let s = if b2 &&&  1uy > 0uy then "HE " else fives 
-              + if b2 &&&  2uy > 0uy then "HU " else fives
-              + if b2 &&&  4uy > 0uy then "SL " else fives
-              + if b2 &&&  8uy > 0uy then "RA " else fives
-              + if b2 &&& 16uy > 0uy then "ST " else fives
-              + if b2 &&& 32uy > 0uy then "OU " else fives
-              + if b2 &&& 64uy > 0uy then "RT " else fives
-              + if b2 &&&128uy > 0uy then "RP " else fives
-              + if b1 &&&  1uy > 0uy then "HE " else fives
-              + if b1 &&&  2uy > 0uy then (hu <- 1; "HU ") else fives
-        let str, ag, hp, mp = bytes.[0x60DD+6*i+0], bytes.[0x60DD+6*i+1], bytes.[0x60DD+6*i+2], bytes.[0x60DD+6*i+3] 
-        let agZ = ag - ((ag+9uy)/10uy) + 3uy
-        let mpZ = mp - ((mp+9uy)/10uy) + 3uy
-        let big_str = i<>0 && int str - p_str > 12
-        let big_ag = i<>0 && int agZ - p_ag > 12
-        let big_hp = i<>0 && int hp - p_hp > 16
-        let big_mp = i<>0 && int mpZ - p_mp > 12
-        let big_hu = hu = 1 && p_hu = 0
-        let big_any = big_str || big_ag || big_hp || big_mp || big_hu
-        p_str <- int str
-        p_ag <- int agZ
-        p_hp <- int hp
-        p_mp <- int mpZ
-        p_hu <- hu
-        let max_dl = ((int str + 42) - 100) / 2
-        let avg_dl = max_dl * 3 / 4
-        let go_mode = int hp > 96 && ((int mpZ/8)+2)*avg_dl > 155  // quick approx
-        let mini_go_mode = int hp > 96 && ((int mpZ/8)+2)*avg_dl > 150  // quick approx
-        let go_mode = go_mode || int hp >= 129 && ((int mpZ/8)+2)*(avg_dl+3) > 155  // quick approx with DN
-        let mini_go_mode = mini_go_mode || int hp >= 129 && ((int mpZ/8)+2)*(avg_dl+3) > 150  // quick approx with DN
-        let go_mode = go_mode && (s.[24] = 'H') // need healmore
-        let mini_go_mode = mini_go_mode && (s.[24] = 'H') // need healmore
-        let x(b) = if b then "+" else " "
-        printfn "%s %s %3d %s%3d%s  %3d%s  %3d%s  %3d%s  %3d  %3d   %s" 
-            (if big_any then "**" else "  ") (if go_mode then "GO " elif mini_go_mode then "go " else "   ") (i+1) fives str (x big_str) agZ (x big_ag) hp (x big_hp) mpZ (x big_mp) ag mp s 
-        if i=14 then
-            printfn "%s" header
+    show_go_mode_stats(bytes, true) |> ignore
 
 // TODO how fast is start (keys, sword, zones, swamp, hurtmore ...)
 
