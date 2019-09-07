@@ -63,18 +63,19 @@ let swampToDesertAssembly =
         I2 0xA5 0x42        // LDA $42            ;A5 42             load x coord
         I3 0xD9 0x00 0x70   // CMP $7000,Y        ;D9 00 70          compare to array of coords starting at $7000    TODO see if memory after 7000 is safe to write (unused)
         BNE 1               // BNE $TODO          ;D0 TODO           if not, jump to first INY below (increment array index to next coord set)
-        I1 0xC8             // INY                ;C8                inc y
         I2 0xA5 0x43        // LDA $43            ;A5 43             load y coord
-        I3 0xD9 0x00 0x70   // CMP $7000,Y        ;D9 00 70          compare to array of coords starting at $7000    TODO see if memory after 7000 is safe to write (unused)
-        BNE 2               // BNE $TODO          ;D0 TODO           if not, jump to second INY below (increment array index to next coord set)
+        I3 0xD9 0x01 0x70   // CMP $7001,Y        ;D9 01 70          compare to array of coords starting at $7000    TODO see if memory after 7000 is safe to write (unused)
+        BNE 1               // BNE $TODO          ;D0 TODO           if not, jump to first INY below (increment array index to next coord set)
         I2 0xA9 0x01        // LDA #$01           ;A9 01             load desert
         I2 0x85 0x3C        // STA $3C            ;85 3C             store desert as tile result
+        (*
+        // omit next 3 lines, no harm doing entire loop rather than early exit, saves bytes so can fit this code in easier
         I1 0x68             // PLA                ;68                |
         I1 0xA8             // TAY                ;A8                |- subroutine exit
         I1 0x60             // RTS                ;60                |
+        *)
         Label 1
         I1 0xC8             // INY                ;C8                move down coord array
-        Label 2
         I1 0xC8             // INY                ;C8                move down coord array
         I2 0xC0 0x10        // CPY #$10           ;C0 10             compare Y - TODO decide how large an array of swamp->desert tiles we want, '10' means 8 tileswaps (16 coords = 8 xy pairs)
         BNE 0               // BNE $TODO          ;D0 TODO           if not at end of array, go back up to LDA $42 
@@ -159,6 +160,7 @@ let swampToDesertAssemblyWrite =
         I2 0xA0 0x10        // LDY #$10           ;A0 10             set Y to 10  // TODO first byte after array will store num-converted-tiles max currently 8 (16 coords = 0x10)
         I2 0xA9 0x10        // LDA #$10           ;A9 10             load MAX
         I3 0xD9 0x00 0x70   // CMP $7000,Y        ;D9 00 70          compare (have we already written 0x10 bytes of desert coords?)
+// TODO could factor common exit if I implement BEQ
         BNE 1               // BNE $TODO          ;D0 TODO           if no, do stuff further below
         Label 9             //                                       else fallthru to common exit                                         
         I3 0x20 0x74 0xFF   // JSR $FF74          ;20 74 FF          original JSR that I overwrote
@@ -231,34 +233,39 @@ bank 3
  is all FFs... i see mcgrew patching in new routines in latest betas towards the end of that range
 
 also bank 0
-
   00:A574:FF   
   ...
   00:A652:FF      
-
+oh, except that's not actually 'free', this is the end of the RLE-encoded map area, which happened to be free in
+my big swamp example due to high compression of big swamp.
+see https://github.com/mcgrew/dwrandomizer/blob/master/notes/rom.txt
+and https://github.com/mcgrew/dwrandomizer/blob/master/common/dwr.c
+    /* Clear the unused code so we can make sure it's unused */
+    memset(&rom.content[0xc288], 0xff, 0xc4f5 - 0xc288);
 
 *)
 
 let patch_rom(file) =
     let bytes = System.IO.File.ReadAllBytes(file)
     // when reading overworld map, load my extra desert tiles
-    // want to write [$02580..$02640)
-    let length = 0x02640 - 0x02580
-    let offset = 0x02580 + 16 // first 16 bytes are a header
+    let length = 39
+    let myoffset = 0x02652-length+1  // currently squeezing into very back of unused overworld map area, when possible
+    let myoffset = myoffset + 16     // header
     // do minor verification that the code we expect to be there is there
-    if bytes.[offset..offset+length-1] = Array.create length 0xFFuy then
+    if bytes.[myoffset..myoffset+length-1] = Array.create length 0xFFuy then
         let replacementBytes = makePatchedBytes(swampToDesertAssembly,length)
         for i = 0 to length-1 do
-            bytes.[offset+i] <- replacementBytes.[i]
+            bytes.[myoffset+i] <- replacementBytes.[i]
         // change the 'return' at the end of the overworld map part, namely
         //    $02C95: PLA TAY RTS
         // to a jump to my code which will also eventually end the subroutine similarly
-        //    JMP A580    // 4C 80 A5
+        //    JMP A580    // 4C 80 A5       // or wherever address my code finally lives
         let offset = 0x02C95 + 16
         if bytes.[offset..offset+2] = [| 0x68uy; 0xA8uy; 0x60uy |] then
-            bytes.[offset+0] <- 0x4Cuy // JMP
-            bytes.[offset+1] <- 0x80uy // 
-            bytes.[offset+2] <- 0xA5uy // A580 is the location 2580 in my code to JMP to
+            bytes.[offset+0] <- 0x4Cuy                        // JMP
+            let myoffset = myoffset-16 // header adjust
+            bytes.[offset+1] <- byte (myoffset % 256)
+            bytes.[offset+2] <- byte ((myoffset / 256) + 128) // the location of my code to JMP to, converting bank 0 (0x2nnn) to bank 2 (0xAnnn)
         else
             failwith "unexpected ROM code found"
     else
