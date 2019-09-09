@@ -3,6 +3,7 @@
 type Assembly = 
     | Label of int
     | BNE of int
+    | BEQ of int
     | Instr1 of byte
     | Instr2 of byte*byte
     | Instr3 of byte*byte*byte
@@ -10,6 +11,7 @@ type Assembly =
         match this with
         | Label _ -> 0
         | BNE _ -> 2
+        | BEQ _ -> 2
         | Instr1 _ -> 1
         | Instr2 _ -> 2
         | Instr3 _ -> 3
@@ -41,6 +43,12 @@ let backpatch (a:Assembly[]) =
                 let diff = addr - curOffset
                 newInstructions.Add(BNE diff)
             | false, _ -> failwithf "bad destination label %d" n
+        | BEQ n -> 
+            match labelOffsets.TryGetValue(n) with
+            | true, addr ->
+                let diff = addr - curOffset
+                newInstructions.Add(BEQ diff)
+            | false, _ -> failwithf "bad destination label %d" n
         | _ ->
             newInstructions.Add(x)
     newInstructions.ToArray()
@@ -52,13 +60,28 @@ let I3 x y z = Instr3(byte x, byte y, byte z)
 let swampToDesertAssembly = 
     // goal - keep an array of overworld tiles that have been transformed swamp to desert.
     // look them up and decode them on the fly during map decode tile lookup.
+    // keep 3 different arrays, one for each adventure log file, starting at 7000, 7020, and 7040, containing 15 pairs of coords (e.g. 7000-701D) and a count (e.g. 701E), each
     [|
+        // If the tile is an overworld swamp
         I2 0xC9 0x06        // CMP #$06           ;C9 06             compare swamp  (swamp is 'border tile 6' as per https://github.com/mcgrew/dwrandomizer/blob/master/notes/maps.txt )
-        BNE 9               // BNE $02D23         ;D0 TODO           if not, done
+        BNE 9               // BNE $TODO          ;D0 TODO           if not, done
         I2 0xA5 0x45        // LDA $45            ;A5 45             load map
         I2 0xC9 0x01        // CMP #$01           ;C9 01             compare overworld
-        BNE 9               // BNE $02D3C         ;D0 TODO           if not, done
+        BNE 9               // BNE $TODO          ;D0 TODO           if not, done
+        // Load up the appropriate array, based on which log file we're in
+        I3 0xAD 0x39 0x60   // LDA $6039          ;AD 39 60          load adventure log file number
+        I2 0xC9 0x02        // CMP #$02           ;C9 02             compare to log file 3
+        BNE 5               // BNE $TODO          ;D0 TODO           if not, keep going
+        I2 0xA0 0x40        // LDY #$40           ;A0 40             set Y to 40
+        Label 5
+        I2 0xC9 0x01        // CMP #$01           ;C9 01             compare to log file 2
+        BNE 6               // BNE $TODO          ;D0 TODO           if not, keep going
+        I2 0xA0 0x20        // LDY #$20           ;A0 20             set Y to 20
+        Label 6
+        I2 0xC9 0x00        // CMP #$00           ;C9 00             compare to log file 1
+        BNE 0               // BNE $TODO          ;D0 TODO           if not, keep going
         I2 0xA0 0x00        // LDY #$00           ;A0 00             set Y to 0
+        // Compare to each and every saved coordinate in current array (array will start as all zeros, so upper left of overworld map will never be swamp, that's fine)
         Label 0
         I2 0xA5 0x42        // LDA $42            ;A5 42             load x coord
         I3 0xD9 0x00 0x70   // CMP $7000,Y        ;D9 00 70          compare to array of coords starting at $7000    TODO see if memory after 7000 is safe to write (unused)
@@ -68,24 +91,24 @@ let swampToDesertAssembly =
         BNE 1               // BNE $TODO          ;D0 TODO           if not, jump to first INY below (increment array index to next coord set)
         I2 0xA9 0x01        // LDA #$01           ;A9 01             load desert
         I2 0x85 0x3C        // STA $3C            ;85 3C             store desert as tile result
-        (*
-        // omit next 3 lines, no harm doing entire loop rather than early exit, saves bytes so can fit this code in easier
-        I1 0x68             // PLA                ;68                |
-        I1 0xA8             // TAY                ;A8                |- subroutine exit
-        I1 0x60             // RTS                ;60                |
-        *)
         Label 1
         I1 0xC8             // INY                ;C8                move down coord array
         I1 0xC8             // INY                ;C8                move down coord array
-        I2 0xC0 0x10        // CPY #$10           ;C0 10             compare Y - TODO decide how large an array of swamp->desert tiles we want, '10' means 8 tileswaps (16 coords = 8 xy pairs)
-        BNE 0               // BNE $TODO          ;D0 TODO           if not at end of array, go back up to LDA $42 
+        // Check for end of (any) array
+        I2 0xC0 0x1E        // CPY #$1E           ;C0 1E             compare Y (see if at end of first array)
+        BEQ 9               // BEQ $TODO          ;F0 TODO           if at end of array, go to return
+        I2 0xC0 0x3E        // CPY #$3E           ;C0 3E             compare Y (see if at end of second array)
+        BEQ 9               // BEQ $TODO          ;F0 TODO           if at end of array, go to return
+        I2 0xC0 0x5E        // CPY #$5E           ;C0 5E             compare Y (see if at end of third array)
+        BEQ 9               // BEQ $TODO          ;F0 TODO           if at end of array, go to return
+        BNE 0               // BNE $TODO          ;D0 TODO           else, go back up to LDA $42 
         Label 9
         I1 0x68             // PLA                ;68                |
         I1 0xA8             // TAY                ;A8                |- subroutine exit
         I1 0x60             // RTS                ;60                |
     |]
 // TODO cuurent stored map changes in battery-backed storage shared by all 3 log files, can see which log is in play via
-//     looks like RAM byte 0x21 is 0/1/2 depending on if in file 1/2/3
+//     looks like RAM byte 0x21 is temporarily 0/1/2 depending on if in file 1/2/3
 // and discriminate among 3 arrays... but even then, clearing a file would not clear it... hm
 (*
 
@@ -112,6 +135,8 @@ let showBackpatch() =
         | Label _ -> failwith "impossible"
         | BNE offset -> 
             printfn "D0 %02X" (if offset >=0 then offset else offset + 256)
+        | BEQ offset -> 
+            printfn "F0 %02X" (if offset >=0 then offset else offset + 256)
         | Instr1(x) ->
             printfn "%02X" x
         | Instr2(x,y) ->
@@ -127,6 +152,9 @@ let makePatchedBytes(code,length) =
         | Label _ -> failwith "impossible"
         | BNE offset -> 
             bytes.Add(0xD0uy)
+            bytes.Add(if offset >=0 then byte(offset) else byte(offset + 256))
+        | BEQ offset -> 
+            bytes.Add(0xF0uy)
             bytes.Add(if offset >=0 then byte(offset) else byte(offset + 256))
         | Instr1(x) ->
             bytes.Add(byte x)
@@ -177,16 +205,25 @@ let swampToDesertAssemblyWrite =
         I2 0xA5 0x45        // LDA $45            ;A5 45             load map
         I2 0xC9 0x01        // CMP #$01           ;C9 01             compare overworld
         BNE 9               // BNE $0TODO         ;D0 TODO           if not, done
-        I2 0xA0 0x10        // LDY #$10           ;A0 10             set Y to 10  // TODO first byte after array will store num-converted-tiles max currently 8 (16 coords = 0x10)
-        I2 0xA9 0x10        // LDA #$10           ;A9 10             load MAX
-        I3 0xD9 0x00 0x70   // CMP $7000,Y        ;D9 00 70          compare (have we already written 0x10 bytes of desert coords?)
-// TODO could factor common exit if I implement BEQ
-        BNE 1               // BNE $TODO          ;D0 TODO           if no, do stuff further below
-        Label 9             //                                       else fallthru to common exit                                         
-        I3 0x20 0x74 0xFF   // JSR $FF74          ;20 74 FF          original JSR that I overwrote
-        I3 0x4C 0xED 0xCD   // JMP $CDED          ;4C ED CD          jump back to instruction after one I overwrote
+        // We died to swamp damage on the overworld. Load up the array of the current adventure log file, and see if there is any space left to write more coords.
+
+        // Load up the appropriate array, based on which log file we're in
+        I3 0xAD 0x39 0x60   // LDA $6039          ;AD 39 60          load adventure log file number
+        I2 0xC9 0x02        // CMP #$02           ;C9 02             compare to log file 3
+        BEQ 3               // BEQ $TODO          ;F0 TODO           if is, use code copy #3
+        I2 0xC9 0x01        // CMP #$01           ;C9 01             compare to log file 2
+        BEQ 2               // BEQ $TODO          ;F0 TODO           if is, use code copy #2
+                            //                                       else fallthru to copy #1
+        // The 'count' byte will be twice the number of coordinate pairs that have been written, e.g. an offset to the first 'unused' spot in the array.  So for example
+        // if in log file 2, if 703E contains the value 0E, it means 7 sets of coordinates have been written, and the next one is written to 7020+0E.  A value of 1E means 'full'.
+
+        // 3 copies of same code for different array offsets
         Label 1
-        I2 0xA2 0x10        // LDX #$10           ;A2 10             load MAX (to X)
+        I2 0xA0 0x1E        // LDY #$1E           ;A0 1E             set Y to 1E (offset into 7000 array to look up count)
+        I2 0xA9 0x1E        // LDA #$1E           ;A9 1E             load MAX
+        I3 0xD9 0x00 0x70   // CMP $7000,Y        ;D9 00 70          compare (have we already written 0x1E bytes of desert coords?)
+        BEQ 9               // BEQ $TODO          ;F0 TODO           if so, done
+        I2 0xA2 0x1E        // LDX #$1E           ;A2 1E             load MAX (to X)
         I3 0xBC 0x00 0x70   // LDY $7000,X        ;BC 00 70          read in (to Y) num-written-desert-bytes
         I2 0xA5 0x42        // LDA $42            ;A5 42             load map x coord
         I3 0x99 0x00 0x70   // STA $7000,Y        ;99 00 70          store it to my array
@@ -194,7 +231,46 @@ let swampToDesertAssemblyWrite =
         I2 0xA5 0x43        // LDA $43            ;A5 43             load map y coord
         I3 0x99 0x00 0x70   // STA $7000,Y        ;99 00 70          store it to my array
         I1 0xC8             // INY                ;C8                inc y
-        I3 0x8C 0x10 0x70   // STY $7010          ;8C 10 70          store new Y back into my num-written-desert-bytes cell
+        I3 0x8C 0x1E 0x70   // STY $701E          ;8C 1E 70          store new Y back into my num-written-desert-bytes cell
+        // no 'uncondition branch' instruction, so do this to jump to bottom
+        BEQ 9
+        BNE 9
+
+        Label 2
+        I2 0xA0 0x1E        // LDY #$1E           ;A0 1E             set Y to 1E (offset into 7020 array to look up count)
+        I2 0xA9 0x1E        // LDA #$1E           ;A9 1E             load MAX
+        I3 0xD9 0x20 0x70   // CMP $7020,Y        ;D9 20 70          compare (have we already written 0x1E bytes of desert coords?)
+        BEQ 9               // BEQ $TODO          ;F0 TODO           if so, done
+        I2 0xA2 0x1E        // LDX #$1E           ;A2 1E             load MAX (to X)
+        I3 0xBC 0x20 0x70   // LDY $7020,X        ;BC 20 70          read in (to Y) num-written-desert-bytes
+        I2 0xA5 0x42        // LDA $42            ;A5 42             load map x coord
+        I3 0x99 0x20 0x70   // STA $7020,Y        ;99 20 70          store it to my array
+        I1 0xC8             // INY                ;C8                inc y
+        I2 0xA5 0x43        // LDA $43            ;A5 43             load map y coord
+        I3 0x99 0x20 0x70   // STA $7020,Y        ;99 20 70          store it to my array
+        I1 0xC8             // INY                ;C8                inc y
+        I3 0x8C 0x3E 0x70   // STY $703E          ;8C 3E 70          store new Y back into my num-written-desert-bytes cell
+        // no 'uncondition branch' instruction, so do this to jump to bottom
+        BEQ 9
+        BNE 9
+
+        Label 3
+        I2 0xA0 0x1E        // LDY #$1E           ;A0 1E             set Y to 1E (offset into 7040 array to look up count)
+        I2 0xA9 0x1E        // LDA #$1E           ;A9 1E             load MAX
+        I3 0xD9 0x40 0x70   // CMP $7040,Y        ;D9 40 70          compare (have we already written 0x1E bytes of desert coords?)
+        BEQ 9               // BEQ $TODO          ;F0 TODO           if so, done
+        I2 0xA2 0x1E        // LDX #$1E           ;A2 1E             load MAX (to X)
+        I3 0xBC 0x40 0x70   // LDY $7040,X        ;BC 40 70          read in (to Y) num-written-desert-bytes
+        I2 0xA5 0x42        // LDA $42            ;A5 42             load map x coord
+        I3 0x99 0x40 0x70   // STA $7040,Y        ;99 40 70          store it to my array
+        I1 0xC8             // INY                ;C8                inc y
+        I2 0xA5 0x43        // LDA $43            ;A5 43             load map y coord
+        I3 0x99 0x40 0x70   // STA $7040,Y        ;99 40 70          store it to my array
+        I1 0xC8             // INY                ;C8                inc y
+        I3 0x8C 0x5E 0x70   // STY $705E          ;8C 5E 70          store new Y back into my num-written-desert-bytes cell
+            
+        // the 'return'
+        Label 9
         I3 0x20 0x74 0xFF   // JSR $FF74          ;20 74 FF          original JSR that I overwrote
         I3 0x4C 0xED 0xCD   // JMP $CDED          ;4C ED CD          jump back to instruction after one I overwrote
     |]
@@ -268,11 +344,11 @@ let patch_rom(file) =
     //     /* Clear the unused code so we can make sure it's unused */
     //     memset(&rom.content[0xc288], 0xff, 0xc4f5 - 0xc288);
     let unused_min_offset = 0xC298      // content is 0x10 after bytes due to header
-    let unused_length = 0xC505 - unused_min_offset
+    let unused_end = 0xC505 
 
     let bytes = System.IO.File.ReadAllBytes(file)
     // when dying in swamp, write my extra desert tiles
-    let length = 53
+    let length = 124
     // do minor verification that the code we expect to be there is there
     if bytes.[unused_min_offset..unused_min_offset+length-1] = Array.create length 0xFFuy then
         let replacementBytes = makePatchedBytes(swampToDesertAssemblyWrite,length)
@@ -280,11 +356,11 @@ let patch_rom(file) =
             bytes.[unused_min_offset+i] <- replacementBytes.[i]
         // change the JSR after swamp damage, namely
         //    03:CDEA:20 74 FF  JSR $FF74
-        // to a JSR to my code which will also eventually JMP back
-        //    20 A0 C2          JSR $C2A0    // or wherever address my code finally lives
+        // to a JMP to my code which will also eventually JMP back
+        //    4C A0 C2          JMP $C2A0    // or wherever address my code finally lives
         let offset = 0x0CDEA + 16
         if bytes.[offset..offset+2] = [| 0x20uy; 0x74uy; 0xFFuy |] then
-            bytes.[offset+0] <- 0x20uy // JSR
+            bytes.[offset+0] <- 0x4Cuy // JMP
             let myoffset = unused_min_offset-16 // header adjust
             bytes.[offset+1] <- byte (myoffset % 256)
             bytes.[offset+2] <- byte ((myoffset / 256) + 0) // the location of my code to JMP to, converting bank 3 (0xCnnn) to bank 3 (0xCnnn)
@@ -293,9 +369,11 @@ let patch_rom(file) =
     else
         failwith "unexpected ROM code found"
     let unused_min_offset = unused_min_offset + length
+    if unused_min_offset > unused_end then
+        failwith "used too much space"
 
     // when reading overworld map, load my extra desert tiles
-    let length = 39
+    let length = 68
     // do minor verification that the code we expect to be there is there
     if bytes.[unused_min_offset..unused_min_offset+length-1] = Array.create length 0xFFuy then
         let replacementBytes = makePatchedBytes(swampToDesertAssembly,length)
@@ -317,5 +395,7 @@ let patch_rom(file) =
     else
         failwith "unexpected ROM code found"
     let unused_min_offset = unused_min_offset + length
+    if unused_min_offset > unused_end then
+        failwith "used too much space"
 
     System.IO.File.WriteAllBytes(file+".patched.nes", bytes)
