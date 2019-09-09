@@ -84,6 +84,26 @@ let swampToDesertAssembly =
         I1 0xA8             // TAY                ;A8                |- subroutine exit
         I1 0x60             // RTS                ;60                |
     |]
+// TODO cuurent stored map changes in battery-backed storage shared by all 3 log files, can see which log is in play via
+//     looks like RAM byte 0x21 is 0/1/2 depending on if in file 1/2/3
+// and discriminate among 3 arrays... but even then, clearing a file would not clear it... hm
+(*
+
+[7:27 PM] Lorgon111: looks like 0x21 is 0/1/2 depending on if in file 1/2/3
+[7:31 PM] Lorgon111: ah, but even if i discriminate on-the-fly, the player could still: play, change the map, reset, clear the data file, and then start a new character in the same log 
+                     file and see prior changes... so i would need to be able to hook 'clear' or else king save/load
+[7:31 PM] Thilotilo: $F148 is the save code
+[7:35 PM] Thilotilo: I don't have it documented perfectly enough to be sure of this, but it appears that $6039 is what is used by the game for save index for all save/load file logic
+[7:39 PM] Lorgon111: indeed, I see code at F9E4 reading it when i talk to king to save
+[7:40 PM] Thilotilo: $FB6B is the code that is run after checksum passes on file load, which does the byte-by-byte copy from save file to current status
+[7:42 PM] Thilotilo: Yeah, on saving, $F148 is actually wait-for-next-frame then call $F9DF, which configures everything with $6039 for save address location (stored to $23$22), and then 
+                     calls into $FA18, which is the actual byte-by-byte copy of status
+
+code at 03:F80F does the 'clear a file' logic, it seems 6039 is the selected file, 6038 stores a mask of existing saves (1/2/4 is files 0/1/2), 6035/6036/6037 store some data for 0/1/2
+
+see also https://www.nicholasmikstas.com/games/
+
+*)
 
 let showBackpatch() =
     let patched = backpatch(swampToDesertAssembly)
@@ -239,23 +259,48 @@ also bank 0
 oh, except that's not actually 'free', this is the end of the RLE-encoded map area, which happened to be free in
 my big swamp example due to high compression of big swamp.
 see https://github.com/mcgrew/dwrandomizer/blob/master/notes/rom.txt
-and https://github.com/mcgrew/dwrandomizer/blob/master/common/dwr.c
-    /* Clear the unused code so we can make sure it's unused */
-    memset(&rom.content[0xc288], 0xff, 0xc4f5 - 0xc288);
 
 *)
 
 let patch_rom(file) =
+    // Based on:
+    //     https://github.com/mcgrew/dwrandomizer/blob/master/common/dwr.c
+    //     /* Clear the unused code so we can make sure it's unused */
+    //     memset(&rom.content[0xc288], 0xff, 0xc4f5 - 0xc288);
+    let unused_min_offset = 0xC298      // content is 0x10 after bytes due to header
+    let unused_length = 0xC505 - unused_min_offset
+
     let bytes = System.IO.File.ReadAllBytes(file)
+    // when dying in swamp, write my extra desert tiles
+    let length = 53
+    // do minor verification that the code we expect to be there is there
+    if bytes.[unused_min_offset..unused_min_offset+length-1] = Array.create length 0xFFuy then
+        let replacementBytes = makePatchedBytes(swampToDesertAssemblyWrite,length)
+        for i = 0 to length-1 do
+            bytes.[unused_min_offset+i] <- replacementBytes.[i]
+        // change the JSR after swamp damage, namely
+        //    03:CDEA:20 74 FF  JSR $FF74
+        // to a JSR to my code which will also eventually JMP back
+        //    20 A0 C2          JSR $C2A0    // or wherever address my code finally lives
+        let offset = 0x0CDEA + 16
+        if bytes.[offset..offset+2] = [| 0x20uy; 0x74uy; 0xFFuy |] then
+            bytes.[offset+0] <- 0x20uy // JSR
+            let myoffset = unused_min_offset-16 // header adjust
+            bytes.[offset+1] <- byte (myoffset % 256)
+            bytes.[offset+2] <- byte ((myoffset / 256) + 0) // the location of my code to JMP to, converting bank 3 (0xCnnn) to bank 3 (0xCnnn)
+        else
+            failwith "unexpected ROM code found"
+    else
+        failwith "unexpected ROM code found"
+    let unused_min_offset = unused_min_offset + length
+
     // when reading overworld map, load my extra desert tiles
     let length = 39
-    let myoffset = 0x02652-length+1  // currently squeezing into very back of unused overworld map area, when possible
-    let myoffset = myoffset + 16     // header
     // do minor verification that the code we expect to be there is there
-    if bytes.[myoffset..myoffset+length-1] = Array.create length 0xFFuy then
+    if bytes.[unused_min_offset..unused_min_offset+length-1] = Array.create length 0xFFuy then
         let replacementBytes = makePatchedBytes(swampToDesertAssembly,length)
         for i = 0 to length-1 do
-            bytes.[myoffset+i] <- replacementBytes.[i]
+            bytes.[unused_min_offset+i] <- replacementBytes.[i]
         // change the 'return' at the end of the overworld map part, namely
         //    $02C95: PLA TAY RTS
         // to a jump to my code which will also eventually end the subroutine similarly
@@ -263,35 +308,14 @@ let patch_rom(file) =
         let offset = 0x02C95 + 16
         if bytes.[offset..offset+2] = [| 0x68uy; 0xA8uy; 0x60uy |] then
             bytes.[offset+0] <- 0x4Cuy                        // JMP
-            let myoffset = myoffset-16 // header adjust
+            let myoffset = unused_min_offset-16 // header adjust
             bytes.[offset+1] <- byte (myoffset % 256)
-            bytes.[offset+2] <- byte ((myoffset / 256) + 128) // the location of my code to JMP to, converting bank 0 (0x2nnn) to bank 2 (0xAnnn)
+            bytes.[offset+2] <- byte ((myoffset / 256) + 0) // the location of my code to JMP to, converting bank 3 (0xCnnn) to bank 3 (0xCnnn)
+            //bytes.[offset+2] <- byte ((myoffset / 256) + 128) // the location of my code to JMP to, converting bank 0 (0x2nnn) to bank 2 (0xAnnn)
         else
-            failwith "unexpected ROM code found"
+            failwith "unexpected ROM code found - did not find overworld-map-tile-return code where expected"
     else
         failwith "unexpected ROM code found"
-
-    // when dying in swamp, write my extra desert tiles
-    // want to write [$0C2A0..$0C2F0)
-    let length = 0x0C2F0 - 0x0C2A0
-    let offset = 0x0C2A0 + 16 // first 16 bytes are a header
-    // do minor verification that the code we expect to be there is there
-    if bytes.[offset..offset+length-1] = Array.create length 0xFFuy then
-        let replacementBytes = makePatchedBytes(swampToDesertAssemblyWrite,length)
-        for i = 0 to length-1 do
-            bytes.[offset+i] <- replacementBytes.[i]
-        // change the JSR after swamp damage, namely
-        //    03:CDEA:20 74 FF  JSR $FF74
-        // to a JSR to my code which will also eventually JMP back
-        //    20 A0 C2          JSR $C2A0
-        let offset = 0x0CDEA + 16
-        if bytes.[offset..offset+2] = [| 0x20uy; 0x74uy; 0xFFuy |] then
-            bytes.[offset+0] <- 0x20uy // JSR
-            bytes.[offset+1] <- 0xA0uy // 
-            bytes.[offset+2] <- 0xC2uy // C2A0 is the location C2A0 in my code to JSR to
-        else
-            failwith "unexpected ROM code found"
-    else
-        failwith "unexpected ROM code found"
+    let unused_min_offset = unused_min_offset + length
 
     System.IO.File.WriteAllBytes(file+".patched.nes", bytes)
