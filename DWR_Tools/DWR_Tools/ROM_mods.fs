@@ -4,6 +4,8 @@ type Assembly =
     | Label of int
     | BNE of int
     | BEQ of int
+    | BPL of int
+    | BMI of int
     | Instr1 of byte
     | Instr2 of byte*byte
     | Instr3 of byte*byte*byte
@@ -12,6 +14,8 @@ type Assembly =
         | Label _ -> 0
         | BNE _ -> 2
         | BEQ _ -> 2
+        | BPL _ -> 2
+        | BMI _ -> 2
         | Instr1 _ -> 1
         | Instr2 _ -> 2
         | Instr3 _ -> 3
@@ -48,6 +52,18 @@ let backpatch (a:Assembly[]) =
             | true, addr ->
                 let diff = addr - curOffset
                 newInstructions.Add(BEQ diff)
+            | false, _ -> failwithf "bad destination label %d" n
+        | BPL n -> 
+            match labelOffsets.TryGetValue(n) with
+            | true, addr ->
+                let diff = addr - curOffset
+                newInstructions.Add(BPL diff)
+            | false, _ -> failwithf "bad destination label %d" n
+        | BMI n -> 
+            match labelOffsets.TryGetValue(n) with
+            | true, addr ->
+                let diff = addr - curOffset
+                newInstructions.Add(BMI diff)
             | false, _ -> failwithf "bad destination label %d" n
         | _ ->
             newInstructions.Add(x)
@@ -137,6 +153,10 @@ let showBackpatch() =
             printfn "D0 %02X" (if offset >=0 then offset else offset + 256)
         | BEQ offset -> 
             printfn "F0 %02X" (if offset >=0 then offset else offset + 256)
+        | BPL offset -> 
+            printfn "10 %02X" (if offset >=0 then offset else offset + 256)
+        | BMI offset -> 
+            printfn "30 %02X" (if offset >=0 then offset else offset + 256)
         | Instr1(x) ->
             printfn "%02X" x
         | Instr2(x,y) ->
@@ -155,6 +175,12 @@ let makePatchedBytes(code,length) =
             bytes.Add(if offset >=0 then byte(offset) else byte(offset + 256))
         | BEQ offset -> 
             bytes.Add(0xF0uy)
+            bytes.Add(if offset >=0 then byte(offset) else byte(offset + 256))
+        | BPL offset -> 
+            bytes.Add(0x10uy)
+            bytes.Add(if offset >=0 then byte(offset) else byte(offset + 256))
+        | BMI offset -> 
+            bytes.Add(0x30uy)
             bytes.Add(if offset >=0 then byte(offset) else byte(offset + 256))
         | Instr1(x) ->
             bytes.Add(byte x)
@@ -338,6 +364,51 @@ see https://github.com/mcgrew/dwrandomizer/blob/master/notes/rom.txt
 
 *)
 
+let clearArrayAssociatedWithALogFile = 
+    [|
+        I1 0x48             // PHA
+        I1 0x8A             // TXA                ; same preamble as method we're replacing (0xF80F), will jump past it at end
+        I1 0x48             // PHA
+
+        // Load up the appropriate array, based on which log file we're in
+        I3 0xAD 0x39 0x60   // LDA $6039          ;AD 39 60          load adventure log file number
+        I2 0xC9 0x02        // CMP #$02           ;C9 02             compare to log file 3
+        BEQ 3               // BEQ $TODO          ;F0 TODO           if is, use code copy #3
+        I2 0xC9 0x01        // CMP #$01           ;C9 01             compare to log file 2
+        BEQ 2               // BEQ $TODO          ;F0 TODO           if is, use code copy #2
+                            //                                       else fallthru to copy #1
+        // 3 copies of same code for different array offsets
+        Label 1
+        I2 0xA0 0x1F        // LDY #$1F           ;A0 1F             set Y to 1F (last offset into 7000 array)
+        I2 0xA9 0x00        // LDA #$00           ;A9 00             load 0
+        Label 6
+        I3 0x99 0x00 0x70   // STA $7000,Y        ;99 00 70          store it to my array
+        I1 0x88             // DEY                ;88                decrement Y
+        BPL 6               // BPL $TODO          ;10 TODO           branch on plus (while Y>=0)
+        BMI 9               // BMI $TODO          ;30 TODO           branch on minus (jump to end)
+
+        Label 2
+        I2 0xA0 0x1F        // LDY #$1F           ;A0 1F             set Y to 1F (last offset into 7020 array)
+        I2 0xA9 0x00        // LDA #$00           ;A9 00             load 0
+        Label 7
+        I3 0x99 0x20 0x70   // STA $7020,Y        ;99 20 70          store it to my array
+        I1 0x88             // DEY                ;88                decrement Y
+        BPL 7               // BPL $TODO          ;10 TODO           branch on plus (while Y>=0)
+        BMI 9               // BMI $TODO          ;30 TODO           branch on minus (jump to end)
+
+        Label 3
+        I2 0xA0 0x1F        // LDY #$1F           ;A0 1F             set Y to 1F (last offset into 7040 array)
+        I2 0xA9 0x00        // LDA #$00           ;A9 00             load 0
+        Label 8
+        I3 0x99 0x40 0x70   // STA $7040,Y        ;99 40 70          store it to my array
+        I1 0x88             // DEY                ;88                decrement Y
+        BPL 8               // BPL $TODO          ;10 TODO           branch on plus (while Y>=0)
+                            // else fall thru to end
+        // the 'return'
+        Label 9
+        I3 0x4C 0x12 0xF8   // JMP $F812          ;4C 12 F8          jump to routine I hijacked, after preamble that I copied at start of self
+    |]
+
 let patch_rom(file) =
     // Based on:
     //     https://github.com/mcgrew/dwrandomizer/blob/master/common/dwr.c
@@ -392,6 +463,31 @@ let patch_rom(file) =
             //bytes.[offset+2] <- byte ((myoffset / 256) + 128) // the location of my code to JMP to, converting bank 0 (0x2nnn) to bank 2 (0xAnnn)
         else
             failwith "unexpected ROM code found - did not find overworld-map-tile-return code where expected"
+    else
+        failwith "unexpected ROM code found"
+    let unused_min_offset = unused_min_offset + length
+    if unused_min_offset > unused_end then
+        failwith "used too much space"
+
+    // erase array when player clears an adventure log
+    let length = 51
+    // do minor verification that the code we expect to be there is there
+    if bytes.[unused_min_offset..unused_min_offset+length-1] = Array.create length 0xFFuy then
+        let replacementBytes = makePatchedBytes(clearArrayAssociatedWithALogFile,length)
+        for i = 0 to length-1 do
+            bytes.[unused_min_offset+i] <- replacementBytes.[i]
+        // change the JSR at clear-log-file, namely
+        //    03:F935:20 0F F8  JSR $F80F
+        // to a JSR to my code which will also eventually JMP back into the method at F80F which I hijacked
+        //    20 A0 C2          JMP $C2A0    // or wherever address my code finally lives
+        let offset = 0x0F935 + 16
+        if bytes.[offset..offset+2] = [| 0x20uy; 0x0Fuy; 0xF8uy |] then
+            bytes.[offset+0] <- 0x20uy // JSR
+            let myoffset = unused_min_offset-16 // header adjust
+            bytes.[offset+1] <- byte (myoffset % 256)
+            bytes.[offset+2] <- byte ((myoffset / 256) + 0) // the location of my code to JSR to, converting bank 3 (0xCnnn) to bank 3 (0xCnnn)
+        else
+            failwith "unexpected ROM code found"
     else
         failwith "unexpected ROM code found"
     let unused_min_offset = unused_min_offset + length
