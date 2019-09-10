@@ -156,71 +156,48 @@ let swampToDesertAssemblyWrite =
         BNE 9               // BNE $0TODO         ;D0 TODO           if not, done
         // We died to swamp damage on the overworld. Load up the array of the current adventure log file, and see if there is any space left to write more coords.
 
-        // Load up the appropriate array, based on which log file we're in
-        I3 0xAD 0x39 0x60   // LDA $6039          ;AD 39 60          load adventure log file number
-        I2 0xC9 0x02        // CMP #$02           ;C9 02             compare to log file 3
-        BEQ 3               // BEQ $TODO          ;F0 TODO           if is, use code copy #3
-        I2 0xC9 0x01        // CMP #$01           ;C9 01             compare to log file 2
-        BEQ 2               // BEQ $TODO          ;F0 TODO           if is, use code copy #2
-                            //                                       else fallthru to copy #1
+        // Free up some zero-page bytes for indirect addressing.
+        I2 0xA5 0x20        // LDA $20            ;A5 20             
+        I1 0x48             // PHA                ;48
+        I2 0xA5 0x21        // LDA $21            ;A5 21
+        I1 0x48             // PHA                ;48
+        // Load up the appropriate array, based on which log file we're in.  0x20 multiplied by adventure log number is array address offset from 7000, so...
+        I3 0xAD 0x39 0x60   // LDA $6039          ;AD 39 60          load adventure log file number (0/1/2)
+        I1 0x0A             // ASL                ;0A
+        I1 0x0A             // ASL                ;0A
+        I1 0x0A             // ASL                ;0A
+        I1 0x0A             // ASL                ;0A
+        I1 0x0A             // ASL                ;0A                five shifts is a multiply-by-0x20
+        I2 0x85 0x20        // STA $20            ;85 20
+        I2 0xA9 0x70        // LDA #$70           ;A9 70
+        I2 0x85 0x21        // STA $21            ;85 21             now $21$20 contains either $7000, $7020, or $7040 as appropriate
+
         // The 'count' byte will be twice the number of coordinate pairs that have been written, e.g. an offset to the first 'unused' spot in the array.  So for example
         // in log file 2, if 703E contains the value 0C, it means 6 sets of coordinates have been written, and the next one is written to 7020+0C.  A value of 1E means 'full'.
+        I2 0xA0 0x1E        // LDY #$1E           ;A0 1E             set Y to 1E (offset into 70x0 array to look up count)
+        I2 0xB1 0x20        // LDA ($20),Y        ;B1 20             load num-written-desert-bytes
+        I1 0xA8             // TAY                ;A8                copy to Y
+        I2 0xC9 0x1E        // CMP #$1E           ;C9 1E             compare to MAX (have we already written 0x1E bytes of desert coords?)
+        BEQ 8               // BEQ $TODO          ;F0 TODO           if so, done
 
-        // 3 copies of same code for different array offsets
-        Label 1
-        I2 0xA0 0x1E        // LDY #$1E           ;A0 1E             set Y to 1E (offset into 7000 array to look up count)
-        I2 0xA9 0x1E        // LDA #$1E           ;A9 1E             load MAX
-        I3 0xD9 0x00 0x70   // CMP $7000,Y        ;D9 00 70          compare (have we already written 0x1E bytes of desert coords?)
-        BEQ 9               // BEQ $TODO          ;F0 TODO           if so, done
-        I2 0xA2 0x1E        // LDX #$1E           ;A2 1E             load MAX (to X)
-        I3 0xBC 0x00 0x70   // LDY $7000,X        ;BC 00 70          read in (to Y) num-written-desert-bytes
         I2 0xA5 0x42        // LDA $42            ;A5 42             load map x coord
-        I3 0x99 0x00 0x70   // STA $7000,Y        ;99 00 70          store it to my array
-        I1 0xC8             // INY                ;C8                inc y
+        I2 0x91 0x20        // STA ($20),Y        ;91 20             store it to my array
+        I1 0xC8             // INY                ;C8                inc Y
         I2 0xA5 0x43        // LDA $43            ;A5 43             load map y coord
-        I3 0x99 0x00 0x70   // STA $7000,Y        ;99 00 70          store it to my array
-        I1 0xC8             // INY                ;C8                inc y
-        I3 0x8C 0x1E 0x70   // STY $701E          ;8C 1E 70          store new Y back into my num-written-desert-bytes cell
-        // no 'uncondition branch' instruction, so do this to jump to bottom
-        BEQ 9
-        BNE 9
-
-        Label 2
-        I2 0xA0 0x1E        // LDY #$1E           ;A0 1E             set Y to 1E (offset into 7020 array to look up count)
-        I2 0xA9 0x1E        // LDA #$1E           ;A9 1E             load MAX
-        I3 0xD9 0x20 0x70   // CMP $7020,Y        ;D9 20 70          compare (have we already written 0x1E bytes of desert coords?)
-        BEQ 9               // BEQ $TODO          ;F0 TODO           if so, done
-        I2 0xA2 0x1E        // LDX #$1E           ;A2 1E             load MAX (to X)
-        I3 0xBC 0x20 0x70   // LDY $7020,X        ;BC 20 70          read in (to Y) num-written-desert-bytes
-        I2 0xA5 0x42        // LDA $42            ;A5 42             load map x coord
-        I3 0x99 0x20 0x70   // STA $7020,Y        ;99 20 70          store it to my array
-        I1 0xC8             // INY                ;C8                inc y
-        I2 0xA5 0x43        // LDA $43            ;A5 43             load map y coord
-        I3 0x99 0x20 0x70   // STA $7020,Y        ;99 20 70          store it to my array
-        I1 0xC8             // INY                ;C8                inc y
-        I3 0x8C 0x3E 0x70   // STY $703E          ;8C 3E 70          store new Y back into my num-written-desert-bytes cell
-        // no 'uncondition branch' instruction, so do this to jump to bottom
-        BEQ 9
-        BNE 9
-
-        Label 3
-        I2 0xA0 0x1E        // LDY #$1E           ;A0 1E             set Y to 1E (offset into 7040 array to look up count)
-        I2 0xA9 0x1E        // LDA #$1E           ;A9 1E             load MAX
-        I3 0xD9 0x40 0x70   // CMP $7040,Y        ;D9 40 70          compare (have we already written 0x1E bytes of desert coords?)
-        BEQ 9               // BEQ $TODO          ;F0 TODO           if so, done
-        I2 0xA2 0x1E        // LDX #$1E           ;A2 1E             load MAX (to X)
-        I3 0xBC 0x40 0x70   // LDY $7040,X        ;BC 40 70          read in (to Y) num-written-desert-bytes
-        I2 0xA5 0x42        // LDA $42            ;A5 42             load map x coord
-        I3 0x99 0x40 0x70   // STA $7040,Y        ;99 40 70          store it to my array
-        I1 0xC8             // INY                ;C8                inc y
-        I2 0xA5 0x43        // LDA $43            ;A5 43             load map y coord
-        I3 0x99 0x40 0x70   // STA $7040,Y        ;99 40 70          store it to my array
-        I1 0xC8             // INY                ;C8                inc y
-        I3 0x8C 0x5E 0x70   // STY $705E          ;8C 5E 70          store new Y back into my num-written-desert-bytes cell
-        // fall thru to bottom
+        I2 0x91 0x20        // STA ($20),Y        ;91 20             store it to my array
+        I1 0xC8             // INY                ;C8                inc Y
+        I1 0x98             // TYA                ;98                copy Y to A
+        I2 0xA0 0x1E        // LDY #$1E           ;A0 1E             set Y to 1E (offset into 70x0 array to store new count)
+        I2 0x91 0x20        // STA ($20),Y        ;91 20             store new count to num-written-desert-bytes cell
             
-        // the 'return'
+        Label 8
+        // restore the zero-page bytes used for indirect addressing
+        I1 0x68             // PLA                ;68
+        I2 0x44 0x21        // STA $21            ;44 21             
+        I1 0x68             // PLA                ;68
+        I2 0x44 0x20        // STA $20            ;44 20             
         Label 9
+        // return
         I3 0x20 0x74 0xFF   // JSR $FF74          ;20 74 FF          original JSR that I overwrote
         I3 0x4C 0xED 0xCD   // JMP $CDED          ;4C ED CD          jump back to instruction after one I overwrote
     |]
@@ -236,18 +213,13 @@ let swampToDesertAssembly =
         I2 0xC9 0x01        // CMP #$01           ;C9 01             compare overworld
         BNE 9               // BNE $TODO          ;D0 TODO           if not, done
         // Load up the appropriate array, based on which log file we're in
-        I3 0xAD 0x39 0x60   // LDA $6039          ;AD 39 60          load adventure log file number
-        I2 0xC9 0x02        // CMP #$02           ;C9 02             compare to log file 3
-        BNE 5               // BNE $TODO          ;D0 TODO           if not, keep going
-        I2 0xA0 0x40        // LDY #$40           ;A0 40             set Y to 40
-        Label 5
-        I2 0xC9 0x01        // CMP #$01           ;C9 01             compare to log file 2
-        BNE 6               // BNE $TODO          ;D0 TODO           if not, keep going
-        I2 0xA0 0x20        // LDY #$20           ;A0 20             set Y to 20
-        Label 6
-        I2 0xC9 0x00        // CMP #$00           ;C9 00             compare to log file 1
-        BNE 0               // BNE $TODO          ;D0 TODO           if not, keep going
-        I2 0xA0 0x00        // LDY #$00           ;A0 00             set Y to 0
+        I3 0xAD 0x39 0x60   // LDA $6039          ;AD 39 60          load adventure log file number (0/1/2)
+        I1 0x0A             // ASL                ;0A
+        I1 0x0A             // ASL                ;0A
+        I1 0x0A             // ASL                ;0A
+        I1 0x0A             // ASL                ;0A
+        I1 0x0A             // ASL                ;0A                five shifts is a multiply-by-0x20
+        I1 0xA8             // TAY                ;A8                Y is now 00 or 20 or 40 as appropriate
         // Compare to each and every saved coordinate in current array (array will start as all zeros, so the single upper left tile of overworld map will never be swamp, that's fine)
         Label 0
         I2 0xA5 0x42        // LDA $42            ;A5 42             load x coord
@@ -332,7 +304,7 @@ let patch_rom(file) =
 
     let bytes = System.IO.File.ReadAllBytes(file)
     // when dying in swamp, write my extra desert tiles
-    let length = 124
+    let length = 68
     // do minor verification that the code we expect to be there is there
     if bytes.[unused_min_offset..unused_min_offset+length-1] = Array.create length 0xFFuy then
         let replacementBytes = makePatchedBytes(swampToDesertAssemblyWrite,length)
@@ -357,7 +329,7 @@ let patch_rom(file) =
         failwith "used too much space"
 
     // when reading overworld map, load my extra desert tiles
-    let length = 68
+    let length = 56
     // do minor verification that the code we expect to be there is there
     if bytes.[unused_min_offset..unused_min_offset+length-1] = Array.create length 0xFFuy then
         let replacementBytes = makePatchedBytes(swampToDesertAssembly,length)
