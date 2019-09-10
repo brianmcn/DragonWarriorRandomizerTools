@@ -4,6 +4,9 @@
 // Basic assembler to make it easier to write code with branches
 //////////////////////////////////////////////////////////////////
 
+// https://www.masswerk.at/6502/6502_instruction_set.html
+// http://6502.org/tutorials/6502opcodes.html
+
 type Assembly = 
     | Label of int
     | BNE of int
@@ -256,41 +259,23 @@ let clearArrayAssociatedWithALogFile =
         I1 0x48             // PHA
 
         // Load up the appropriate array, based on which log file we're in
-        I3 0xAD 0x39 0x60   // LDA $6039          ;AD 39 60          load adventure log file number
-        I2 0xC9 0x02        // CMP #$02           ;C9 02             compare to log file 3
-        BEQ 3               // BEQ $TODO          ;F0 TODO           if is, use code copy #3
-        I2 0xC9 0x01        // CMP #$01           ;C9 01             compare to log file 2
-        BEQ 2               // BEQ $TODO          ;F0 TODO           if is, use code copy #2
-                            //                                       else fallthru to copy #1
-        // 3 copies of same code for different array offsets - zero out the 32 bytes that comprise the array
+        I3 0xAD 0x39 0x60   // LDA $6039          ;AD 39 60          load adventure log file number (0/1/2)
+        I1 0x0A             // ASL                ;0A
+        I1 0x0A             // ASL                ;0A
+        I1 0x0A             // ASL                ;0A
+        I1 0x0A             // ASL                ;0A
+        I1 0x0A             // ASL                ;0A                five shifts is a multiply-by-0x20
+        I1 0xA8             // TAY                ;A8                Y is now 00 or 20 or 40 as appropriate
+        
+        I2 0xA2 0x20        // LDX #$20           ;A2 20             loop counter
+        I2 0xA9 0x00        // LDA #$00           ;A9 00             zero for storing
         Label 1
-        I2 0xA0 0x1F        // LDY #$1F           ;A0 1F             set Y to 1F (last offset into 7000 array)
-        I2 0xA9 0x00        // LDA #$00           ;A9 00             load 0
-        Label 6
-        I3 0x99 0x00 0x70   // STA $7000,Y        ;99 00 70          store it to my array
-        I1 0x88             // DEY                ;88                decrement Y
-        BPL 6               // BPL $TODO          ;10 TODO           branch on plus (while Y>=0)
-        BMI 9               // BMI $TODO          ;30 TODO           branch on minus (jump to end)
+        I3 0x99 0x00 0x70   // STA $7000,Y        ;99 00 70          store 0 to 7000+Y
+        I1 0xC8             // INY                ;C8                inc Y
+        I1 0xCA             // DEX                ;CA                dec X
+        BNE 1               // BNE $TODO          ;D0 TODO           loop until zeroed all 32 bytes
 
-        Label 2
-        I2 0xA0 0x1F        // LDY #$1F           ;A0 1F             set Y to 1F (last offset into 7020 array)
-        I2 0xA9 0x00        // LDA #$00           ;A9 00             load 0
-        Label 7
-        I3 0x99 0x20 0x70   // STA $7020,Y        ;99 20 70          store it to my array
-        I1 0x88             // DEY                ;88                decrement Y
-        BPL 7               // BPL $TODO          ;10 TODO           branch on plus (while Y>=0)
-        BMI 9               // BMI $TODO          ;30 TODO           branch on minus (jump to end)
-
-        Label 3
-        I2 0xA0 0x1F        // LDY #$1F           ;A0 1F             set Y to 1F (last offset into 7040 array)
-        I2 0xA9 0x00        // LDA #$00           ;A9 00             load 0
-        Label 8
-        I3 0x99 0x40 0x70   // STA $7040,Y        ;99 40 70          store it to my array
-        I1 0x88             // DEY                ;88                decrement Y
-        BPL 8               // BPL $TODO          ;10 TODO           branch on plus (while Y>=0)
-                            // else fall thru to end
         // the 'return'
-        Label 9
         I3 0x4C 0x12 0xF8   // JMP $F812          ;4C 12 F8          jump into middle of routine I hijacked, after preamble that I already copied at start of this routine
     |]
 
@@ -357,7 +342,7 @@ let patch_rom(file) =
     // erase array when player clears an adventure log
     // (code at 03:F80F does the 'clear a file' logic, it seems 6039 is the selected file, 6038 stores a mask of existing saves (1/2/4 is files 0/1/2), 6035/6036/6037 store some data for 0/1/2)
     // (see also https://www.nicholasmikstas.com/games/ )
-    let length = 51
+    let length = 26
     // do minor verification that the code we expect to be there is there
     if bytes.[unused_min_offset..unused_min_offset+length-1] = Array.create length 0xFFuy then
         let replacementBytes = makePatchedBytes(clearArrayAssociatedWithALogFile,length)
