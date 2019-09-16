@@ -97,7 +97,7 @@ let compute_go_mode(str, hp, mp, s:string) =
     let mini_go_mode = mini_go_mode && (s.[24] = 'H') // need healmore
     go_mode, mini_go_mode
 
-let show_go_mode_stats(bytes:byte[], print) =
+let show_go_mode_stats(bytes:byte[], print, file) =
     if print then
         printfn "for build 'Z' (STR+HP)..."
     let header = "        LV    STR   AGI   HP    MP   rawAG rawMP" 
@@ -119,6 +119,8 @@ let show_go_mode_stats(bytes:byte[], print) =
               + if b2 &&&128uy > 0uy then "RP " else fives
               + if b1 &&&  1uy > 0uy then "HE " else fives
               + if b1 &&&  2uy > 0uy then (hu <- 1; "HU ") else fives
+//        if i=0 && (b2 &&&  8uy > 0uy) then
+//            failwithf "radiant at start: %s" file
         let str, ag, hp, mp = bytes.[0x60DD+6*i+0], bytes.[0x60DD+6*i+1], bytes.[0x60DD+6*i+2], bytes.[0x60DD+6*i+3] 
         let agZ = ag - ((ag+9uy)/10uy) + 3uy
         let mpZ = mp - ((mp+9uy)/10uy) + 3uy
@@ -217,6 +219,8 @@ let decode_rom(file) =
         )
     for item,loc in sorted do
         printfn "  %12s   %s" item loc
+//        if item="HARP" && loc="TANTEGEL_THRONE_ROOM" then
+//            failwithf "harp in throne room: %s" file
     printfn ""
     printfn "KEYS: %s" (ksb.ToString())
     printfn ""
@@ -672,7 +676,7 @@ reset
         | "" -> ()
         | s -> printfn "                                              %s" s
 
-    show_go_mode_stats(bytes, true) |> ignore
+    show_go_mode_stats(bytes, true, file) |> ignore
 
 // TODO how fast is start (keys, sword, zones, swamp, hurtmore ...)
 

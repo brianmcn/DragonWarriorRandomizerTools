@@ -1128,8 +1128,9 @@ let xmain argv =
     if false then
         //ROM_mods.patch_rom("""C:\Users\Admin1\Desktop\dwrandomizer-2.1.2-windows\DWRando.2082083747464582.CDFGMPRWZbks.nes""")
         //ROM_mods.patch_rom("""C:\Users\Admin1\Desktop\dwrandomizer-2.1.2-windows\DWRando.3247988247468046195.CDFGMPRWZ.nes""")
-        ROM_mods.patch_rom("""C:\Users\Admin1\Desktop\dwrandomizer-2.1.2-windows\DWRando.7903469359908275869.CDFGMPRWZbs.nes""")
+        //ROM_mods.patch_rom("""C:\Users\Admin1\Desktop\dwrandomizer-2.1.2-windows\DWRando.7903469359908275869.CDFGMPRWZbs.nes""")
         // 8084377946825976 
+        ROM_mods.patch_rom_dark_overworld("""C:\Users\Admin1\Desktop\dwrandomizer-2.1.2-windows\DWRando.13794658726116779947.CDFGMPRWZ.nes""")
         0
     else
     if false then
@@ -1205,6 +1206,7 @@ let xmain argv =
         for k,v in a do
             printfn "%2d: %5d %s" k v (String.replicate (v/10000) "X")
 
+    // Read all seeds in directory and summary-process
     if false then
         let mutable count = 0
         let mutable cont1, cont2 = 0, 0
@@ -1219,7 +1221,7 @@ let xmain argv =
         //for file in System.IO.Directory.EnumerateFiles("""C:\Users\Admin1\Desktop\dwrandomizer-2.0.6-windows\""", "*.CDFGMPRWZ.nes") do
         for file in System.IO.Directory.EnumerateFiles("""C:\Users\Admin1\Desktop\dwrandomizer-2.1.2-windows\""", "*.CDFGMPRWZ.nes") do
             let bytes = System.IO.File.ReadAllBytes(file)
-            let strhp,strag = ROM.show_go_mode_stats(bytes,false)
+            let strhp,strag = ROM.show_go_mode_stats(bytes,false,file)
             if strhp < strag then
                 str_hp_wins <- str_hp_wins+1
             if strhp > strag then

@@ -190,7 +190,7 @@ let swampToDesertAssemblyWrite =
         I2 0xB1 0x20        "LDA ($20),Y "      "B1 20         "   "load num-written-desert-bytes"
         I1 0xA8             "TAY         "      "A8            "   "copy to Y"
         I2 0xC9 0x1E        "CMP #$1E    "      "C9 1E         "   "compare to MAX (have we already written 0x1E bytes of desert coords?)"
-        mkBEQ 8             "BEQ $TODO   "      "F0 TODO       "   "if so, done"
+        mkBEQ 8             "BEQ 8       "      "F0 TODO       "   "if so, done"
         I2 0xA5 0x42        "LDA $42     "      "A5 42         "   "load map x coord"
         I2 0x91 0x20        "STA ($20),Y "      "91 20         "   "store it to my array"
         I1 0xC8             "INY         "      "C8            "   "inc Y"
@@ -388,5 +388,81 @@ let patch_rom(file) =
     let unused_min_offset = unused_min_offset + length
     if unused_min_offset > unused_end then
         failwith "used too much space"
+
+    System.IO.File.WriteAllBytes(file+".patched.nes", bytes)
+
+let patch_rom_dark_overworld(file) =
+    // TODO does not work for various reasons
+    let bytes = System.IO.File.ReadAllBytes(file)
+    // map type being CMP'd  -  #$00-over world, #$10-town/castle, #$20-cave.
+
+    // make everything dark
+    let offset = 0x2961+16   // checks to see if dungeon, for darkness
+    if bytes.[offset..offset+4] = [|165uy; 22uy; 201uy; 32uy; 0xD0uy|] then
+        bytes.[offset+3] <- 0x10uy   // town rather than dungeon
+        bytes.[offset+5] <- 0xF0uy   // BEQ rather than BNE
+    else
+        failwith "unexpected bytes"
+    let offset = 0x2DA6+16   // checks to see if dungeon, for darkness
+    if bytes.[offset..offset+4] = [|165uy; 22uy; 201uy; 32uy; 0xD0uy|] then
+        bytes.[offset+3] <- 0x10uy   // town rather than dungeon
+        bytes.[offset+5] <- 0xF0uy   // BEQ rather than BNE
+    else
+        failwith "unexpected bytes"
+
+    // now at least two problems
+    //  - casting radiant does nothing in towns/overworld
+    //  - dont want towns to be dark
+
+    // allow radiant cast in other places
+    let offset = 0xDA64+16   // checks to see if dungeon, for darkness
+    if bytes.[offset..offset+4] = [|165uy; 22uy; 201uy; 32uy; 0xD0uy|] then
+        bytes.[offset+3] <- 0x10uy   // town rather than dungeon
+        bytes.[offset+5] <- 0xF0uy   // BEQ rather than BNE
+    else
+        failwith "unexpected bytes"
+
+    // allow torch in other places
+    let offset = 0xDD1E+16   // checks to see if dungeon, for darkness
+    if bytes.[offset..offset+4] = [|165uy; 22uy; 201uy; 32uy; 0xF0uy|] then
+        bytes.[offset+3] <- 0x10uy   // town rather than dungeon
+        bytes.[offset+5] <- 0xD0uy   // BNE rather than BEQ
+    else
+        failwith "unexpected bytes"
+
+(* some tile-loading something
+LAE4B:  LDA MapType
+LAE4D:  CMP #$20
+LAE4F:  BNE $AE5B
+...
+LAE71:  LDA MapType
+LAE73:  CMP #$20
+LAE75:  BNE $AE81
+...
+LAEA2:  LDA MapType
+LAEA4:  CMP #$20
+LAEA6:  BNE $AEB2
+...
+LAEC8:  LDA MapType
+LAECA:  CMP #MAP_DUNGEON
+LAECC:  BNE $AED8
+
+movement tiles
+LB265:  LDA MapType
+LB267:  CMP #MAP_DUNGEON
+LB269:  BNE $B28C
+...
+LB35F:  LDA MapType
+LB361:  CMP #MAP_DUNGEON
+LB363:  BNE $B386
+...
+LB3EB:  LDA MapType
+LB3ED:  CMP #MAP_DUNGEON
+LB3EF:  BNE $B412
+...
+LB517:  LDA MapType
+LB519:  CMP #MAP_DUNGEON
+LB51B:  BNE $B53E
+*)
 
     System.IO.File.WriteAllBytes(file+".patched.nes", bytes)
