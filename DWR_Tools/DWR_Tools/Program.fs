@@ -1126,19 +1126,22 @@ let xmain argv =
     //ROM.test_rng()
     //ROM.test_period(0x7c65)   // period was 32768, with 2 calls per frame and 60fps, every 4.5 mins this cycles
     if false then
-        ROM.simulate_run_ak(89)
-        ROM.simulate_run_ak(90)
-        ROM.simulate_run_ak(91)
-        ROM.simulate_run_ak(92)
-        ROM.simulate_run_ak(93)
-        ROM.simulate_run_ak(94)
-        ROM.simulate_run_ak(95)
-        ROM.simulate_run_ak(96)
-        ROM.simulate_run_ak(97)
-        ROM.simulate_run_ak(98)
-        ROM.simulate_run_ak(99)
-        ROM.simulate_run_ak(100)
-        ROM.simulate_run_ak(101)
+        if false then
+            ROM.simulate_run_ak(89,0)
+            ROM.simulate_run_ak(90,0)
+            ROM.simulate_run_ak(91,0)
+            ROM.simulate_run_ak(92,0)
+            ROM.simulate_run_ak(93,0)
+            ROM.simulate_run_ak(94,0)
+            ROM.simulate_run_ak(95,0)
+            ROM.simulate_run_ak(96,0)
+            ROM.simulate_run_ak(97,0)
+            ROM.simulate_run_ak(98,0)
+            ROM.simulate_run_ak(99,0)
+        else
+            for i = 0 to 34 do
+                ROM.simulate_run_ak(88,i)
+//                ROM.simulate_run_ak(93,i)
         0
     else
     if false then

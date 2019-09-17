@@ -419,7 +419,7 @@ Aside:
   LE89D:  JSR DoDialogLoBlock     ;($C7CB)
   LE8A0:  .byte $F6
 The F6 means, in bank2, F is TextBlock16, and 6 is the 6th entry, labeled as TB16E6 here https://www.nicholasmikstas.com/dragon-warrior-bank-2
-
+ModEnemyStats is effective AG calculation, followed by chance-to-run computation.
 *)
 
     let offset = 0x2DA6+16   // checks to see if dungeon, for darkness
