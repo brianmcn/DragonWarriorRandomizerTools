@@ -892,3 +892,43 @@ let test_period(init_seed) =
         seed <- simulate_prng_int(seed)
         count <- count + 1
     printfn "period was %d" count
+
+let simulate_run_ak(playerAG) =
+    let enemyAG = 86
+    let mutable seed = 0
+    let mutable runs = 0
+    let mutable sequential_fails = 0
+    let sfa = ResizeArray()
+    for i = 0 to 32767 do
+        let enemy = seed * enemyAG 
+        seed <- simulate_prng_int(seed)
+        let player = seed * playerAG
+        if player >= enemy then
+            runs <- runs + 1
+            sfa.Add(sequential_fails)
+            sequential_fails <- 0
+        else
+            sequential_fails <- sequential_fails + 1
+        //seed <- simulate_prng_int(seed)  // CASE 2
+    printfn "at %d AG, ran from enemy %d AG on %d of 32768 occasions, which is %2.1f%%" playerAG enemyAG runs (float runs * 100.0 / 32768.0)
+    let a = sfa |> Seq.countBy id |> Seq.toArray |> Array.sort 
+    for k,v in a do
+        printfn "%2d: %5d %s" k v (String.replicate ((v+50)/100) "X")
+
+(*
+CASE 1
+at 93 AG, ran from enemy 86 AG on 17456 of 32768 occasions, which is 53.3%
+ 0:  6401 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+ 1:  7983 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+ 2:  2096 XXXXXXXXXXXXXXXXXXXXX
+ 3:   768 XXXXXXXX
+ 4:   208 XX
+CASE 2
+at 93 AG, ran from enemy 86 AG on 17408 of 32768 occasions, which is 53.1%
+ 0: 10752 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+ 1:  3072 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+ 2:  2048 XXXXXXXXXXXXXXXXXXXX
+ 3:   512 XXXXX
+ 5:   512 XXXXX
+ 8:   512 XXXXX
+*)

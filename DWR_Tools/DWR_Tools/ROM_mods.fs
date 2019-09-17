@@ -400,13 +400,32 @@ let patch_rom_dark_overworld(file) =
     let offset = 0x2961+16   // checks to see if dungeon, for darkness
     if bytes.[offset..offset+4] = [|165uy; 22uy; 201uy; 32uy; 0xD0uy|] then
         bytes.[offset+3] <- 0x10uy   // town rather than dungeon
-        bytes.[offset+5] <- 0xF0uy   // BEQ rather than BNE
+        bytes.[offset+4] <- 0xF0uy   // BEQ rather than BNE
     else
         failwith "unexpected bytes"
+(*
+code above starts to differ with code below at
+  LA9F8:  LDX $22                 ;Load store offset.
+  ...
+  LA9FE:  STA $6436,X   
+which seems to be writing to
+  .alias WndLineBuf       $6436   ;Through $6471. 60 bytes. buffers 2 window rows.
+
+Ah, A880 has a prologue that either call into A8AD or A921 (which continues to A961 above)
+A880 is called when windows are removed (to repaint what's behind them)
+
+
+Aside:
+  LE89D:  JSR DoDialogLoBlock     ;($C7CB)
+  LE8A0:  .byte $F6
+The F6 means, in bank2, F is TextBlock16, and 6 is the 6th entry, labeled as TB16E6 here https://www.nicholasmikstas.com/dragon-warrior-bank-2
+
+*)
+
     let offset = 0x2DA6+16   // checks to see if dungeon, for darkness
     if bytes.[offset..offset+4] = [|165uy; 22uy; 201uy; 32uy; 0xD0uy|] then
         bytes.[offset+3] <- 0x10uy   // town rather than dungeon
-        bytes.[offset+5] <- 0xF0uy   // BEQ rather than BNE
+        bytes.[offset+4] <- 0xF0uy   // BEQ rather than BNE
     else
         failwith "unexpected bytes"
 
@@ -418,7 +437,7 @@ let patch_rom_dark_overworld(file) =
     let offset = 0xDA64+16   // checks to see if dungeon, for darkness
     if bytes.[offset..offset+4] = [|165uy; 22uy; 201uy; 32uy; 0xD0uy|] then
         bytes.[offset+3] <- 0x10uy   // town rather than dungeon
-        bytes.[offset+5] <- 0xF0uy   // BEQ rather than BNE
+        bytes.[offset+4] <- 0xF0uy   // BEQ rather than BNE
     else
         failwith "unexpected bytes"
 
@@ -426,7 +445,7 @@ let patch_rom_dark_overworld(file) =
     let offset = 0xDD1E+16   // checks to see if dungeon, for darkness
     if bytes.[offset..offset+4] = [|165uy; 22uy; 201uy; 32uy; 0xF0uy|] then
         bytes.[offset+3] <- 0x10uy   // town rather than dungeon
-        bytes.[offset+5] <- 0xD0uy   // BNE rather than BEQ
+        bytes.[offset+4] <- 0xD0uy   // BNE rather than BEQ
     else
         failwith "unexpected bytes"
 
