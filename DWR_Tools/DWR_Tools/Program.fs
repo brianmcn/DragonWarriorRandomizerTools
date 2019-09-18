@@ -1127,21 +1127,162 @@ let xmain argv =
     //ROM.test_period(0x7c65)   // period was 32768, with 2 calls per frame and 60fps, every 4.5 mins this cycles
     if false then
         if false then
-            ROM.simulate_run_ak(89,0)
-            ROM.simulate_run_ak(90,0)
-            ROM.simulate_run_ak(91,0)
-            ROM.simulate_run_ak(92,0)
-            ROM.simulate_run_ak(93,0)
-            ROM.simulate_run_ak(94,0)
-            ROM.simulate_run_ak(95,0)
-            ROM.simulate_run_ak(96,0)
-            ROM.simulate_run_ak(97,0)
-            ROM.simulate_run_ak(98,0)
-            ROM.simulate_run_ak(99,0)
-        else
+            ROM.simulate_run_ak(89,0,0,true,-1.0) |> ignore
+            ROM.simulate_run_ak(90,0,0,true,-1.0) |> ignore
+            ROM.simulate_run_ak(91,0,0,true,-1.0) |> ignore
+            ROM.simulate_run_ak(92,0,0,true,-1.0) |> ignore
+            ROM.simulate_run_ak(93,0,0,true,-1.0) |> ignore
+            ROM.simulate_run_ak(94,0,0,true,-1.0) |> ignore
+            ROM.simulate_run_ak(95,0,0,true,-1.0) |> ignore
+            ROM.simulate_run_ak(96,0,0,true,-1.0) |> ignore
+            ROM.simulate_run_ak(97,0,0,true,-1.0) |> ignore
+            ROM.simulate_run_ak(98,0,0,true,-1.0) |> ignore
+            ROM.simulate_run_ak(99,0,0,true,-1.0) |> ignore
+        elif false then
             for i = 0 to 34 do
-                ROM.simulate_run_ak(88,i)
-//                ROM.simulate_run_ak(93,i)
+                ROM.simulate_run_ak(88,i,0,true,-1.0) |> ignore
+        elif true then
+            ROM.simulate_11264()
+        elif false then
+            let seeds = ROM.test_period(0) |> Seq.toArray |> Array.sort 
+            let mutable ignore_pct, total_runs, total_max, total_success = -1.0, 0, 0, 0 // success = max of 1 sequential run fail
+            for i in seeds do
+                let runs,max,pct,mss = ROM.simulate_run_ak(88,5,i,false,ignore_pct)
+                ignore_pct <- pct
+                total_runs <- total_runs + runs
+                total_max <- total_max + max
+                total_success <- total_success + (if mss <= 1 then 1 else 0)
+            printfn "GRAND TOTAL: ran %d of %d times (%2.1f%%)" total_runs total_max (float total_runs * 100.0 / float total_max)
+            printfn "GRAND TOTAL: using strategy, successfully ran after at most 1 turn %d of 32768 times (%2.1f%%)" total_success (float total_success * 100.0 / 32768.0)
+(*
+at 88 AG, with 62 rng cycles between runs, start seed     0, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 62 rng cycles between runs, start seed 11264, ran from enemy 86 AG on 0 of 512 occasions, which is 0.0% (max 512 sequential fails)
+at 88 AG, with 62 rng cycles between runs, start seed 16384, ran from enemy 86 AG on 512 of 512 occasions, which is 100.0% (max 0 sequential fails)
+at 88 AG, with 62 rng cycles between runs, start seed 21760, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 62 rng cycles between runs, start seed 22000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 62 rng cycles between runs, start seed 23000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 62 rng cycles between runs, start seed 24000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 62 rng cycles between runs, start seed 25000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 62 rng cycles between runs, start seed 26000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 62 rng cycles between runs, start seed 27000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 62 rng cycles between runs, start seed 28000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 62 rng cycles between runs, start seed 29000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 62 rng cycles between runs, start seed 30000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 62 rng cycles between runs, start seed 31000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 62 rng cycles between runs, start seed 32000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 62 rng cycles between runs, start seed 33000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 62 rng cycles between runs, start seed 34000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 62 rng cycles between runs, start seed 35000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 62 rng cycles between runs, start seed 36000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 62 rng cycles between runs, start seed 37000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 62 rng cycles between runs, start seed 38000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 62 rng cycles between runs, start seed 39000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 62 rng cycles between runs, start seed 40000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 62 rng cycles between runs, start seed 41000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 62 rng cycles between runs, start seed 42000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 62 rng cycles between runs, start seed 44032, ran from enemy 86 AG on 0 of 512 occasions, which is 0.0% (max 512 sequential fails)
+at 88 AG, with 62 rng cycles between runs, start seed 49152, ran from enemy 86 AG on 512 of 512 occasions, which is 100.0% (max 0 sequential fails)
+at 88 AG, with 62 rng cycles between runs, start seed 54528, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 62 rng cycles between runs, start seed 65000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+GRAND TOTAL: ran 8519680 of 16777216 times (50.8%)
+
+at 88 AG, with 190 rng cycles between runs, start seed     0, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 190 rng cycles between runs, start seed 11264, ran from enemy 86 AG on 0 of 512 occasions, which is 0.0% (max 512 sequential fails)
+at 88 AG, with 190 rng cycles between runs, start seed 16384, ran from enemy 86 AG on 512 of 512 occasions, which is 100.0% (max 0 sequential fails)
+at 88 AG, with 190 rng cycles between runs, start seed 21760, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 190 rng cycles between runs, start seed 22000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 190 rng cycles between runs, start seed 23000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 190 rng cycles between runs, start seed 24000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 190 rng cycles between runs, start seed 25000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 190 rng cycles between runs, start seed 26000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 190 rng cycles between runs, start seed 27000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 190 rng cycles between runs, start seed 28000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 190 rng cycles between runs, start seed 29000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 190 rng cycles between runs, start seed 30000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 190 rng cycles between runs, start seed 31000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 190 rng cycles between runs, start seed 32000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 190 rng cycles between runs, start seed 33000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 190 rng cycles between runs, start seed 34000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 190 rng cycles between runs, start seed 35000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 190 rng cycles between runs, start seed 36000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 190 rng cycles between runs, start seed 37000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 190 rng cycles between runs, start seed 38000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 190 rng cycles between runs, start seed 39000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 190 rng cycles between runs, start seed 40000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 190 rng cycles between runs, start seed 41000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 190 rng cycles between runs, start seed 42000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 190 rng cycles between runs, start seed 44032, ran from enemy 86 AG on 0 of 512 occasions, which is 0.0% (max 512 sequential fails)
+at 88 AG, with 190 rng cycles between runs, start seed 49152, ran from enemy 86 AG on 512 of 512 occasions, which is 100.0% (max 0 sequential fails)
+at 88 AG, with 190 rng cycles between runs, start seed 54528, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 190 rng cycles between runs, start seed 65000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+GRAND TOTAL: ran 8519680 of 16777216 times (50.8%)
+
+at 88 AG, with 318 rng cycles between runs, start seed     0, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 318 rng cycles between runs, start seed 11264, ran from enemy 86 AG on 0 of 512 occasions, which is 0.0% (max 512 sequential fails)
+at 88 AG, with 318 rng cycles between runs, start seed 16384, ran from enemy 86 AG on 512 of 512 occasions, which is 100.0% (max 0 sequential fails)
+at 88 AG, with 318 rng cycles between runs, start seed 21760, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 318 rng cycles between runs, start seed 22000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 318 rng cycles between runs, start seed 23000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 318 rng cycles between runs, start seed 24000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 318 rng cycles between runs, start seed 25000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 318 rng cycles between runs, start seed 26000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 318 rng cycles between runs, start seed 27000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 318 rng cycles between runs, start seed 28000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 318 rng cycles between runs, start seed 29000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 318 rng cycles between runs, start seed 30000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 318 rng cycles between runs, start seed 31000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 318 rng cycles between runs, start seed 32000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 318 rng cycles between runs, start seed 33000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 318 rng cycles between runs, start seed 34000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 318 rng cycles between runs, start seed 35000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 318 rng cycles between runs, start seed 36000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 318 rng cycles between runs, start seed 37000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 318 rng cycles between runs, start seed 38000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 318 rng cycles between runs, start seed 39000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 318 rng cycles between runs, start seed 40000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 318 rng cycles between runs, start seed 41000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 318 rng cycles between runs, start seed 42000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 318 rng cycles between runs, start seed 44032, ran from enemy 86 AG on 0 of 512 occasions, which is 0.0% (max 512 sequential fails)
+at 88 AG, with 318 rng cycles between runs, start seed 49152, ran from enemy 86 AG on 512 of 512 occasions, which is 100.0% (max 0 sequential fails)
+at 88 AG, with 318 rng cycles between runs, start seed 54528, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+at 88 AG, with 318 rng cycles between runs, start seed 65000, ran from enemy 86 AG on 256 of 512 occasions, which is 50.0% (max 1 sequential fails)
+GRAND TOTAL: ran 8519680 of 16777216 times (50.8%)
+*)
+        elif true then
+            let seeds = ROM.test_period(0) |> Seq.toArray |> Array.sort 
+            let mutable total_runs = 0
+            let playerAG = 48
+            let rng_between = 8
+            for i in seeds do
+                let fails = ROM.how_many_tries_run_ak(playerAG,rng_between,i)
+                if fails <= 1 then
+                    total_runs <- total_runs + 1
+            printfn "cycling rng %d times between runs, with %d AG successfully ran from AK after at most 1 turn %d of 32768 times (%2.1f%%)" (rng_between+1) playerAG total_runs (float total_runs * 100.0 / 32768.0)
+(*
+cycling rng 63 times between runs, with 48 AG successfully ran from AK after at most 1 turn 16384 of 32768 times (50.0%)
+cycling rng 63 times between runs, with 88 AG successfully ran from AK after at most 1 turn 27648 of 32768 times (84.4%)
+
+cycling rng 31 times between runs, with 48 AG successfully ran from AK after at most 1 turn 16384 of 32768 times (50.0%)
+cycling rng 31 times between runs, with 88 AG successfully ran from AK after at most 1 turn 24832 of 32768 times (75.8%)
+
+cycling rng 7 times between runs, with 48 AG successfully ran from AK after at most 1 turn 14336 of 32768 times (43.8%)
+cycling rng 7 times between runs, with 88 AG successfully ran from AK after at most 1 turn 25088 of 32768 times (76.6%)
+
+*)
+        else
+            // here are the places where the results change
+            ROM.simulate_run_ak(88,30,    0,true,-1.0) |> ignore // 75
+            ROM.simulate_run_ak(88,30, 5376,true,-1.0) |> ignore // 50
+            ROM.simulate_run_ak(88,30,11008,true,-1.0) |> ignore // 25
+            ROM.simulate_run_ak(88,30,15616,true,-1.0) |> ignore // 25.6
+            ROM.simulate_run_ak(88,30,15872,true,-1.0) |> ignore // 50
+            ROM.simulate_run_ak(88,30,16128,true,-1.0) |> ignore // 71.2
+            ROM.simulate_run_ak(88,30,16384,true,-1.0) |> ignore // 75 (repeats)
+            // try to find a way to exploit what's seen here https://en.wikipedia.org/wiki/Spectral_test
+            // left hand diagram, even though all values equally likely, 2/3 of the time, x(n) > x(n+1)
+            // possible see also 
+            // https://bumbershootsoft.wordpress.com/2017/03/11/getting-a-decent-and-fast-prng-out-of-an-8-bit-chip/
+            // https://wiki.nesdev.com/w/index.php/Random_number_generator
         0
     else
     if false then

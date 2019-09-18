@@ -887,22 +887,36 @@ let show_rng() =
 let test_period(init_seed) =
     let mutable count = 0
     let set = new System.Collections.Generic.HashSet<int>()
+    let mutable max = -1
     let mutable seed = init_seed
     while set.Add(seed) do
+        if seed > max then
+            max <- seed
         seed <- simulate_prng_int(seed)
         count <- count + 1
-    printfn "period was %d" count
+    printfn "period was %d, max was %d" count max
+    set
 
-let simulate_run_ak(playerAG, rngs_between) =
+let simulate_run_ak(playerAG, rngs_between, start_seed, print_dist, ignore_pct) =
+    let upperByte(s) = (s &&& 0x0FF00) / 256
     let enemyAG = 86
-    let mutable seed = 15200
+    let mutable seed = start_seed
     let mutable runs = 0
     let mutable sequential_fails = 0
     let sfa = ResizeArray()
-    for i = 0 to 32767 do
-        let enemy = seed * enemyAG 
+    let MAX = 
+        match rngs_between with
+        | 254 -> (32768 / 256) 
+        | 126 -> (32768 / 128) 
+        | 62 | 190 | 318 -> (32768 / 64)
+        | 30 | 94 | 158 | 222 -> (32768 / 32)
+        | 14 | 46 | 78 | 110 -> (32768 / 16)
+        | 6 | 22 | 38 | 54 -> (32768 / 8)
+        | _ -> 32768
+    for i = 0 to MAX-1 do
+        let enemy = upperByte(seed) * enemyAG 
         seed <- simulate_prng_int(seed)
-        let player = seed * playerAG
+        let player = upperByte(seed) * playerAG
         if player >= enemy then
             runs <- runs + 1
             sfa.Add(sequential_fails)
@@ -911,10 +925,16 @@ let simulate_run_ak(playerAG, rngs_between) =
             sequential_fails <- sequential_fails + 1
         for j = 0 to rngs_between do
             seed <- simulate_prng_int(seed)
-    printfn "at %d AG, with %d rng cycles between runs, ran from enemy %d AG on %d of 32768 occasions, which is %2.1f%%" playerAG rngs_between enemyAG runs (float runs * 100.0 / 32768.0)
-    let a = sfa |> Seq.countBy id |> Seq.toArray |> Array.sort 
-    for k,v in a do
-        printfn "%2d: %5d %s" k v (String.replicate ((v+50)/100) "X")
+    sfa.Add(sequential_fails)
+    let max_seq_fail = try sfa |> Seq.max with _ -> 0
+    let pct = (float runs * 100.0 / float MAX)
+    if pct <> ignore_pct || start_seed%1000=0 then
+        printfn "at %d AG, with %d rng cycles between runs, start seed %5d, ran from enemy %d AG on %d of %d occasions, which is %2.1f%% (max %d sequential fails)" playerAG rngs_between start_seed enemyAG runs MAX pct max_seq_fail
+    if print_dist then
+        let a = sfa |> Seq.countBy id |> Seq.toArray |> Array.sort 
+        for k,v in a do
+            printfn "%2d: %5d %s" k v (String.replicate ((v+50)/100) "X")
+    runs, MAX, pct, max_seq_fail
 
 (*
 CASE 1 // 0 rngs
@@ -940,3 +960,61 @@ at 93 AG, ran from enemy 86 AG on 17408 of 32768 occasions, which is 53.1%
  3:  1536 XXXXXXXXXXXXXXX
  6:   512 XXXXX
 *)
+
+let how_many_tries_run_ak(playerAG, rngs_between, start_seed) =
+    let upperByte(s) = (s &&& 0x0FF00) / 256
+    let enemyAG = 86
+    let mutable seed = start_seed
+    let mutable fails = 0
+    let mutable finished = false
+    let mutable tries = -1 // loop always adds one extra after finish
+    let MAX = 512
+    while tries < MAX && not finished do
+        let enemy = upperByte(seed) * enemyAG 
+        seed <- simulate_prng_int(seed)
+        let player = upperByte(seed) * playerAG
+        if player >= enemy then
+            finished <- true
+        else
+            fails <- fails + 1
+        for j = 0 to rngs_between do
+            seed <- simulate_prng_int(seed)
+        tries <- tries + 1
+    tries
+
+let simulate_11264() =
+    let upperByte(s) = (s &&& 0x0FF00) / 256
+    let enemyAG = 86
+    let playerAG = 88
+//    let playerAG = 18
+    let rngs_between = 62
+    let start_seed = 11264
+//    let start_seed = 5000
+    let mutable seed = start_seed
+    let mutable runs = 0
+    let mutable sequential_fails = 0
+    let sfa = ResizeArray()
+    let MAX = 512
+    for i = 0 to MAX-1 do
+        printfn "enemy seed:  %5d    enemyUB:  %3d" seed (upperByte seed)
+        let enemy = upperByte(seed) * enemyAG 
+        seed <- simulate_prng_int(seed)
+        printfn "player seed: %5d    playerUB: %3d" seed (upperByte seed)
+        let player = upperByte(seed) * playerAG
+        //printfn "player - enemy: %5d" (player-enemy)
+        if player >= enemy then
+            runs <- runs + 1
+            sfa.Add(sequential_fails)
+            sequential_fails <- 0
+        else
+            sequential_fails <- sequential_fails + 1
+        for j = 0 to rngs_between do
+            seed <- simulate_prng_int(seed)
+    printfn "final seed: %d" seed
+    sfa.Add(sequential_fails)
+    let max_seq_fail = try sfa |> Seq.max with _ -> 0
+    let pct = (float runs * 100.0 / float MAX)
+    printfn "at %d AG, with %d rng cycles between runs, start seed %5d, ran from enemy %d AG on %d of %d occasions, which is %2.1f%% (max %d sequential fails)" playerAG rngs_between start_seed enemyAG runs MAX pct max_seq_fail
+    let a = sfa |> Seq.countBy id |> Seq.toArray |> Array.sort 
+    for k,v in a do
+        printfn "%2d: %5d %s" k v (String.replicate ((v+50)/100) "X")
