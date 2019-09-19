@@ -736,6 +736,13 @@ reset
 
     bmp1, bmp2, reachable_continents, mapCoords, cont_1_size, cont_2_size, compute_charlock_distance_to_inn()
 
+
+
+///////////////////////////////////////////////////////////////
+// Below here is various code simulating PRNG as I tried 
+// to find manipulation exploits
+///////////////////////////////////////////////////////////////
+
 (*
 
 the prng subroutine, extracted from fceux emulator using write-breakpoint from hex editor
@@ -767,13 +774,13 @@ the prng subroutine, extracted from fceux emulator using write-breakpoint from h
 
 *)
 
-let simulate_prng(init_a94, init_a95) =
+let simulate_prng_core(init_a94, init_a95, init_carry) =
     // the seed is two bytes located at addresses 0x94 and 0x95
     // a temporary snapshot of the prior seed lives in 0x3c and 0x3d
 
     // simulate bytes with ints to do my own work with carry
     let mutable a94, a95, a3c, a3d, r = init_a94, init_a95, 0, 0, 0    // r is the 'A' register, used for all computation
-    let mutable carry = false
+    let mutable carry = init_carry
 
     // LDA $0095
     // STA $003D
@@ -782,7 +789,7 @@ let simulate_prng(init_a94, init_a95) =
     // STA $003C
     a3c <- a94
     r <- a94
-    // ASL $0094
+    // ASL $0094    // i think this ignores incoming carry? so init_carry is meaningless, should always init false
     a94 <- a94 * 2
     if a94 > 255 then 
         a94 <- a94 - 256
@@ -846,6 +853,8 @@ let simulate_prng(init_a94, init_a95) =
     a95 <- r
     // RTS -----
     a94, a95
+let simulate_prng(init_a94, init_a95) =
+    simulate_prng_core(init_a94, init_a95, false)
 
 let test_rng() = 
     let nexta94, nexta95 = simulate_prng(0xa9, 0x78)
@@ -867,12 +876,14 @@ let test_rng() =
         printfn "...%d iterations..." (i*20)
         System.Console.ReadLine() |> ignore
 
-let simulate_prng_int(seed) =
-    let a94 = (seed &&& 0x0000ff00) / 0x0100
-    let a95 = seed &&& 0x000000ff
-    let na94, na95 = simulate_prng(a94, a95)
-    let next = na94 * 0x0100 + na95
+let simulate_prng_int_core(seed, init_carry) =
+    let a95 = (seed &&& 0x0000ff00) / 0x0100
+    let a94 = seed &&& 0x000000ff
+    let na94, na95 = simulate_prng_core(a94, a95, init_carry)
+    let next = na95 * 0x0100 + na94
     next
+let simulate_prng_int(seed) =
+    simulate_prng_int_core(seed,false)
 
 let show_rng() =
     let SHOW_ONLY_EVERY_16 = false
@@ -897,6 +908,21 @@ let test_period(init_seed) =
     printfn "period was %d, max was %d" count max
     set
 
+let rngValues = Array.create 32768 -1
+let initRNGValues(init_seed) =
+    let mutable seed = init_seed
+    for i = 0 to 32767 do
+        rngValues.[i] <- seed
+        seed <- simulate_prng_int(seed)
+
+let indexOfRNGState(b95, b94) =
+    if rngValues.[1] = -1 then
+        // not yet initialized, so do it
+        initRNGValues(0)
+    let s = b95 * 256 + b94
+    rngValues |> Array.findIndex(fun x -> x=s)
+
+let no_multiple_run_fail_threshold = 2
 let simulate_run_ak(playerAG, rngs_between, start_seed, print_dist, ignore_pct) =
     let upperByte(s) = (s &&& 0x0FF00) / 256
     let enemyAG = 86
@@ -906,7 +932,9 @@ let simulate_run_ak(playerAG, rngs_between, start_seed, print_dist, ignore_pct) 
     let sfa = ResizeArray()
     let MAX = 
         match rngs_between with
-        | 254 -> (32768 / 256) 
+        | 1022 -> (32768 / 1024) 
+        | 510 -> (32768 / 512) 
+        | 254 | 766 -> (32768 / 256) 
         | 126 -> (32768 / 128) 
         | 62 | 190 | 318 -> (32768 / 64)
         | 30 | 94 | 158 | 222 -> (32768 / 32)
@@ -925,41 +953,25 @@ let simulate_run_ak(playerAG, rngs_between, start_seed, print_dist, ignore_pct) 
             sequential_fails <- sequential_fails + 1
         for j = 0 to rngs_between do
             seed <- simulate_prng_int(seed)
-    sfa.Add(sequential_fails)
-    let max_seq_fail = try sfa |> Seq.max with _ -> 0
+    if sequential_fails <> 0 then
+        sfa.Add(sequential_fails)
+    let sfa = sfa |> Seq.toArray |> Array.sort 
+    let max_seq_fail = sfa.[sfa.Length-1]
+    let no_multiple_run_fail_pct = 
+        try
+            let first2 = sfa |> Array.findIndex (fun x -> x >= no_multiple_run_fail_threshold)
+            float first2 * 100.0 / float sfa.Length 
+        with _ ->
+            100.0
     let pct = (float runs * 100.0 / float MAX)
-    if pct <> ignore_pct || start_seed%1000=0 then
-        printfn "at %d AG, with %d rng cycles between runs, start seed %5d, ran from enemy %d AG on %d of %d occasions, which is %2.1f%% (max %d sequential fails)" playerAG rngs_between start_seed enemyAG runs MAX pct max_seq_fail
+    if ignore_pct <> -99.0 then
+        if pct <> ignore_pct || start_seed%1000=0 then
+            printfn "at %d AG, with %d rng cycles between runs, start seed %5d, ran from enemy %d AG on %d of %d occasions, which is %2.1f%% (max %d sequential fails)" playerAG rngs_between start_seed enemyAG runs MAX pct max_seq_fail
     if print_dist then
         let a = sfa |> Seq.countBy id |> Seq.toArray |> Array.sort 
         for k,v in a do
-            printfn "%2d: %5d %s" k v (String.replicate ((v+50)/100) "X")
-    runs, MAX, pct, max_seq_fail
-
-(*
-CASE 1 // 0 rngs
-at 93 AG, ran from enemy 86 AG on 17456 of 32768 occasions, which is 53.3%
- 0:  6401 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
- 1:  7983 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
- 2:  2096 XXXXXXXXXXXXXXXXXXXXX
- 3:   768 XXXXXXXX
- 4:   208 XX
-CASE 2 // 1 rng
-at 93 AG, ran from enemy 86 AG on 17408 of 32768 occasions, which is 53.1%
- 0: 10752 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
- 1:  3072 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
- 2:  2048 XXXXXXXXXXXXXXXXXXXX
- 3:   512 XXXXX
- 5:   512 XXXXX
- 8:   512 XXXXX
-CASE 3 // 17 rngs 
-at 93 AG, ran from enemy 86 AG on 17408 of 32768 occasions, which is 53.1%
- 0:  9728 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
- 1:  3584 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
- 2:  2048 XXXXXXXXXXXXXXXXXXXX
- 3:  1536 XXXXXXXXXXXXXXX
- 6:   512 XXXXX
-*)
+            printfn "%2d: %5d %s" k v (String.replicate ((v+50)/((MAX/328)+1)) "X")
+    runs, MAX, pct, max_seq_fail, no_multiple_run_fail_pct
 
 let how_many_tries_run_ak(playerAG, rngs_between, start_seed) =
     let upperByte(s) = (s &&& 0x0FF00) / 256
@@ -1018,3 +1030,4 @@ let simulate_11264() =
     let a = sfa |> Seq.countBy id |> Seq.toArray |> Array.sort 
     for k,v in a do
         printfn "%2d: %5d %s" k v (String.replicate ((v+50)/100) "X")
+
