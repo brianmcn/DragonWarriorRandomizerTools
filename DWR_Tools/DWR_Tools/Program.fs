@@ -1125,7 +1125,7 @@ let xmain argv =
     //neededAttacksTable()
     //ROM.test_rng()
     //ROM.test_period(0x7c65)   // period was 32768, with 2 calls per frame and 60fps, every 4.5 mins this cycles
-    if true then
+    if false then
         if false then
             // skeleon arrow-manip-run (hold down, run on second 'run' arrow) saw 44 and 47 cycles (seed 3636411... used)
             ROM.initRNGValues(135*256+106)
@@ -1158,7 +1158,7 @@ let xmain argv =
             let start_seed = [|0; 25; 53; 85; 108; 109|].[1]
             for runs_between = 0 to 34 do
                 ROM.simulate_run_ak(88,runs_between,start_seed,true,-1.0) |> ignore
-        elif true then
+        elif false then
             ROM.initRNGValues(0)
             let start_seeds = [| for i = 0 to 32 do yield ROM.rngValues.[i*1000] |]
 //            for runs_between = 0 to 256 do
@@ -1181,7 +1181,7 @@ let xmain argv =
                 total_success <- total_success + (if mss <= 1 then 1 else 0)
             printfn "GRAND TOTAL: ran %d of %d times (%2.1f%%)" total_runs total_max (float total_runs * 100.0 / float total_max)
             printfn "GRAND TOTAL: using strategy, successfully ran after at most 1 turn %d of 32768 times (%2.1f%%)" total_success (float total_success * 100.0 / 32768.0)
-        elif true then
+        elif false then
             let seeds = ROM.test_period(0) |> Seq.toArray |> Array.sort 
             let mutable total_runs = 0
             let playerAG = 48
@@ -1198,7 +1198,7 @@ let xmain argv =
             // https://wiki.nesdev.com/w/index.php/Random_number_generator
         0
     else
-    if false then
+    if true then
         //ROM_mods.patch_rom("""C:\Users\Admin1\Desktop\dwrandomizer-2.1.2-windows\DWRando.2082083747464582.CDFGMPRWZbks.nes""")
         //ROM_mods.patch_rom("""C:\Users\Admin1\Desktop\dwrandomizer-2.1.2-windows\DWRando.3247988247468046195.CDFGMPRWZ.nes""")
         //ROM_mods.patch_rom("""C:\Users\Admin1\Desktop\dwrandomizer-2.1.2-windows\DWRando.7903469359908275869.CDFGMPRWZbs.nes""")
@@ -1353,6 +1353,48 @@ DWRando.4614027807516651.CDFGMPRWZ.nes
 DWRando.5343880208466324698.CDFGMPRWZ.nes
 DWRando.82671621.CDFGMPRWZ.nes
             *)
+        printfn ""
+        printfn "average stats per level"
+        for i = 0 to 29 do
+            printfn "%3d  %3d  %3d  %3d" (ROM.agg_stats.[i,0]/ROM.agg_count) (ROM.agg_stats.[i,1]/ROM.agg_count) (ROM.agg_stats.[i,2]/ROM.agg_count) (ROM.agg_stats.[i,3]/ROM.agg_count)
+(*
+STR   AG   HP   MP
+average stats per level
+  9   11   17    8
+ 14   17   23   14
+ 19   23   28   20
+ 24   28   36   27
+ 29   33   44   33
+
+ 35   39   50   39
+ 40   44   58   45
+ 46   49   64   51
+ 52   54   72   58
+ 57   58   79   65
+
+ 62   63   86   72
+ 67   68   93   78
+ 72   72  100   83
+ 78   76  107   90
+ 82   80  114   95
+
+ 87   85  120  101
+ 93   89  126  107
+ 99   93  134  114
+103   97  141  121
+109  101  148  127
+
+113  104  154  134
+119  108  162  140
+123  111  168  146
+128  114  176  153
+132  117  183  160
+137  121  191  167
+142  123  198  173
+145  126  204  180
+148  129  212  186
+152  131  221  193
+*)
         printfn "press enter"
         System.Console.ReadLine() |> ignore
         0

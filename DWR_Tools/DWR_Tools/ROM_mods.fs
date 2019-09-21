@@ -391,8 +391,13 @@ let patch_rom(file) =
 
     System.IO.File.WriteAllBytes(file+".patched.nes", bytes)
 
+(*
+Aside:
+  LE89D:  JSR DoDialogLoBlock     ;($C7CB)
+  LE8A0:  .byte $F6
+The F6 means, in bank2, F is TextBlock16, and 6 is the 6th entry, labeled as TB16E6 here https://www.nicholasmikstas.com/dragon-warrior-bank-2
+*)
 let patch_rom_dark_overworld(file) =
-    // TODO does not work for various reasons
     let bytes = System.IO.File.ReadAllBytes(file)
     // map type being CMP'd  -  #$00-over world, #$10-town/castle, #$20-cave.
 
@@ -403,24 +408,6 @@ let patch_rom_dark_overworld(file) =
         bytes.[offset+4] <- 0xF0uy   // BEQ rather than BNE
     else
         failwith "unexpected bytes"
-(*
-code above starts to differ with code below at
-  LA9F8:  LDX $22                 ;Load store offset.
-  ...
-  LA9FE:  STA $6436,X   
-which seems to be writing to
-  .alias WndLineBuf       $6436   ;Through $6471. 60 bytes. buffers 2 window rows.
-
-Ah, A880 has a prologue that either call into A8AD or A921 (which continues to A961 above)
-A880 is called when windows are removed (to repaint what's behind them)
-
-
-Aside:
-  LE89D:  JSR DoDialogLoBlock     ;($C7CB)
-  LE8A0:  .byte $F6
-The F6 means, in bank2, F is TextBlock16, and 6 is the 6th entry, labeled as TB16E6 here https://www.nicholasmikstas.com/dragon-warrior-bank-2
-ModEnemyStats is effective AG calculation, followed by chance-to-run computation.
-*)
 
     let offset = 0x2DA6+16   // checks to see if dungeon, for darkness
     if bytes.[offset..offset+4] = [|165uy; 22uy; 201uy; 32uy; 0xD0uy|] then
@@ -428,44 +415,33 @@ ModEnemyStats is effective AG calculation, followed by chance-to-run computation
         bytes.[offset+4] <- 0xF0uy   // BEQ rather than BNE
     else
         failwith "unexpected bytes"
-
-    // now at least two problems
-    //  - casting radiant does nothing in towns/overworld
-    //  - dont want towns to be dark
-
-    // allow radiant cast in other places
-    let offset = 0xDA64+16   // checks to see if dungeon, for darkness
-    if bytes.[offset..offset+4] = [|165uy; 22uy; 201uy; 32uy; 0xD0uy|] then
-        bytes.[offset+3] <- 0x10uy   // town rather than dungeon
-        bytes.[offset+4] <- 0xF0uy   // BEQ rather than BNE
-    else
-        failwith "unexpected bytes"
-
-    // allow torch in other places
-    let offset = 0xDD1E+16   // checks to see if dungeon, for darkness
-    if bytes.[offset..offset+4] = [|165uy; 22uy; 201uy; 32uy; 0xF0uy|] then
-        bytes.[offset+3] <- 0x10uy   // town rather than dungeon
-        bytes.[offset+4] <- 0xD0uy   // BNE rather than BEQ
-    else
-        failwith "unexpected bytes"
-
-(* some tile-loading something
+(*
+bank 0:
 LAE4B:  LDA MapType
 LAE4D:  CMP #$20
 LAE4F:  BNE $AE5B
-...
+
 LAE71:  LDA MapType
 LAE73:  CMP #$20
 LAE75:  BNE $AE81
-...
+
 LAEA2:  LDA MapType
 LAEA4:  CMP #$20
 LAEA6:  BNE $AEB2
-...
+
 LAEC8:  LDA MapType
 LAECA:  CMP #MAP_DUNGEON
 LAECC:  BNE $AED8
+*)
+    for offset in [0xAE4B; 0xAE71; 0xAEA2; 0xAEC8] do
+        let offset = offset+16-0x8000   // checks to see if dungeon, for darkness
+        if bytes.[offset..offset+4] = [|165uy; 22uy; 201uy; 32uy; 0xD0uy|] then
+            bytes.[offset+3] <- 0x10uy   // town rather than dungeon
+            bytes.[offset+4] <- 0xF0uy   // BEQ rather than BNE
+        else
+            failwith "unexpected bytes"
 
+(* 
 movement tiles
 LB265:  LDA MapType
 LB267:  CMP #MAP_DUNGEON
@@ -483,5 +459,28 @@ LB517:  LDA MapType
 LB519:  CMP #MAP_DUNGEON
 LB51B:  BNE $B53E
 *)
+    for offset in [0xB265; 0xB35F; 0xB3EB; 0xB517] do
+        let offset = offset+16-0x8000   // checks to see if dungeon, for darkness
+        if bytes.[offset..offset+4] = [|165uy; 22uy; 201uy; 32uy; 0xD0uy|] then
+            bytes.[offset+3] <- 0x10uy   // town rather than dungeon
+            bytes.[offset+4] <- 0xF0uy   // BEQ rather than BNE
+        else
+            failwith "unexpected bytes"
+
+    // allow radiant cast in other places
+    let offset = 0xDA64+16   // checks to see if dungeon, for darkness
+    if bytes.[offset..offset+4] = [|165uy; 22uy; 201uy; 32uy; 0xD0uy|] then
+        bytes.[offset+3] <- 0x10uy   // town rather than dungeon
+        bytes.[offset+4] <- 0xF0uy   // BEQ rather than BNE
+    else
+        failwith "unexpected bytes"
+
+    // allow torch in other places
+    let offset = 0xDD1E+16   // checks to see if dungeon, for darkness
+    if bytes.[offset..offset+4] = [|165uy; 22uy; 201uy; 32uy; 0xF0uy|] then
+        bytes.[offset+3] <- 0x10uy   // town rather than dungeon
+        bytes.[offset+4] <- 0xD0uy   // BNE rather than BEQ
+    else
+        failwith "unexpected bytes"
 
     System.IO.File.WriteAllBytes(file+".patched.nes", bytes)

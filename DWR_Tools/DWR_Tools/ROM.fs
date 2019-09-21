@@ -97,6 +97,8 @@ let compute_go_mode(str, hp, mp, s:string) =
     let mini_go_mode = mini_go_mode && (s.[24] = 'H') // need healmore
     go_mode, mini_go_mode
 
+let mutable agg_count = 0
+let agg_stats = Array2D.zeroCreate 30 4
 let show_go_mode_stats(bytes:byte[], print, file) =
     if print then
         printfn "for build 'Z' (STR+HP)..."
@@ -148,6 +150,11 @@ let show_go_mode_stats(bytes:byte[], print, file) =
                 (if big_any then "**" else "  ") (if go_mode then "GO " elif mini_go_mode then "go " else "   ") (i+1) fives str (x big_str) agZ (x big_ag) hp (x big_hp) mpZ (x big_mp) ag mp s 
         if i=14 && print then
             printfn "%s" header
+        agg_stats.[i,0] <- int str + agg_stats.[i,0]
+        agg_stats.[i,1] <- int agZ + agg_stats.[i,1]
+        agg_stats.[i,2] <- int hp  + agg_stats.[i,2]
+        agg_stats.[i,3] <- int mpZ + agg_stats.[i,3]
+    agg_count <- agg_count+1
     go_mode_str_hp, go_mode_str_ag 
 
 let decode_rom(file) =
