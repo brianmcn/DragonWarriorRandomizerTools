@@ -609,33 +609,6 @@ let decode_rom(file) =
                                 for r = 1 to zone_has_y.[ int ow_zones.[i,j] ] do
                                     bmp2.SetPixel(x, y, bluen(bmp2.GetPixel(x,y)))
 
-(*
-// TODO extract enemy zones from seed DWRando.414823156739942.CDFGMPRWZ
-
-[11:42 PM] Lorgon111: it could be just confirmation bias, but i feel like i have seen too many 'really unusual' things happen to just be explained by chance, and i like tinkering, so as i find time i'll dig deeper into rng algorithm it uses to try to find biases
-[11:53 PM] Lorgon111: @up2ng you saw 25 magidrakees before earning any experience!
-[11:53 PM] Lorgon111: here are the encounters:
-[11:54 PM] Lorgon111: d = drakee, s = scorpion, # = magidrakee, r = red slime
-1,d,2,s,3
-hard save
-4,5,6,7,8
-reset
-9,10
-reset
-11
-reset
-12,13,14,15
-[11:55 PM] Lorgon111: reset
-16,17,18,s,s,s
-reset
-19,20,21,22,23,24,25,r
-[11:55 PM] Lorgon111: you were definitely in an rng-pit.
-[11:56 PM] Lorgon111: when the music cycles through almost the entire overworld music before an encounter, this can signify one of the rng-pits (based on what I have read).  the algorithm always selects enemy #5 from the zone after the many-step-no-encounter thingy
-[11:57 PM] Lorgon111: i think your reset saved you into that rng-pit, so your six post-resets have highly correlated outcomes
-[11:58 PM] Lorgon111: I think magidrakke was most likely enemy #3 and #5 in the rom storage.  I need to write code to extract the enemy data yet to see if that is confirmed... enemy #3 is most probable (25%), and enemy #5 is always selected after rng-pit.
-
-*)
-
     let monster_data = bytes.[0x5E5B..0x60DB]
     //Strength, Agility, HP, spells, resistance, dodge, xp, gold, 8 bytes of graphics
     // XX-- ----    00 = sleep, 01 = stopspell, 10 = heal, 11 = healmore
@@ -1038,3 +1011,74 @@ let simulate_11264() =
     for k,v in a do
         printfn "%2d: %5d %s" k v (String.replicate ((v+50)/100) "X")
 
+let mainTests() =
+        if false then
+            // skeleon arrow-manip-run (hold down, run on second 'run' arrow) saw 44 and 47 cycles (seed 3636411... used)
+            initRNGValues(135*256+106)
+            let i1 = indexOfRNGState(135, 106)
+            let i2 = indexOfRNGState(105,   2)
+            let i3 = indexOfRNGState(119,  75)
+            printfn "%d %d %d" i1 i2 i3
+        elif false then
+            // walking showed 2 cycles per animation?
+            initRNGValues(140*256+226)
+            let i1 = indexOfRNGState(140, 226)
+            let i2 = indexOfRNGState( 92, 246)
+            let i3 = indexOfRNGState( 21, 170)
+            printfn "%d %d %d" i1 i2 i3
+        elif false then
+            let runs_between = 14
+            let start_seed = [|0; 25; 53; 85; 108; 109|].[1]
+            simulate_run_ak(89,runs_between,start_seed,true,-1.0) |> ignore
+            simulate_run_ak(90,runs_between,start_seed,true,-1.0) |> ignore
+            simulate_run_ak(91,runs_between,start_seed,true,-1.0) |> ignore
+            simulate_run_ak(92,runs_between,start_seed,true,-1.0) |> ignore
+            simulate_run_ak(93,runs_between,start_seed,true,-1.0) |> ignore
+            simulate_run_ak(94,runs_between,start_seed,true,-1.0) |> ignore
+            simulate_run_ak(95,runs_between,start_seed,true,-1.0) |> ignore
+            simulate_run_ak(96,runs_between,start_seed,true,-1.0) |> ignore
+            simulate_run_ak(97,runs_between,start_seed,true,-1.0) |> ignore
+            simulate_run_ak(98,runs_between,start_seed,true,-1.0) |> ignore
+            simulate_run_ak(99,runs_between,start_seed,true,-1.0) |> ignore
+        elif false then
+            let start_seed = [|0; 25; 53; 85; 108; 109|].[1]
+            for runs_between = 0 to 34 do
+                simulate_run_ak(88,runs_between,start_seed,true,-1.0) |> ignore
+        elif false then
+            initRNGValues(0)
+            let start_seeds = [| for i = 0 to 32 do yield rngValues.[i*1000] |]
+//            for runs_between = 0 to 256 do
+            for runs_between in [| 14; 30; 62; 78; 110; 126; 158; 222; 254; 510; 766; 1022 |] do
+                let mutable total_max,pcts = 0, 0.0
+                for start_seed in start_seeds do
+                    let runs,max,pct,mss,no_multiple_run_fail_pct = simulate_run_ak(88,runs_between,start_seed,false,-99.0)
+                    total_max <- total_max + max
+                    pcts <- pcts + no_multiple_run_fail_pct
+                printfn "using strategy with %3d cycles between, successfully ran after at most %d attempt %2.1f%%" runs_between (no_multiple_run_fail_threshold-1)  (pcts / float start_seeds.Length)
+        elif false then
+            let runs_between = 126
+            let seeds = test_period(0) |> Seq.toArray |> Array.sort 
+            let mutable ignore_pct, total_runs, total_max, total_success = -1.0, 0, 0, 0 // success = max of 1 sequential run fail
+            for i in seeds do
+                let runs,max,pct,mss,no_multiple_run_fail_pct = simulate_run_ak(88,runs_between,i,false,ignore_pct)
+                ignore_pct <- pct
+                total_runs <- total_runs + runs
+                total_max <- total_max + max
+                total_success <- total_success + (if mss <= 1 then 1 else 0)
+            printfn "GRAND TOTAL: ran %d of %d times (%2.1f%%)" total_runs total_max (float total_runs * 100.0 / float total_max)
+            printfn "GRAND TOTAL: using strategy, successfully ran after at most 1 turn %d of 32768 times (%2.1f%%)" total_success (float total_success * 100.0 / 32768.0)
+        elif false then
+            let seeds = test_period(0) |> Seq.toArray |> Array.sort 
+            let mutable total_runs = 0
+            let playerAG = 48
+            let rng_between = 8
+            for i in seeds do
+                let fails = how_many_tries_run_ak(playerAG,rng_between,i)
+                if fails <= 1 then
+                    total_runs <- total_runs + 1
+            printfn "cycling rng %d times between runs, with %d AG successfully ran from AK after at most 1 turn %d of 32768 times (%2.1f%%)" (rng_between+1) playerAG total_runs (float total_runs * 100.0 / 32768.0)
+            // try to find a way to exploit what's seen here https://en.wikipedia.org/wiki/Spectral_test
+            // left hand diagram, even though all values equally likely, 2/3 of the time, x(n) > x(n+1)
+            // possible see also 
+            // https://bumbershootsoft.wordpress.com/2017/03/11/getting-a-decent-and-fast-prng-out-of-an-8-bit-chip/
+            // https://wiki.nesdev.com/w/index.php/Random_number_generator

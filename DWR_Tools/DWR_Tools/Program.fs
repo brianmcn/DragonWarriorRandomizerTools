@@ -6,8 +6,6 @@ open System.Windows.Interop
 
 // TODO way to deal with 'reset' without crashing (e.g. xp decreasing)
 
-// TODO maybe a checklist of 'explored branch' on each location, to help keep track of remain ways from locations? hmmm
-
 // TODO add AP/DP/STR/AGI tracker (when that screen pops up?) also note weapon/armor/etc
 //   - could capture the level when it was taken, and always know current level, so could show how 'stale' the info was that way
 
@@ -107,13 +105,6 @@ module Screenshot =
                 if fast.GetR(x,y) = byte 0xFC && fast.GetG(x,y) = byte 0x74 && fast.GetB(x,y) = byte 0x60 then // red
                     fast.SetRGB(x, y, 0xFCuy, 0xFCuy, 0xFCuy)   // white
         fast.Finish()
-        (*
-        for x = 0 to clone.Width-1 do
-            for y = 0 to clone.Height-1 do
-                let c = clone.GetPixel(x,y)
-                if c.R = byte 0xFC && c.G = byte 0x74 && c.B = byte 0x60 then // red
-                    clone.SetPixel(x, y, System.Drawing.Color.FromArgb(0xFC, 0xFC, 0xFC))   // white
-        *)
         clone
     let mutable badTileNum = 1
     let UniqueOverworldTiles = ResizeArray<string*Constants.OverworldMapTile*FastRGBBitmap>()
@@ -807,8 +798,6 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
                 prevMatchName <- "1"
             //printfn "update took %d ms" timer.ElapsedMilliseconds 
 
-    //let activate() =
-    //    this.Activate() |> ignore
     do
         Constants.voice.Volume <- 30
         let pretty = xp_thresholds |> Array.map (fun x -> let s = x.ToString() in (String.replicate (5-s.Length) " ") + s)
@@ -990,9 +979,6 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
         timer.Tick.Add(fun _ -> update())
         timer.Start()
 
-        //this.Topmost <- true
-        //this.Deactivated.Add(fun _ -> activate())
-
     //////////////////////////////////////////////////
     // global hotkey
 
@@ -1120,93 +1106,14 @@ let inverted_power_curve(min, max, power, rand:System.Random) =
 [<STAThread>]
 [<EntryPoint>]
 let xmain argv = 
-    //ROM.show_rng()
-    //testSendMessage()
-    //neededAttacksTable()
-    //ROM.test_rng()
-    //ROM.test_period(0x7c65)   // period was 32768, with 2 calls per frame and 60fps, every 4.5 mins this cycles
     if false then
-        if false then
-            // skeleon arrow-manip-run (hold down, run on second 'run' arrow) saw 44 and 47 cycles (seed 3636411... used)
-            ROM.initRNGValues(135*256+106)
-            let i1 = ROM.indexOfRNGState(135, 106)
-            let i2 = ROM.indexOfRNGState(105,   2)
-            let i3 = ROM.indexOfRNGState(119,  75)
-            printfn "%d %d %d" i1 i2 i3
-        elif false then
-            // walking showed 2 cycles per animation?
-            ROM.initRNGValues(140*256+226)
-            let i1 = ROM.indexOfRNGState(140, 226)
-            let i2 = ROM.indexOfRNGState( 92, 246)
-            let i3 = ROM.indexOfRNGState( 21, 170)
-            printfn "%d %d %d" i1 i2 i3
-        elif false then
-            let runs_between = 14
-            let start_seed = [|0; 25; 53; 85; 108; 109|].[1]
-            ROM.simulate_run_ak(89,runs_between,start_seed,true,-1.0) |> ignore
-            ROM.simulate_run_ak(90,runs_between,start_seed,true,-1.0) |> ignore
-            ROM.simulate_run_ak(91,runs_between,start_seed,true,-1.0) |> ignore
-            ROM.simulate_run_ak(92,runs_between,start_seed,true,-1.0) |> ignore
-            ROM.simulate_run_ak(93,runs_between,start_seed,true,-1.0) |> ignore
-            ROM.simulate_run_ak(94,runs_between,start_seed,true,-1.0) |> ignore
-            ROM.simulate_run_ak(95,runs_between,start_seed,true,-1.0) |> ignore
-            ROM.simulate_run_ak(96,runs_between,start_seed,true,-1.0) |> ignore
-            ROM.simulate_run_ak(97,runs_between,start_seed,true,-1.0) |> ignore
-            ROM.simulate_run_ak(98,runs_between,start_seed,true,-1.0) |> ignore
-            ROM.simulate_run_ak(99,runs_between,start_seed,true,-1.0) |> ignore
-        elif false then
-            let start_seed = [|0; 25; 53; 85; 108; 109|].[1]
-            for runs_between = 0 to 34 do
-                ROM.simulate_run_ak(88,runs_between,start_seed,true,-1.0) |> ignore
-        elif false then
-            ROM.initRNGValues(0)
-            let start_seeds = [| for i = 0 to 32 do yield ROM.rngValues.[i*1000] |]
-//            for runs_between = 0 to 256 do
-            for runs_between in [| 14; 30; 62; 78; 110; 126; 158; 222; 254; 510; 766; 1022 |] do
-                let mutable total_max,pcts = 0, 0.0
-                for start_seed in start_seeds do
-                    let runs,max,pct,mss,no_multiple_run_fail_pct = ROM.simulate_run_ak(88,runs_between,start_seed,false,-99.0)
-                    total_max <- total_max + max
-                    pcts <- pcts + no_multiple_run_fail_pct
-                printfn "using strategy with %3d cycles between, successfully ran after at most %d attempt %2.1f%%" runs_between (ROM.no_multiple_run_fail_threshold-1)  (pcts / float start_seeds.Length)
-        elif false then
-            let runs_between = 126
-            let seeds = ROM.test_period(0) |> Seq.toArray |> Array.sort 
-            let mutable ignore_pct, total_runs, total_max, total_success = -1.0, 0, 0, 0 // success = max of 1 sequential run fail
-            for i in seeds do
-                let runs,max,pct,mss,no_multiple_run_fail_pct = ROM.simulate_run_ak(88,runs_between,i,false,ignore_pct)
-                ignore_pct <- pct
-                total_runs <- total_runs + runs
-                total_max <- total_max + max
-                total_success <- total_success + (if mss <= 1 then 1 else 0)
-            printfn "GRAND TOTAL: ran %d of %d times (%2.1f%%)" total_runs total_max (float total_runs * 100.0 / float total_max)
-            printfn "GRAND TOTAL: using strategy, successfully ran after at most 1 turn %d of 32768 times (%2.1f%%)" total_success (float total_success * 100.0 / 32768.0)
-        elif false then
-            let seeds = ROM.test_period(0) |> Seq.toArray |> Array.sort 
-            let mutable total_runs = 0
-            let playerAG = 48
-            let rng_between = 8
-            for i in seeds do
-                let fails = ROM.how_many_tries_run_ak(playerAG,rng_between,i)
-                if fails <= 1 then
-                    total_runs <- total_runs + 1
-            printfn "cycling rng %d times between runs, with %d AG successfully ran from AK after at most 1 turn %d of 32768 times (%2.1f%%)" (rng_between+1) playerAG total_runs (float total_runs * 100.0 / 32768.0)
-            // try to find a way to exploit what's seen here https://en.wikipedia.org/wiki/Spectral_test
-            // left hand diagram, even though all values equally likely, 2/3 of the time, x(n) > x(n+1)
-            // possible see also 
-            // https://bumbershootsoft.wordpress.com/2017/03/11/getting-a-decent-and-fast-prng-out-of-an-8-bit-chip/
-            // https://wiki.nesdev.com/w/index.php/Random_number_generator
-        0
-    else
-    if true then
         //ROM_mods.patch_rom("""C:\Users\Admin1\Desktop\dwrandomizer-2.1.2-windows\DWRando.2082083747464582.CDFGMPRWZbks.nes""")
         //ROM_mods.patch_rom("""C:\Users\Admin1\Desktop\dwrandomizer-2.1.2-windows\DWRando.3247988247468046195.CDFGMPRWZ.nes""")
         //ROM_mods.patch_rom("""C:\Users\Admin1\Desktop\dwrandomizer-2.1.2-windows\DWRando.7903469359908275869.CDFGMPRWZbs.nes""")
         // 8084377946825976 
         ROM_mods.patch_rom_dark_overworld("""C:\Users\Admin1\Desktop\dwrandomizer-2.1.2-windows\DWRando.13794658726116779947.CDFGMPRWZ.nes""")
         0
-    else
-    if false then
+    elif false then
         let rng = new System.Random()
         let trials = ResizeArray() // to see 9 red slimes
         let firsts = ResizeArray() // to see first red slime
@@ -1232,8 +1139,7 @@ let xmain argv =
             let num = firsts |> Array.map (fun x -> if x=i then 1 else 0) |> Array.sum
             printfn "    %3d - %4d %s" i num (String.replicate (num/20) "X")
         0
-    else
-    if false then
+    elif false then
         let mutable le_count, le_total = 0,0
         let mutable ge_count, ge_total = 0,0
         let LO = 8
@@ -1254,7 +1160,8 @@ let xmain argv =
                 ge_total <- ge_total + a.[16]
         printfn "start with <=%d %s, at L17 had on average: %f   (%d samples)" LO name (float le_total / float le_count) le_count
         printfn "start with >=%d %s, at L17 had on average: %f   (%d samples)" HI name (float ge_total / float ge_count) ge_count
-    if false then
+        0
+    elif false then
         let mutable hp_less_count, hp_less_diff = 0,0
         let mutable hp_gr_count, hp_gr_diff = 0,0
         let mutable hp_diff = 0
@@ -1278,9 +1185,9 @@ let xmain argv =
         let a = hist |> Seq.countBy id |> Seq.toArray |> Array.sort 
         for k,v in a do
             printfn "%2d: %5d %s" k v (String.replicate (v/10000) "X")
-
+        0
     // Read all seeds in directory and summary-process
-    if false then
+    elif false then
         let mutable count = 0
         let mutable cont1, cont2 = 0, 0
         let N = Constants.MAP_LOCATIONS.ALL.Length 
@@ -1348,11 +1255,6 @@ let xmain argv =
         printfn ""
         for file in debug_files do
             printfn "single cont: %s" file
-            (*
-DWRando.4614027807516651.CDFGMPRWZ.nes
-DWRando.5343880208466324698.CDFGMPRWZ.nes
-DWRando.82671621.CDFGMPRWZ.nes
-            *)
         printfn ""
         printfn "average stats per level"
         for i = 0 to 29 do
@@ -1408,8 +1310,6 @@ average stats per level
         fd.CheckFileExists <- true
         fd.CheckPathExists <- true
         if fd.ShowDialog() = System.Windows.Forms.DialogResult.OK then
-            //let bmp1,bmp2 = ROM.decode_rom("""C:\Users\Admin1\Desktop\fceux-2.2.3-win32\DWRando.3900483431572982.CDFGMPRWZ.nes""")
-            //let bmp1,bmp2 = ROM.decode_rom("""C:\Users\Admin1\Desktop\dwrandomizer-2.0.6-windows\DWRando.8523561777557155.CDFGMPRWZ.nes""")
             let bmp1,bmp2,_reachable_continents,_mapCoords,_cont_1_size,_cont_2_size,_ch_inn_dist  = ROM.decode_rom(fd.FileName)
             let w = new Window()
 
@@ -1440,8 +1340,6 @@ average stats per level
     let app = new Application()
     let myAssembly = System.Reflection.Assembly.GetExecutingAssembly()
     let names = myAssembly.GetManifestResourceNames()
-    //for n in names do
-    //    printfn "%s" n
 
     // load up known overworld map tiles
     for ow,kind in Constants.OVERWORLD_MAP_TILE_FILENAMES do
@@ -1450,27 +1348,6 @@ average stats per level
         Screenshot.UniqueOverworldTiles.Add(ow,kind,new FastRGBBitmap(bmp))
     printfn "loaded %d overworld tiles" Screenshot.UniqueOverworldTiles.Count 
      
-    (*
-    let bmp = new System.Drawing.Bitmap(System.IO.Path.Combine("""C:\Users\Admin1\Source\Repos\Misc\DragonWarriorRandomizerDisplay\DragonWarriorRandomizerDisplay\bin\Debug\roguescorpion.png"""))
-    let screen = new System.Drawing.Bitmap(System.IO.Path.Combine("""C:\Users\Admin1\Source\Repos\Misc\DragonWarriorRandomizerDisplay\DragonWarriorRandomizerDisplay\bin\Debug\Screen001.png"""))
-    let r = computeMatch(bmp, screen, 402, 426, 380, 396)
-    printfn "%f" r
-    let r = computeMatch(bmp, screen, 402, 426, 384, 396)
-    printfn "%f" r
-    *)
-
-    (*    
-    let bmp = new System.Drawing.Bitmap(System.IO.Path.Combine("""C:\Users\Admin1\Documents\GitHubVisualStudio\DragonWarriorRandomizerTools\DWR_Tools\DWR_Tools\spellmenu.png"""))
-    let downscaled = new System.Drawing.Bitmap(256,224)
-    for x = 0 to 255 do
-        for y = 0 to 223 do
-            downscaled.SetPixel(x,y, bmp.GetPixel(x*3+8, y*3+51))
-    let spells = PixelLayout.identifySpells(fun (x,y) -> downscaled.GetPixel(x,y))
-    printfn "%A" spells
-    let exp = PixelLayout.identifyEXP(fun (x,y) -> downscaled.GetPixel(x,y))
-    printfn "EXP: %A" exp
-    *)
-
     let racingMode = argv.Length > 0
     let leagueMode = argv.Length > 1
     let xp = if leagueMode then Constants.DWR_XP_LEVEL_THRESHOLDS_50_PERCENT else Constants.DWR_XP_LEVEL_THRESHOLDS 
