@@ -86,7 +86,52 @@ let SHOP_ITEM = [|
     "SHOP_DRAGON_SCALE"
     |]
 
-let compute_go_mode(str, hp, mp, s:string) =
+let simulate_dl2_core(ag, start_hp, start_mp, max_hp, dp, ap) =
+    let rng = new System.Random()
+    let max_bite = 69 - (dp-2)/4
+    let breath = [| 42; 44; 46; 48 |]
+    let attack(max2) = (rng.Next(max2+1) + max2) / 4
+    let dl() =
+        if rng.Next(2) = 0 then
+            breath.[rng.Next(4)]
+        else
+            attack(max_bite*2)
+    let player() = attack(max (ap - 100) 0)
+    let healmore() = 85 + rng.Next(16)
+    let mutable wins = 0
+    for i = 1 to 1000 do
+        // simulate fight
+        let mutable player_died = false
+        let mutable hp = start_hp
+        let mutable mp = start_mp
+        let mutable dl_hp = rng.Next(16) + 150
+        if rng.Next(256)*50 > rng.Next(ag) then
+            hp <- hp - dl()
+            if hp <= 0 then
+                player_died <- true  // died to back attack
+        while not player_died && dl_hp > 0 do
+            // player strategy
+            if (hp <= max_bite || hp <= 48) && mp >= 8 then
+                mp <- mp - 8
+                hp <- hp + healmore()
+                if hp > max_hp then
+                    hp <- max_hp
+            else
+                dl_hp <- dl_hp - player()
+            if dl_hp > 0 then
+                hp <- hp - dl()
+                if hp <= 0 then
+                    player_died <- true
+        if not player_died then
+            wins <- wins + 1
+    wins
+let simulate_dl2(ag, start_hp, start_mp, max_hp, dp, ap) =
+    let no_dn = simulate_dl2_core(ag, start_hp, start_mp, max_hp, dp, ap)
+    let dn = simulate_dl2_core(ag, start_hp-max_hp/4, start_mp, max_hp*3/4, dp, ap+10)
+    max no_dn dn
+
+let compute_go_mode(str, ag, hp, mp, s:string, full_simulation) =
+    let str, ag, hp, mp = int str, int ag, int hp, int mp
     let max_dl = ((int str + 42) - 100) / 2
     let avg_dl = max_dl * 3 / 4
     let go_mode = int hp > 96 && ((int mp/8)+2)*avg_dl > 155  // quick approx
@@ -95,14 +140,16 @@ let compute_go_mode(str, hp, mp, s:string) =
     let mini_go_mode = mini_go_mode || int hp >= 129 && ((int mp/8)+2)*(avg_dl+3) > 150  // quick approx with DN
     let go_mode = go_mode && (s.[24] = 'H') // need healmore
     let mini_go_mode = mini_go_mode && (s.[24] = 'H') // need healmore
-    go_mode, mini_go_mode
+    go_mode, mini_go_mode, 
+        (if full_simulation then simulate_dl2(ag,hp-20,mp,hp,(ag/2)+48,str+42) else 0), // assumes survive dl1 with max-20, silver shield, sword+FR
+        (if full_simulation then simulate_dl2(ag,hp-20,mp-8,hp,(ag/2)+48,str+42) else 0)  // assumes survive dl1 with max-20, silver shield, sword+FR, lost a healmore
 
 let mutable agg_count = 0
 let agg_stats = Array2D.zeroCreate 30 4
 let show_go_mode_stats(bytes:byte[], print, file) =
     if print then
         printfn "for build 'Z' (STR+HP)..."
-    let header = "        LV    STR   AGI   HP    MP   rawAG rawMP" 
+    let header = "       full down1heal LV    STR   AGI    HP    MP  rawAG rawMP" 
     let mutable p_str, p_ag, p_hp, p_mp, p_hu, hu = 0, 0, 0, 0, 0, 0
     let mutable go_mode_str_hp,go_mode_str_ag = 31, 31
     if print then
@@ -138,16 +185,17 @@ let show_go_mode_stats(bytes:byte[], print, file) =
         p_hp <- int hp
         p_mp <- int mpZ
         p_hu <- hu
-        let go_mode,mini_go_mode = compute_go_mode(str, hp, mpZ, s)
-        let strag_go_mode,strag_mini_go_mode = compute_go_mode(str, hpSTRAG, mpZ, s)
+        let go_mode,mini_go_mode,wins,wins_less1_heal = compute_go_mode(str, agZ, hp, mpZ, s, print)
+        let strag_go_mode,strag_mini_go_mode,_strag_wins,_ = compute_go_mode(str, ag, hpSTRAG, mpZ, s, false)
         let x(b) = if b then "+" else " "
         if go_mode && go_mode_str_hp=31 then
             go_mode_str_hp <- i+1
         if strag_go_mode && go_mode_str_ag=31 then
             go_mode_str_ag <- i+1
         if print then
-            printfn "%s %s %3d %s%3d%s  %3d%s  %3d%s  %3d%s  %3d  %3d   %s" 
-                (if big_any then "**" else "  ") (if go_mode then "GO " elif mini_go_mode then "go " else "   ") (i+1) fives str (x big_str) agZ (x big_ag) hp (x big_hp) mpZ (x big_mp) ag mp s 
+            printfn "%s %s %5.1f%% %5.1f%% %3d %s%3d%s  %3d%s  %3d%s  %3d%s  %3d  %3d   %s" 
+                (if big_any then "**" else "  ") (if go_mode then "GO " elif mini_go_mode then "go " else "   ") (float wins / 10.0) (float wins_less1_heal / 10.0) 
+                (i+1) fives str (x big_str) agZ (x big_ag) hp (x big_hp) mpZ (x big_mp) ag mp s 
         if i=14 && print then
             printfn "%s" header
         agg_stats.[i,0] <- int str + agg_stats.[i,0]

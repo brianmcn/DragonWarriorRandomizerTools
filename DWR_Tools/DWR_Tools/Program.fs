@@ -1458,3 +1458,51 @@ let main argv =
     0
 
 #endif
+
+
+(*
+
+    printf("Making torches and fairy water more deadly...\n");
+    /* patch the jump address */
+    vpatch(rom, 0x0e87d,   2, 0x75, 0xc4);
+
+    vpatch(rom, 0x0c475, 71,    
+        0xc9, 0x04,             /* CMP $#04 // torch                  */
+        0xd0, 0x2a,             /* BNE label1                         */
+        0xa9, 0x01,             /* LDA $#01                           */
+        0x20, 0x4b, 0xe0,       /* JSR e04b RemoveInvItem             */
+        0x20, 0xc5, 0xc7,       /* JSR c7c5 DoDialogHiBlock           */
+        0x29,                   /*   text block TB19E9                */
+        0xa5, 0xe0,             /* LDA $e0  // enemy num              */
+        0xc9, 0x10,             /* CMP $#10 // 16 is metal slime      */
+        0xd0, 0x0f,             /* BNE label2                         */
+        /* label5: */
+        0x20, 0x5b, 0xc5,       /* JSR c55b UpdateRandNum             */
+        0xa5,                   /* LDA $95  // upper rng              */
+        0x95, 0x29, 0x01,       /* AND $#01 // 50-50                  */
+        0xd0, 0x03,             /* BNE label3                         */
+        0x4c, 0x58, 0xe6,       /* JMP e658 // missed enemy!          */
+        /* label3: */
+        0x4c, 0x94, 0xe6,       /* JMP e694 // hit for 1 dmg          */
+        /* label2: */
+        0x20, 0x5b, 0xc5,       /* JSR c55b UpdateRandNum             */ 
+        0xa5, 0x95,             /* LDA $95  // upper rng              */ 
+        0x29, 0x03,             /* AND $#03 // 0-3                    */ 
+        0x69, 0x06,             /* ADC $#06 // 6-9  TODO need CLC?    */
+        0x4c, 0x94, 0xe6,       /* JMP e694 // hit for 6-9 dmg        */ 
+        /* label1: */
+        0xc9, 0x05,             /* CMP $#05 // fairy water            */
+        0xd0, 0x12,             /* BNE label4                         */
+        0xa9, 0x02,             /* LDA $#02                           */
+        0x20, 0x4b, 0xe0,       /* JSR e04b RemoveInvItem             */
+        0x20, 0xc5, 0xc7,       /* JSR c7c5 DoDialogHiBlock           */
+        0x2a,                   /*   text block TB19E10               */
+        0xa5, 0xe0,             /* LDA $e0  // enemy num              */
+        0xc9, 0x10,             /* CMP $#10 // 16 is metal slime      */
+        0xf0, 0xd2,             /* BEQ label5                         */
+        0x4c, 0x44, 0xe7,       /* JMP e744 // hurt damage            */
+        /* label4: */
+        0x4c, 0xfd, 0xe6        /* JMP e6fd // cant use battle dialog */
+    );
+
+*)
