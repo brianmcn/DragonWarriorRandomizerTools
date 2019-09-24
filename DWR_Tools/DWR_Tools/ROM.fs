@@ -99,7 +99,7 @@ let simulate_dl2_core(ag, start_hp, start_mp, max_hp, dp, ap) =
     let player() = attack(max (ap - 100) 0)
     let healmore() = 85 + rng.Next(16)
     let mutable wins = 0
-    for i = 1 to 1000 do
+    for i = 1 to 10000 do
         // simulate fight
         let mutable player_died = false
         let mutable hp = start_hp
@@ -124,7 +124,7 @@ let simulate_dl2_core(ag, start_hp, start_mp, max_hp, dp, ap) =
                     player_died <- true
         if not player_died then
             wins <- wins + 1
-    wins
+    wins/10
 let simulate_dl2(ag, start_hp, start_mp, max_hp, dp, ap) =
     let no_dn = simulate_dl2_core(ag, start_hp, start_mp, max_hp, dp, ap)
     let dn = simulate_dl2_core(ag, start_hp-max_hp/4, start_mp, max_hp*3/4, dp, ap+10)
@@ -142,18 +142,22 @@ let compute_go_mode(str, ag, hp, mp, s:string, full_simulation) =
     let mini_go_mode = mini_go_mode && (s.[24] = 'H') // need healmore
     go_mode, mini_go_mode, 
         (if full_simulation then simulate_dl2(ag,hp-20,mp,hp,(ag/2)+48,str+42) else 0), // assumes survive dl1 with max-20, silver shield, sword+FR
-        (if full_simulation then simulate_dl2(ag,hp-20,mp-8,hp,(ag/2)+48,str+42) else 0)  // assumes survive dl1 with max-20, silver shield, sword+FR, lost a healmore
+        (if full_simulation then simulate_dl2(ag,hp-20,mp-8,hp,(ag/2)+48,str+42) else 0),  // assumes survive dl1 with max-20, silver shield, sword+FR, lost a healmore
+        (if full_simulation then simulate_dl2(ag,hp-20,mp,hp,(ag/2)+38,str+42) else 0), // assumes survive dl1 with max-20, large shield, sword+FR
+        (if full_simulation then simulate_dl2(ag,hp-20,mp-8,hp,(ag/2)+38,str+42) else 0)  // assumes survive dl1 with max-20, large shield, sword+FR, lost a healmore
 
 let mutable agg_count = 0
 let agg_stats = Array2D.zeroCreate 30 4
 let show_go_mode_stats(bytes:byte[], print, file) =
     if print then
         printfn "for build 'Z' (STR+HP)..."
-    let header = "       full down1heal LV    STR   AGI    HP    MP  rawAG rawMP" 
+    let header1 = "       silver shield   large shield" 
+    let header2 = "        full down1heal full down1   LV    STR   AGI    HP    MP  rawAG rawMP" 
     let mutable p_str, p_ag, p_hp, p_mp, p_hu, hu = 0, 0, 0, 0, 0, 0
     let mutable go_mode_str_hp,go_mode_str_ag = 31, 31
     if print then
-        printfn "%s" header
+        printfn "%s" header1
+        printfn "%s" header2
     for i = 0 to 29 do
         let fives = (if i%5=4 then "-- " else "   ")
         let b1 = bytes.[0x60DD+6*i+4]
@@ -185,19 +189,20 @@ let show_go_mode_stats(bytes:byte[], print, file) =
         p_hp <- int hp
         p_mp <- int mpZ
         p_hu <- hu
-        let go_mode,mini_go_mode,wins,wins_less1_heal = compute_go_mode(str, agZ, hp, mpZ, s, print)
-        let strag_go_mode,strag_mini_go_mode,_strag_wins,_ = compute_go_mode(str, ag, hpSTRAG, mpZ, s, false)
+        let go_mode,mini_go_mode,wins,wins_less1_heal,wins_lg,wins_lg_less1_heal = compute_go_mode(str, agZ, hp, mpZ, s, print)
+        let strag_go_mode,strag_mini_go_mode,_,_,_,_ = compute_go_mode(str, ag, hpSTRAG, mpZ, s, false)
         let x(b) = if b then "+" else " "
         if go_mode && go_mode_str_hp=31 then
             go_mode_str_hp <- i+1
         if strag_go_mode && go_mode_str_ag=31 then
             go_mode_str_ag <- i+1
         if print then
-            printfn "%s %s %5.1f%% %5.1f%% %3d %s%3d%s  %3d%s  %3d%s  %3d%s  %3d  %3d   %s" 
-                (if big_any then "**" else "  ") (if go_mode then "GO " elif mini_go_mode then "go " else "   ") (float wins / 10.0) (float wins_less1_heal / 10.0) 
+            printfn "%s %s %5.1f%% %5.1f%% %5.1f%% %5.1f%% %3d %s%3d%s  %3d%s  %3d%s  %3d%s  %3d  %3d   %s" 
+                (if big_any then "**" else "  ") (if go_mode then "GO " elif mini_go_mode then "go " else "   ") (float wins / 10.0) (float wins_less1_heal / 10.0) (float wins_lg / 10.0) (float wins_lg_less1_heal / 10.0) 
                 (i+1) fives str (x big_str) agZ (x big_ag) hp (x big_hp) mpZ (x big_mp) ag mp s 
         if i=14 && print then
-            printfn "%s" header
+            printfn "%s" header1
+            printfn "%s" header2
         agg_stats.[i,0] <- int str + agg_stats.[i,0]
         agg_stats.[i,1] <- int agZ + agg_stats.[i,1]
         agg_stats.[i,2] <- int hp  + agg_stats.[i,2]
