@@ -99,31 +99,44 @@ let simulate_dl2_core(ag, start_hp, start_mp, max_hp, dp, ap) =
     let player() = attack(max (ap - 100) 0)
     let healmore() = 85 + rng.Next(16)
     let mutable wins = 0
+    let mutable damage = 0
+    let mutable sum_num_attacks = 0
     for i = 1 to 10000 do
         // simulate fight
         let mutable player_died = false
         let mutable hp = start_hp
         let mutable mp = start_mp
-        let mutable dl_hp = rng.Next(16) + 150
-        if rng.Next(256)*50 > rng.Next(ag) then
+        let mutable num_attacks = 0
+        let dl_start_hp = rng.Next(16) + 150
+        let mutable dl_hp = dl_start_hp 
+        if rng.Next(256)*50 > rng.Next(256)*ag then
             hp <- hp - dl()
             if hp <= 0 then
                 player_died <- true  // died to back attack
         while not player_died && dl_hp > 0 do
             // player strategy
-            if (hp <= max_bite || hp <= 48) && mp >= 8 then
+            if (hp <= max_bite || hp <= 48) && mp >= 8 then   // heal above max - conservative
+//            if (hp <= 48) && mp >= 8 then   // heal above 48 - usually increases odds on close fight though risks a max bite
                 mp <- mp - 8
                 hp <- hp + healmore()
                 if hp > max_hp then
                     hp <- max_hp
             else
-                dl_hp <- dl_hp - player()
+                let dmg = player()
+                dl_hp <- dl_hp - dmg
+                damage <- damage + dmg
+                num_attacks <- num_attacks + 1
             if dl_hp > 0 then
                 hp <- hp - dl()
                 if hp <= 0 then
                     player_died <- true
         if not player_died then
             wins <- wins + 1
+        elif false then //ap = 140 then
+            printfn "lost, after player had %d attacks, DL had %d of %d left" num_attacks dl_hp dl_start_hp
+        sum_num_attacks <- sum_num_attacks + num_attacks
+    if false then //ap = 140 then
+        printfn "player averaged %5.1f attacks, each averaging %5.1f damage" (float sum_num_attacks / 10000.0) (float damage / float sum_num_attacks)
     wins/10
 let simulate_dl2(ag, start_hp, start_mp, max_hp, dp, ap) =
     let no_dn = simulate_dl2_core(ag, start_hp, start_mp, max_hp, dp, ap)

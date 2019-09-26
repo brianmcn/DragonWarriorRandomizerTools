@@ -1107,6 +1107,15 @@ let inverted_power_curve(min, max, power, rand:System.Random) =
 [<EntryPoint>]
 let xmain argv = 
     if false then
+        ROM.initRNGValues(0)
+        let mutable n = 0
+        for x in ROM.rngValues do
+            let upperByte = (x &&& 0x0FF00) / 256
+            if upperByte % 2 = 0 then
+                n <- n + 1
+        printfn "%d" n
+        0
+    elif false then
         //ROM_mods.patch_rom("""C:\Users\Admin1\Desktop\dwrandomizer-2.1.2-windows\DWRando.2082083747464582.CDFGMPRWZbks.nes""")
         //ROM_mods.patch_rom("""C:\Users\Admin1\Desktop\dwrandomizer-2.1.2-windows\DWRando.3247988247468046195.CDFGMPRWZ.nes""")
         //ROM_mods.patch_rom("""C:\Users\Admin1\Desktop\dwrandomizer-2.1.2-windows\DWRando.7903469359908275869.CDFGMPRWZbs.nes""")
