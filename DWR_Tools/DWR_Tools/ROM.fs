@@ -86,17 +86,152 @@ let SHOP_ITEM = [|
     "SHOP_DRAGON_SCALE"
     |]
 
+let rng = new System.Random()
+let attack(max2) = (rng.Next(max2+1) + max2) / 4
+let player_attack(ap) = attack(max (ap - 100) 0)
+
+let dl2_swings_chart() =
+    let MIN = 124
+    let NUM_AP = 30
+    let wins_per_ap_per_swings = Array2D.zeroCreate NUM_AP 30
+    let cumulative_wins_per_ap_per_swings = Array2D.zeroCreate NUM_AP 30
+    for ap in [MIN..MIN+NUM_AP-1] do
+        for dl_health in [150..165] do
+            for i = 1 to 1000 do
+                let mutable h = dl_health
+                let mutable swings = 0
+                while h > 0 do
+                    h <- h - player_attack(ap)
+                    swings <- swings + 1
+                wins_per_ap_per_swings.[ap-MIN,swings] <- wins_per_ap_per_swings.[ap-MIN,swings] + 1
+        cumulative_wins_per_ap_per_swings.[ap-MIN,0] <- wins_per_ap_per_swings.[ap-MIN,0]
+        for i = 1 to 29 do
+            cumulative_wins_per_ap_per_swings.[ap-MIN,i] <- cumulative_wins_per_ap_per_swings.[ap-MIN,i-1] + wins_per_ap_per_swings.[ap-MIN,i]
+        printf "AP=%3d  " ap
+        for s = 8 to 20 do
+            printf "%2d:%3d%% " s (cumulative_wins_per_ap_per_swings.[ap-MIN,s]*100/16000)
+        printfn ""
+    printfn "        05%% 10%% 15%% 20%% 25%% 30%% 35%% 40%% 45%% 50%% 55%% 60%% 65%% 70%% 75%% 80%% 85%% 90%% 95%%100%%"
+    for ap in [MIN..MIN+NUM_AP-1] do
+        printf "AP=%3d  " ap
+        for pct in [1..20] |> List.map (fun n -> n*5) do
+            let mutable to_print = "    "
+            for s = 8 to 20 do
+                let x = (cumulative_wins_per_ap_per_swings.[ap-MIN,s]*100/16000)
+                if x >= pct && x < pct+5 then
+                    to_print <- sprintf " %2d " s
+            printf "%s" to_print
+        printfn ""
+(*
+                             30              50              70              90
+
+AP=124       17                      18                          19              20
+AP=125   16                  17                              18              19  20
+AP=126               16                          17                      18      20
+AP=127       15                          16                          17          20
+AP=128   14                  15                              16              17  19  20
+AP=129       14                              15                          16      18  20
+AP=130                       14                              15                  18  20
+AP=131       13                              14                          15      17  20
+AP=132                   13                                  14                  16  20
+AP=133   12                              13                              14      16  20
+AP=134           12                                  13                      14  15  20
+AP=135                       12                                  13              15  20
+AP=136       11                              12                              13  15  20
+AP=137               11                                  12                      14  20
+AP=138                       11                                      12          14  20
+AP=139   10                              11                              12      14  20
+AP=140           10                                  11                          13  20
+AP=141                   10                                      11              14  20
+AP=142                           10                                      11      13  20
+AP=143    9                                  10                              11  13  20
+AP=144        9                                      10                          12  20
+AP=145                9                                          10              12  20
+AP=146                        9                                      10          11  20
+AP=147                                9                                      10  11  20
+AP=148    8                                       9                          10  11  20
+AP=149        8                                           9                      11  20
+AP=150            8                                               9              11  20
+AP=151                    8                                           9          10  20
+AP=152                            8                                       9      10  20
+AP=153                                    8                                   9  10  20
+
+num of swings to have: at least about 1/4, at least about 3/4
+
+AP=124  18-19
+
+AP=125  17-18
+AP=126  17-18
+
+AP=127  16-17
+
+AP=128  15-16
+AP=129  15-16
+
+AP=130  14-15
+AP=131  14-15
+
+AP=132  13-14
+AP=133  13-14
+AP=134  13-14
+
+AP=135  12-13
+AP=136  12-13
+AP=137  12-13
+
+AP=138  11-12
+AP=139  11-12
+AP=140  11-12
+
+AP=141  10-11
+AP=142  10-11
+AP=143  10-11
+AP=144  10-11
+AP=145  10
+
+AP=146  9-10
+AP=147  9-10
+AP=148  9-10
+AP=149  9-10
+AP=150  9
+
+AP=151  8-9
+
+healmores(MP) to probable win AP, assuming exactly HM+2 swings (no doubles, no back attack):
+ 8( 64): AP >= 145  10 swings
+ 9( 72): AP >= 141  11 swings
+10( 80): AP >= 138  12 swings
+11( 88): AP >= 135  13 swings
+12( 96): AP >= 132  14 swings
+13(104): AP >= 130  15 swings
+14(112): AP >= 128  16 swings
+15(120): AP >= 127  17 swings
+16(128): AP >= 125  18 swings
+17(136): AP >= 124  19 swings
+*)
+
+let dl2_swings = """70% win swings
+AP >= 151   9
+AP >= 145  10
+AP >= 141  11
+AP >= 138  12
+AP >= 135  13
+AP >= 132  14
+AP >= 130  15
+AP >= 128  16
+AP >= 127  17
+AP >= 125  18
+AP >= 124  19"""
+
 let simulate_dl2_core(ag, start_hp, start_mp, max_hp, dp, ap) =
-    let rng = new System.Random()
     let max_bite = 69 - (dp-2)/4
     let breath = [| 42; 44; 46; 48 |]
-    let attack(max2) = (rng.Next(max2+1) + max2) / 4
     let dl() =
         if rng.Next(2) = 0 then
             breath.[rng.Next(4)]
         else
             attack(max_bite*2)
-    let player() = attack(max (ap - 100) 0)
+    let player() = player_attack(ap)
     let healmore() = 85 + rng.Next(16)
     let mutable wins = 0
     let mutable damage = 0
@@ -135,7 +270,7 @@ let simulate_dl2_core(ag, start_hp, start_mp, max_hp, dp, ap) =
         elif false then //ap = 140 then
             printfn "lost, after player had %d attacks, DL had %d of %d left" num_attacks dl_hp dl_start_hp
         sum_num_attacks <- sum_num_attacks + num_attacks
-    if false then //ap = 140 then
+    if false then //ap = 141 then
         printfn "player averaged %5.1f attacks, each averaging %5.1f damage" (float sum_num_attacks / 10000.0) (float damage / float sum_num_attacks)
     wins/10
 let simulate_dl2(ag, start_hp, start_mp, max_hp, dp, ap) =
@@ -345,6 +480,7 @@ let decode_rom(file) =
     let zone_has_metal_slime = Array.zeroCreate 20
     let zone_has_x = Array.zeroCreate 20  // for ad-hoc mapping
     let zone_has_y = Array.zeroCreate 20  // for ad-hoc mapping
+    let zone_enemies = Array.create 20 null
     for zone = 0 to 19 do
         let data = content.[0xf54f+5*zone..0xf54f+5*zone+4]
         let extra = 
@@ -356,8 +492,12 @@ let decode_rom(file) =
             | 19 -> "SWAMP"
             | _  -> "     "
         printf "zone %2d (%s): " zone extra
-        for enemy in data do
-            printf "%3d %-16s " enemy (let name,_,_,_,_,_ = EnemyData.ENEMY_DATA.[int enemy] in name)
+        zone_enemies.[zone] <- Array.create 5 (0,"")
+        for i = 0 to 4 do
+            let enemy=data.[i]
+            let name,_,_,_,_,_ = EnemyData.ENEMY_DATA.[int enemy]
+            zone_enemies.[zone].[i] <- int enemy, name
+            printf "%3d %-16s " enemy name
             if enemy = 16uy then
                 zone_has_metal_slime.[zone] <- zone_has_metal_slime.[zone] + 1
             // golem is 24, werewolf is 29
@@ -780,7 +920,7 @@ let decode_rom(file) =
     System.IO.File.WriteAllBytes(new_file, new_bytes)
 *)
 
-    bmp1, bmp2, reachable_continents, mapCoords, cont_1_size, cont_2_size, compute_charlock_distance_to_inn()
+    bmp1, bmp2, reachable_continents, mapCoords, cont_1_size, cont_2_size, compute_charlock_distance_to_inn(), ow_zones, zone_enemies
 
 
 

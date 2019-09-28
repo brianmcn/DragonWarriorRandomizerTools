@@ -868,8 +868,17 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
             // no longer used to free up screen space:
             //sp.Children.Add(new TextBox(TextWrapping=TextWrapping.Wrap,Text="Monster data and maps are disabled during this stream, since this is a race!\n\nNo hints/advice/spoilers in chat during the race!",FontSize=16.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(8.0))) |> ignore
 
+            let xGrid = new Grid()
+            xGrid.ColumnDefinitions.Add(new ColumnDefinition(Width=GridLength(156.0)))
+            xGrid.ColumnDefinitions.Add(new ColumnDefinition())
+            xGrid.RowDefinitions.Add(new RowDefinition())
+
             let itemTextBox = makeCheckedStuff("ITEMS",Constants.ITEMS,Array.zeroCreate Constants.ITEMS.Length)
-            sp.Children.Add(itemTextBox) |> ignore
+            gridAdd(xGrid,itemTextBox,0,0)
+            let dl_chart = new TextBox(Text=ROM.dl2_swings,FontSize=15.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0))
+            gridAdd(xGrid,dl_chart,1,0)
+            
+            sp.Children.Add(xGrid) |> ignore
             
             let shops = new Grid()
             shops.ColumnDefinitions.Add(new ColumnDefinition(Width=GridLength(76.0)))
@@ -919,7 +928,8 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
             shopPanel.Children.Add(shops) |> ignore
             sp.Children.Add(shopPanel) |> ignore
             let cb = new CheckBox(Content=makeText("Audio reminders"))
-            cb.IsChecked <- System.Nullable.op_Implicit true
+            cb.IsChecked <- System.Nullable.op_Implicit false
+            Constants.voice.Volume <- 0
             cb.Checked.Add(fun _ -> Constants.voice.Volume <- 30)
             cb.Unchecked.Add(fun _ -> Constants.voice.Volume <- 0)
             sp.Children.Add(cb) |> ignore
@@ -1215,7 +1225,7 @@ let xmain argv =
                 str_hp_wins <- str_hp_wins+1
             if strhp > strag then
                 str_ag_wins <- str_ag_wins+1
-            let _bmp1,_bmp2,reachable_continents,mapCoords,cont_1_size,cont_2_size,ch_dist_inn = ROM.decode_rom(file)
+            let _bmp1,_bmp2,reachable_continents,mapCoords,cont_1_size,cont_2_size,ch_dist_inn,_owz,_ze = ROM.decode_rom(file)
             count <- count + 1
             cont1 <- cont1 + cont_1_size
             charlock_inn_dist <- charlock_inn_dist + ch_dist_inn
@@ -1319,9 +1329,10 @@ average stats per level
         fd.CheckFileExists <- true
         fd.CheckPathExists <- true
         if fd.ShowDialog() = System.Windows.Forms.DialogResult.OK then
-            let bmp1,bmp2,_reachable_continents,_mapCoords,_cont_1_size,_cont_2_size,_ch_inn_dist  = ROM.decode_rom(fd.FileName)
+            let bmp1,bmp2,_reachable_continents,_mapCoords,_cont_1_size,_cont_2_size,_ch_inn_dist,ow_zones,zone_enemies  = ROM.decode_rom(fd.FileName)
             let w = new Window()
 
+            let sp = new StackPanel()
             let g = new Grid()
             g.RowDefinitions.Add(new RowDefinition())
             g.ColumnDefinitions.Add(new ColumnDefinition())
@@ -1337,10 +1348,37 @@ average stats per level
             gridAdd(g, image1, 0, 0)
             gridAdd(g, image2, 1, 0)
 
+            // zone popups
+            let popup = new System.Windows.Controls.Primitives.Popup()
+            let tb = new TextBlock(Text="testing",Foreground=Brushes.White,Background=Brushes.Black)
+            popup.Child <- tb
+            popup.Placement <- System.Windows.Controls.Primitives.PlacementMode.MousePoint 
+            popup.IsOpen <- true
+            popup.VerticalOffset <- 16.0
+            popup.HorizontalOffset <- 16.0
+            sp.MouseMove.Add(fun e ->
+                popup.IsOpen <- false
+                let p = e.GetPosition(sp)
+                // 32 boundary, each cell is 81x81, thus 712 is x break of two 
+                let x = (if p.X > 713.0 then int p.X - 712 else int p.X ) - 32
+                let y = (int p.Y) - 32
+                if x >= 0 && x < 8*81 && y >= 0 && y < 8*81 then
+                    let x = x/81
+                    let y = y/81
+                    let a = zone_enemies.[int ow_zones.[x,y]] |> Array.sort 
+                    let enemies = new System.Text.StringBuilder()
+                    for i = 0 to 4 do
+                        enemies.AppendLine(snd a.[i]) |> ignore
+                    popup.IsOpen <- true
+                    tb.Text <- enemies.ToString()
+                )
+
             //w.Width <- 960.0
             //w.Height <- 960.0
             w.Title <- System.IO.Path.GetFileNameWithoutExtension(fd.FileName)
-            w.Content <- g
+            sp.Children.Add(g) |> ignore
+            sp.Children.Add(popup) |> ignore
+            w.Content <- sp
             (new Application()).Run(w)
         else
             printfn "bad file selection"

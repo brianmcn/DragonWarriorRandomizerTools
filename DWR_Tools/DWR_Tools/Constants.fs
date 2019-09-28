@@ -35,7 +35,7 @@ type OverworldMapTile =
         match this with
         | Bridge      -> System.Drawing.Color.LightGray
         | Castle      -> System.Drawing.Color.Pink
-        | Cave        -> System.Drawing.Color.White // CornflowerBlue 
+        | Cave        -> System.Drawing.Color.DarkSalmon
         | Desert      -> System.Drawing.Color.Yellow
         | Forest      -> System.Drawing.Color.ForestGreen
         | Hills       -> System.Drawing.Color.YellowGreen 
