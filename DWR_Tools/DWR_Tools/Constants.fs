@@ -324,16 +324,16 @@ let LOCATIONS = [|
                                                                       LocationCheckboxes.[int LocationIDs.GARINS_TOMB_3_BOXES].IsChecked <- System.Nullable.op_Implicit true)
     |]
 let ITEMS = [|
-    "Stones of Sunlight", ""             , (fun () -> ())
-    "Silver Harp", ""                    , (fun () -> ())
-    "Staff of Rain", ""                  , (fun () -> ())
-    "Erdrick Token (*)", ""              , (fun () -> ())
-    "Rainbow Drop", ""                   , (fun () -> ())
-    "Erdrick Sword", "E_SWORD"           , (fun () -> ())
-    "Erdrick Armor (*)", "E_ARMOR"       , (fun () -> ())
-    "Fairy Flute (*)", ""                , (fun () -> ())
-    "Death Necklace", ""                 , (fun () -> ())
-    "Princess' Love", ""                 , (fun () -> ())
+    "Stones of Sunlight", ""         , (fun () -> ())
+    "Silver Harp", ""                , (fun () -> ())
+    "Staff of Rain", ""              , (fun () -> ())
+    "Erdrick Token", ""              , (fun () -> ())
+    "Rainbow Drop", ""               , (fun () -> ())
+    "Erd Sword", "E_SWORD"           , (fun () -> ())
+    "Erd Armor", "E_ARMOR"           , (fun () -> ())
+    "Fairy Flute", ""                , (fun () -> ())
+    "Death Necklace", ""             , (fun () -> ())
+    "Princess' Love", ""             , (fun () -> ())
     |]
 
 ///////////////////////////////////////////////////////

@@ -463,18 +463,21 @@ let decode_rom(file) =
                 cur_shop <- desc
             else
                 cur_items.Add(SHOP_ITEM.[int item])
+    let si(x,y) = // vanilla has smaller shops
+        try shop_items.[x].[y]
+        with _ -> ""
     let s1,s2,s3,s4 = "kol", "brecc", "garin", "rimu"
     printfn ""
     printfn "%-26s %-26s %-26s %-26s" s1 s2 s3 s4
     printfn ""
     for i = 0 to 5 do
-        printfn "%-26s %-26s %-26s %-26s" shop_items.[s1].[i] shop_items.[s2].[i] shop_items.[s3].[i] shop_items.[s4].[i] 
+        printfn "%-26s %-26s %-26s %-26s" (si(s1,i)) (si(s2,i)) (si(s3,i)) (si(s4,i))
     let s1,s2,s3 = "cantlin open 1", "cantlin open 2", "cantlin locked"
     printfn ""
     printfn "%-26s %-26s %-26s" s1 s2 s3
     printfn ""
     for i = 0 to 5 do
-        printfn "%-26s %-26s %-26s" shop_items.[s1].[i] shop_items.[s2].[i] shop_items.[s3].[i] 
+        printfn "%-26s %-26s %-26s" (si(s1,i)) (si(s2,i)) (si(s3,i))
     
     let zone_has_charlock_enemy = Array.zeroCreate 20
     let zone_has_metal_slime = Array.zeroCreate 20
