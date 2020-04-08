@@ -35,7 +35,7 @@ let MAPS = [|
 
 let CHESTS = [|
     "unused"
-    "unused"
+    "ARMOR"
     "HERB"
     "KEY"
     "TORCH"
@@ -362,7 +362,7 @@ let decode_rom(file) =
     let bytes = System.IO.File.ReadAllBytes(file)
     let content = bytes.[16..]   // first 16 bytes are a header
 
-    let location_text_bytes = bytes.[0xA236..0xA298]
+    let location_text_bytes = content.[0xA242..0xA242+70]
     let dw_alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\"\"'*>_:__.,-_?!;)(``_'___________  "
     let chars = Array.init location_text_bytes.Length (fun i -> try dw_alphabet.[int location_text_bytes.[i]] with _ -> ' ')
     let location_str = (new System.String(chars))
@@ -380,17 +380,7 @@ let decode_rom(file) =
             buried_dx, buried_dy 
         with _ -> -999, -999
 
-    // buried items
-    printfn "BURIED ITEMS"    
-    for thing, address in ["armor", 0xe160; "flute", 0xe14a; "token", 0xe10b] do
-        let data = content.[address..address+15]
-        let thing_map = data.[3]
-        let thing_x = data.[9]
-        let thing_y = data.[15]
-        printfn "  %s %s %d %d" thing MAPS.[int thing_map] thing_x thing_y
-
     // spike tile enemies
-    printfn ""
     printfn "SPIKE TILES"
     let hauks_enemy    = int content.[0xcd64]
     let swamp_enemy    = int content.[0xcd81]
@@ -398,6 +388,16 @@ let decode_rom(file) =
     printfn "  hauks: %2d %s" hauks_enemy (EnemyData.ENEMY_NAME hauks_enemy)
     printfn "  swamp: %2d %s" swamp_enemy (EnemyData.ENEMY_NAME swamp_enemy)
     printfn "  charl: %2d %s" charlock_enemy (EnemyData.ENEMY_NAME charlock_enemy)
+
+    // buried items
+    printfn ""
+    printfn "BURIED ITEMS"    
+    // 0e11d+1, +32, +54 = kol, hauks, buried
+    for address_offset, location in [1, "overworld coords"; 32, "kol"; 54, "hauks"] do
+        for idx in [17; 1; 14; 13; 15; 8; 10] do // 7 special items that can be buried
+            let patched_data = content.[0x0e11d..0x0e11d+109]
+            if int patched_data.[address_offset] = idx then
+                printfn "  %12s is located at %s %s" CHESTS.[idx] location (if address_offset=1 then sprintf "%d %s %d %s" (abs buried_dy) (if buried_dy<=0 then "N" else "S") (abs buried_dx) (if buried_dx<=0 then "W" else "E") else "")
 
     // chests
     // each chest data is 4 bytes: map, x, y, item
@@ -410,8 +410,8 @@ let decode_rom(file) =
         let map, item = chest_bytes.[i*4], chest_bytes.[i*4+3] 
         all.AppendLine(sprintf "  %20s    %-20s" MAPS.[int map] CHESTS.[int item]) |> ignore
         match item with
-        | 8uy | 9uy | 10uy | 13uy | 14uy | 15uy | 17uy -> sra.Add(CHESTS.[int item], MAPS.[int map])
-        | 3uy -> if map <> 5uy then ksb.Append(MAPS.[int map]).Append("  ") |> ignore
+        | 1uy | 8uy | 9uy | 10uy | 13uy | 14uy | 15uy | 17uy -> sra.Add(CHESTS.[int item], MAPS.[int map])  // 7 key items plus RING
+        | 3uy -> if map <> 5uy then ksb.Append(MAPS.[int map]).Append("  ") |> ignore // KEY
         | _ -> ()
     printfn "SUMMARY"
     let sorted = sra.ToArray() |> Array.sortBy (fun (item,_loc) ->
@@ -419,10 +419,11 @@ let decode_rom(file) =
         | "STONES" -> 1
         | "HARP" -> 2
         | "TOKEN" -> 3
-        | "SWORD" -> 4
-        | "RING" -> 5
-        | "FLUTE" -> 6
-        | "NECKLACE" -> 7
+        | "RING" -> 4
+        | "FLUTE" -> 5
+        | "NECKLACE" -> 6
+        | "SWORD" -> 7
+        | "ARMOR" -> 8
         | _ -> failwith "bad summary item"
         )
     for item,loc in sorted do

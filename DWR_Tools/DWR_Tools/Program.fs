@@ -31,6 +31,9 @@ module Winterop =
     [<DllImport("user32.dll")>]
     extern int SendMessage(IntPtr hWnd, int wMsg, IntPtr wParam, IntPtr lParam)
 
+    [<DllImport("user32.dll")>]
+    extern [<MarshalAs(UnmanagedType.Bool)>] bool PostMessage(IntPtr hWnd, int wMsg, IntPtr wParam, IntPtr lParam)
+
     [<DllImport ("User32.dll")>]
     extern int SetForegroundWindow(IntPtr hWnd)
 
@@ -118,6 +121,7 @@ module Screenshot =
         bmimage.EndInit()
         bmimage
     let GetDWRBitmap() =
+        // TODO would be better to have next 3 lines work on fceux window, rather than foreground window
         let bmpScreenshot = new System.Drawing.Bitmap(System.Windows.Forms.Screen.PrimaryScreen.Bounds.Width, System.Windows.Forms.Screen.PrimaryScreen.Bounds.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb)
         let gfxScreenshot = System.Drawing.Graphics.FromImage(bmpScreenshot)
         let hWnd_DragonWarrior = Winterop.GetForegroundWindow()
@@ -863,7 +867,8 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
                 let kitty = makeKitty()
                 sp.Children.Add(kitty) |> ignore
             else
-                sp.Children.Add(new TextBox(TextWrapping=TextWrapping.Wrap,Text="League mode, flags: CDGPRVWZks\nChanges:\n- no spell learning randomization\n- no keys\n- short Charlock\n- very fast XP\n\nSpells: Heal 3 / Hurt 4 / Sleep 7\nRadiant 9 / Stopspell 10 / Outside 12\nReturn 13 / Repel 15\nHealmore 17 / Hurtmore 19",FontSize=14.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(8.0))) |> ignore
+                //sp.Children.Add(new TextBox(TextWrapping=TextWrapping.Wrap,Text="League mode, flags: CDGPRVWZks\nChanges:\n- no spell learning randomization\n- no keys\n- short Charlock\n- very fast XP\n\nSpells: Heal 3 / Hurt 4 / Sleep 7\nRadiant 9 / Stopspell 10 / Outside 12\nReturn 13 / Repel 15\nHealmore 17 / Hurtmore 19",FontSize=14.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(8.0))) |> ignore
+                sp.Children.Add(new TextBox(TextWrapping=TextWrapping.Wrap,Text="Super speed run\n- vanilla map\n- vanilla monsters\n- DWR monster xp & gold\n- very fast XP\n\nSpells: Heal 3 / Hurt 4 / Sleep 7\nRadiant 9 / Stopspell 10 / Outside 12\nReturn 13 / Repel 15\nHealmore 17 / Hurtmore 19",FontSize=14.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(8.0))) |> ignore
             
             // no longer used to free up screen space:
             //sp.Children.Add(new TextBox(TextWrapping=TextWrapping.Wrap,Text="Monster data and maps are disabled during this stream, since this is a race!\n\nNo hints/advice/spoilers in chat during the race!",FontSize=16.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(8.0))) |> ignore
@@ -985,7 +990,7 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
         this.Top <- 20.0
 
         let timer = new System.Windows.Threading.DispatcherTimer()
-        timer.Interval <- TimeSpan.FromSeconds(0.5)  // TODO decide time, interacts with both mapping and monster portraits...
+        timer.Interval <- TimeSpan.FromSeconds(0.2)  // TODO decide time, interacts with both mapping and monster portraits...
         timer.Tick.Add(fun _ -> update())
         timer.Start()
 
@@ -1082,7 +1087,7 @@ let neededAttacksTable() =
                 ap <- -2
             ap <- ap + 1
 
-
+// TODO figure out way to have my program use my inputs to drive fceux, so my program is in control for timing etc
 let testSendMessage() =
     let fceuxProcess = System.Diagnostics.Process.GetProcessesByName("fceux").[0]
     let h = fceuxProcess.MainWindowHandle 
@@ -1095,11 +1100,36 @@ let testSendMessage() =
     // JOY_BUTTON1CHG      	0x0100
     // JOY_BUTTON2CHG      	0x0200
     // does not work
-    // Winterop.SendMessage(h, 0x3B5, IntPtr(0x0100 ||| 0x0001), IntPtr(0) (* yPos/xPos are two words *) )
+    while true do
+        // keydown char keyup
+        Winterop.PostMessage(h, 0x100, IntPtr(int System.Windows.Forms.Keys.A - 0x20), IntPtr(0)) |> ignore
+        Winterop.PostMessage(h, 0x102, IntPtr(int System.Windows.Forms.Keys.A), IntPtr(0)) |> ignore
+        System.Threading.Thread.Sleep(1000)
+        Winterop.PostMessage(h, 0x101, IntPtr(int System.Windows.Forms.Keys.A - 0x20), IntPtr(0)) |> ignore
+        System.Threading.Thread.Sleep(1000)
 
+        (*
+        //                      keydown/up       A
+        Winterop.SendMessage(h, 0x100, IntPtr(0x041), IntPtr(0xc01e0000)) |> ignore
+        //Winterop.SendMessage(h, 0x100, IntPtr(0x041), IntPtr(0x00001e00)) |> ignore
+        System.Threading.Thread.Sleep(1000)
+        Winterop.SendMessage(h, 0x101, IntPtr(0x041), IntPtr(0xc01e0000)) |> ignore
+        //Winterop.SendMessage(h, 0x101, IntPtr(0x041), IntPtr(0x00001e03)) |> ignore
+        System.Threading.Thread.Sleep(1000)
+        *)
+
+(*
+        Winterop.SendMessage(h, 0x3B5, IntPtr(0x0200 ||| 0x0002), IntPtr(0) (* yPos/xPos are two words *) ) |> ignore
+        System.Threading.Thread.Sleep(1000)
+        Winterop.SendMessage(h, 0x3B7, IntPtr(0x0200 ||| 0x0002), IntPtr(0) (* yPos/xPos are two words *) ) |> ignore
+        System.Threading.Thread.Sleep(1000)
+*)
+
+(*
     // below does work if remap FCEUX to e.g. read keyboard 'b' as B joypress
     Winterop.SetForegroundWindow(h) |> ignore
     System.Windows.Forms.SendKeys.SendWait("b")
+*)
 
 
 let inverted_power_curve(min, max, power, rand:System.Random) =
@@ -1117,6 +1147,9 @@ let inverted_power_curve(min, max, power, rand:System.Random) =
 [<EntryPoint>]
 let xmain argv = 
     if false then
+        testSendMessage()
+        0
+    elif false then
         ROM.initRNGValues(0)
         let mutable n = 0
         for x in ROM.rngValues do
@@ -1398,7 +1431,13 @@ average stats per level
     let racingMode = argv.Length > 0
     let leagueMode = argv.Length > 1
     let xp = if leagueMode then Constants.DWR_XP_LEVEL_THRESHOLDS_50_PERCENT else Constants.DWR_XP_LEVEL_THRESHOLDS 
-    app.Run(MyWindow(0,0,0,racingMode,leagueMode,xp)) |> ignore
+    try
+        app.Run(MyWindow(0,0,0,racingMode,leagueMode,xp)) |> ignore
+    with e ->
+        printfn "crashed with exception"
+        printfn "%s" (e.ToString())
+        printfn "press enter to end"
+        System.Console.ReadLine() |> ignore
     0
 
 #else
