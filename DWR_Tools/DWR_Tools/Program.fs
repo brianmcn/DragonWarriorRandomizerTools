@@ -121,15 +121,19 @@ module Screenshot =
         bmimage.EndInit()
         bmimage
     let GetDWRBitmap() =
-        // TODO would be better to have next 3 lines work on fceux window, rather than foreground window
         let bmpScreenshot = new System.Drawing.Bitmap(System.Windows.Forms.Screen.PrimaryScreen.Bounds.Width, System.Windows.Forms.Screen.PrimaryScreen.Bounds.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb)
         let gfxScreenshot = System.Drawing.Graphics.FromImage(bmpScreenshot)
-        let hWnd_DragonWarrior = Winterop.GetForegroundWindow()
-        let mutable rect = Winterop.RECT()
-        let b = Winterop.GetWindowRect(hWnd_DragonWarrior, &&rect)
-        gfxScreenshot.CopyFromScreen(rect.Left, rect.Top, 0, 0,
-                                     System.Drawing.Size(rect.Right-rect.Left+1,rect.Bottom-rect.Top+1),
-                                     System.Drawing.CopyPixelOperation.SourceCopy)
+        try
+            let procs = System.Diagnostics.Process.GetProcesses()
+            let fceux = procs |> Seq.find (fun p -> p.MainWindowTitle.ToLower().StartsWith("fceux"))
+            let fceux_hWnd = fceux.MainWindowHandle 
+            let mutable rect = Winterop.RECT()
+            let b = Winterop.GetWindowRect(fceux_hWnd, &&rect)
+            gfxScreenshot.CopyFromScreen(rect.Left, rect.Top, 0, 0,
+                                         System.Drawing.Size(rect.Right-rect.Left+1,rect.Bottom-rect.Top+1),
+                                         System.Drawing.CopyPixelOperation.SourceCopy)
+        with _e -> 
+            ()  // if fceux process not there, fail silently
         bmpScreenshot
     let GetInnerDWRBitmaps() =
         let outerBmp = GetDWRBitmap()
