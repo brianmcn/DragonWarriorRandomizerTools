@@ -294,7 +294,9 @@ type LocationIDs =
     | GARINS_TOMB             = 22
     | GARINS_TOMB_3_BOXES     = 23
     | GARINS_TOMB_2_BOXES     = 24
+let mutable UIThreadSynchronizationContext = null : System.Threading.SynchronizationContext
 let LocationCheckboxes : System.Windows.Controls.CheckBox[] = Array.zeroCreate 25
+let ItemCheckboxes : System.Windows.Controls.CheckBox[] = Array.zeroCreate 10
 let LOCATIONS = [|
     "---Tantagel (4box, cave)", ""                       , (fun () -> ())              
     "Charlock Castle", "DW_Charlock.png"                 , (fun () -> ())
@@ -310,8 +312,8 @@ let LOCATIONS = [|
     "---Garinham (3box)", ""                             , (fun () -> LocationCheckboxes.[int LocationIDs.GARINHAM].IsChecked <- System.Nullable.op_Implicit true)
     "Sun Stones Cave (v)", ""                            , (fun () -> LocationCheckboxes.[int LocationIDs.SUN_STONES_CAVE_BOX].IsChecked <- System.Nullable.op_Implicit true)
     "---1 box", ""                                       , (fun () -> LocationCheckboxes.[int LocationIDs.SUN_STONES_CAVE].IsChecked <- System.Nullable.op_Implicit true)
-    "Staff Rain Cave (>)", ""                            , (fun () -> ())
-    "Jerk Cave (<)", ""                                  , (fun () -> ())
+    "Staff Rain Cave (>)", ""                            , (fun () -> if ItemCheckboxes.[1].IsChecked.Value && not ItemCheckboxes.[2].IsChecked.Value then async { voice.Speak("Turn in the silver harp") } |> Async.Start)
+    "Jerk Cave (<)", ""                                  , (fun () -> if ItemCheckboxes.[0].IsChecked.Value && ItemCheckboxes.[2].IsChecked.Value && ItemCheckboxes.[3].IsChecked.Value && not ItemCheckboxes.[4].IsChecked.Value then async { voice.Speak("Get raindbow drop from jerk") } |> Async.Start)
     "Swamp Cave North", "DW_SwampCave.png"               , (fun () -> ())
     "Swamp Cave South", "DW_SwampCave.png"               , (fun () -> ())
     "Mountain Cave (5box)", "DW_MountainCave.png"        , (fun () -> ())
@@ -323,11 +325,40 @@ let LOCATIONS = [|
     "---bottom 2 box", "DW_GarinTomb.png"                , (fun () -> LocationCheckboxes.[int LocationIDs.GARINS_TOMB].IsChecked <- System.Nullable.op_Implicit true
                                                                       LocationCheckboxes.[int LocationIDs.GARINS_TOMB_3_BOXES].IsChecked <- System.Nullable.op_Implicit true)
     |]
+let mutable harpReminderIsPending = false
+let rec harp() = 
+    async {
+        do! Async.SwitchToContext(UIThreadSynchronizationContext)
+        if not ItemCheckboxes.[2].IsChecked.Value                                               // no staff yet
+            && LocationCheckboxes.[int LocationIDs.STAFF_OF_RAIN_CAVE].IsChecked.Value then     // staff cave found
+            harpReminderIsPending <- true
+            do! Async.SwitchToThreadPool()
+            voice.Speak("Turn in the silver harp")
+            System.Threading.Thread.Sleep(System.TimeSpan.FromMinutes(2.0))
+            harp()
+        elif ItemCheckboxes.[2].IsChecked.Value then // staff
+            harpReminderIsPending <- false
+    } |> Async.Start
+let mutable jerkReminderIsPending = false
+let rec jerk() = 
+    async {
+        do! Async.SwitchToContext(UIThreadSynchronizationContext)
+        if ItemCheckboxes.[0].IsChecked.Value && ItemCheckboxes.[2].IsChecked.Value && ItemCheckboxes.[3].IsChecked.Value && not ItemCheckboxes.[4].IsChecked.Value // stones, staff, token
+            && LocationCheckboxes.[int LocationIDs.JERK_CAVE].IsChecked.Value then
+            jerkReminderIsPending <- true
+            do! Async.SwitchToThreadPool()
+            voice.Speak("Get rainbow drop from jerk")
+            System.Threading.Thread.Sleep(System.TimeSpan.FromMinutes(2.0))
+            jerk()
+        elif ItemCheckboxes.[4].IsChecked.Value then // drop
+            jerkReminderIsPending <- false
+    } |> Async.Start
+
 let ITEMS = [|
-    "Stones of Sunlight", ""         , (fun () -> ())
-    "Silver Harp", ""                , (fun () -> ())
-    "Staff of Rain", ""              , (fun () -> ())
-    "Erdrick Token", ""              , (fun () -> ())
+    "Stones of Sunlight", ""         , (fun () -> if not jerkReminderIsPending then jerk())
+    "Silver Harp", ""                , (fun () -> if not harpReminderIsPending then harp())
+    "Staff of Rain", ""              , (fun () -> if not jerkReminderIsPending then jerk())
+    "Erdrick Token", ""              , (fun () -> if not jerkReminderIsPending then jerk())
     "Rainbow Drop", ""               , (fun () -> ())
     "Erd Sword", "E_SWORD"           , (fun () -> ())
     "Erd Armor", "E_ARMOR"           , (fun () -> ())

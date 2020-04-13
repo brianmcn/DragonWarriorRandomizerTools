@@ -882,7 +882,7 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
             xGrid.ColumnDefinitions.Add(new ColumnDefinition())
             xGrid.RowDefinitions.Add(new RowDefinition())
 
-            let itemTextBox = makeCheckedStuff("ITEMS",Constants.ITEMS,Array.zeroCreate Constants.ITEMS.Length)
+            let itemTextBox = makeCheckedStuff("ITEMS",Constants.ITEMS,Constants.ItemCheckboxes)
             gridAdd(xGrid,itemTextBox,0,0)
             let dl_chart = new TextBox(Text=ROM.dl2_swings,FontSize=15.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0))
             gridAdd(xGrid,dl_chart,1,0)
@@ -937,8 +937,8 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
             shopPanel.Children.Add(shops) |> ignore
             sp.Children.Add(shopPanel) |> ignore
             let cb = new CheckBox(Content=makeText("Audio reminders"))
-            cb.IsChecked <- System.Nullable.op_Implicit false
-            Constants.voice.Volume <- 0
+            cb.IsChecked <- System.Nullable.op_Implicit true
+            Constants.voice.Volume <- 30
             cb.Checked.Add(fun _ -> Constants.voice.Volume <- 30)
             cb.Unchecked.Add(fun _ -> Constants.voice.Volume <- 0)
             sp.Children.Add(cb) |> ignore
@@ -1014,6 +1014,7 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
         source <- HwndSource.FromHwnd(helper.Handle)
         source.AddHook(HwndSourceHook(fun a b c d e -> this.HwndHook(a,b,c,d,&e)))
         this.RegisterHotKey()
+        Constants.UIThreadSynchronizationContext <- System.Threading.SynchronizationContext.Current 
 
     override this.OnClosed(e) =
         source.RemoveHook(HwndSourceHook(fun a b c d e -> this.HwndHook(a,b,c,d,&e)))
