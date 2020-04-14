@@ -369,14 +369,14 @@ let decode_rom(file) =
     //printfn "loc: %s" location_str 
     // From Tantegel Castle travel 49 leagues to the north and 24 to the west
     let to1 = location_str.IndexOf("to the")
-    let to2 = location_str.IndexOf("to the",to1+1)
+    let to2 = location_str.IndexOf("and",to1+1)
     let buried_dx, buried_dy = 
         try
             let num1 = int(location_str.Substring(to1 - 12,3))
-            let num2 = int(location_str.Substring(to2 - 4,3))
+            let num2 = int(location_str.Substring(to2 + 4,3))
             //printfn "%d %d" num1 num2
-            let buried_dy = if location_str.[to1+7] = 'n' then -num1 else num1
-            let buried_dx = if location_str.[to2+7] = 'w' then -num2 else num2
+            let buried_dy = if location_str.Contains("north") then -num1 else num1
+            let buried_dx = if location_str.Contains("west") then -num2 else num2
             buried_dx, buried_dy 
         with _ -> -999, -999
 
