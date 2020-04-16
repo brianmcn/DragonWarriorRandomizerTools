@@ -353,7 +353,6 @@ let rec jerk() =
         elif ItemCheckboxes.[4].IsChecked.Value then // drop
             jerkReminderIsPending <- false
     } |> Async.Start
-
 let ITEMS = [|
     "Stones of Sunlight", ""         , (fun () -> if not jerkReminderIsPending then jerk())
     "Silver Harp", ""                , (fun () -> if not harpReminderIsPending then harp())
@@ -366,6 +365,9 @@ let ITEMS = [|
     "Death Necklace", ""             , (fun () -> ())
     "Princess' Love", ""             , (fun () -> ())
     |]
+let howManyOf7SpecialItemsChecked() =
+    let count(n) = if ItemCheckboxes.[n].IsChecked.HasValue && ItemCheckboxes.[n].IsChecked.Value then 1 else 0
+    count(0) + count(1) + count(3) + count(5) + count(6) + count(7) + count(8)
 
 ///////////////////////////////////////////////////////
 

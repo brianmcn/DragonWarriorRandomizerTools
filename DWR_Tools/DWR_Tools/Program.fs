@@ -647,6 +647,9 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
         sp.Background<-Brushes.Black
         let label = new Label()
         label.Content <- new TextBox(Text=labelStr,FontSize=16.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0))
+        let fudgeLabel() =
+            if labelStr = "ITEMS" then
+                (label.Content :?> TextBox).Text <- sprintf "ITEMS %d/7 bury-able" (Constants.howManyOf7SpecialItemsChecked())
         sp.Children.Add(label) |> ignore
         let mutable index = 0
         for s,res,effect in strResEffects do
@@ -662,6 +665,7 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
             if s = "Jerk Cave (<)" then 
                 jerk_cb <- cb
             cb.Checked.Add(fun _ -> 
+                fudgeLabel()
                 effect()
                 if s = "Staff of Rain" then 
                     src_cb.IsChecked <- System.Nullable.op_Implicit true
@@ -684,10 +688,12 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
                 tb.Foreground <- Brushes.DarkSlateBlue 
                 thunk())
             cb.Unchecked.Add(fun _ -> 
+                fudgeLabel()
                 onCheckedChanged("")
                 tb.Foreground <- Brushes.Orange
                 thunk())
             sp.Children.Add(cb) |> ignore
+        fudgeLabel()
         sp
     let content = new Grid()
     let xpTextBox = new RichTextBox(FontSize=16.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0),Focusable=false)
@@ -854,12 +860,6 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
         rightGrid.RowDefinitions.Add(new RowDefinition())
         let locationTextBox = makeCheckedStuff("LOCATIONS FOUND",Constants.LOCATIONS,Constants.LocationCheckboxes)
         gridAdd(rightGrid,locationTextBox,0,1)
-
-        (* moved, but no longer fits in non-racing mode
-        rightGrid.RowDefinitions.Add(new RowDefinition())
-        let itemTextBox = makeCheckedStuff("ITEMS",Constants.ITEMS)
-        gridAdd(rightGrid,itemTextBox,0,2)
-        *)
 
         // add right grid
         gridAdd(content,rightGrid,1,0)
