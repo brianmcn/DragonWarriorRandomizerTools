@@ -376,7 +376,7 @@ let decode_rom(file) =
             let num2 = int(location_str.Substring(to2 + 4,3))
             //printfn "%d %d" num1 num2
             let buried_dy = if location_str.Contains("north") then -num1 else num1
-            let buried_dx = if location_str.Contains("west") then -num2 else num2
+            let buried_dx = if location_str.Contains("wes") then -num2 else num2  // wes, not west, since 3-digit numbers cut off text
             buried_dx, buried_dy 
         with _ -> -999, -999
 
