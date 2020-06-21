@@ -573,8 +573,14 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
                 allCaption.Text <- "all explored 0"
     let mutable startTime = DateTime.Now + TimeSpan.FromSeconds(0.0)
     let mutable mostRecentDeathTime = DateTime.Now 
+    let mutable mostRecentStatsTime = DateTime.Now 
     let mutable numDeaths = 0
     let mutable changed = false
+    let mutable heroAG = 0
+    let mutable heroMaxHP = 0
+    let mutable heroMaxMP = 0
+    let mutable heroAP = 0
+    let mutable heroDP = 0
     let mutable curFrame = 0
     let mutable image1Frames = null
     let mutable image2Frames = null
@@ -595,6 +601,7 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
     let weaponTextBox = new RichTextBox(FontSize=16.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0),Focusable=false)
     let armorTextBox  = new RichTextBox(FontSize=16.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0),Focusable=false)
     let shieldTextBox = new RichTextBox(FontSize=16.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0),Focusable=false)
+    let statsTextBox = new TextBox(TextWrapping=TextWrapping.Wrap,FontSize=16.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(1.0),Focusable=false)
     let makeAnimationBrush() =
         let colorAnimation = new System.Windows.Media.Animation.ColorAnimation()
         colorAnimation.From <- Nullable<_>(System.Windows.Media.Colors.Black)
@@ -747,6 +754,28 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
                 currentContinent <- 0
                 changed <- true
         | _ -> ()
+        match PixelLayout.getAGHPMPAPDP(gp) with   
+        | Some(ag,hp,mp,ap,dp) ->
+            if (DateTime.Now - mostRecentStatsTime) > TimeSpan.FromSeconds(10.0) then // ensure don't run this two frames in a row
+                mostRecentStatsTime <- DateTime.Now
+                heroAG <- ag
+                heroMaxHP <- hp
+                heroMaxMP <- mp
+                heroAP <- ap
+                heroDP <- dp
+                let ts = DateTime.Now - startTime
+                let h,m,s = ts.Hours, ts.Minutes, ts.Seconds
+                let winsPerThousand = ROM.simulate_dl2(ag,hp-20,mp,hp,dp,ap)  // assumes survive dl1 with max-20
+                let winsPerThousandDown1 = ROM.simulate_dl2(ag,hp-20,mp-8,hp,dp,ap)  // assumes survive dl1 with max-20
+                let winsPerThousandDN = ROM.simulate_dl2(ag,hp-20,mp,hp,dp,ap+10)  // assumes survive dl1 with max-20
+                let winsPerThousandDNDown1 = ROM.simulate_dl2(ag,hp-20,mp-8,hp,dp,ap+10)  // assumes survive dl1 with max-20
+                let pad(n) = 
+                    let s = sprintf "%3.2f%%" (float n / 10.0)
+                    (String.replicate (7-s.Length) " ") + s
+                statsTextBox.Text <- 
+                    sprintf "Stats as of\n%02d:%02d:%02d\ninto the race\nAG:     %3d\nMax HP: %3d\nMax MP: %3d\nAP:     %3d\nDP:     %3d\n            full down1heal\nDL2 win%%: %s  %s\nplus DN%%: %s  %s" 
+                        h m s ag hp mp ap dp (pad winsPerThousand) (pad winsPerThousandDown1) (pad winsPerThousandDN) (pad winsPerThousandDNDown1)
+        | None -> ()
         // level xp/times/spells text area
         if changed then
             xpTextBox.Document.Blocks.Clear()
@@ -868,8 +897,10 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
         if racingMode then
             let sp = new StackPanel(Background=Brushes.Black,Orientation=Orientation.Vertical)
             if not leagueMode then
-                let kitty = makeKitty()
-                sp.Children.Add(kitty) |> ignore
+                //let kitty = makeKitty()
+                //sp.Children.Add(kitty) |> ignore
+                statsTextBox.Text<-"Stats not yet seen"
+                sp.Children.Add(statsTextBox) |> ignore
             else
                 //sp.Children.Add(new TextBox(TextWrapping=TextWrapping.Wrap,Text="League mode, flags: CDGPRVWZks\nChanges:\n- no spell learning randomization\n- no keys\n- short Charlock\n- very fast XP\n\nSpells: Heal 3 / Hurt 4 / Sleep 7\nRadiant 9 / Stopspell 10 / Outside 12\nReturn 13 / Repel 15\nHealmore 17 / Hurtmore 19",FontSize=14.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(8.0))) |> ignore
                 sp.Children.Add(new TextBox(TextWrapping=TextWrapping.Wrap,Text="Super speed run\n- vanilla map\n- vanilla monsters\n- DWR monster xp & gold\n- very fast XP\n\nSpells: Heal 3 / Hurt 4 / Sleep 7\nRadiant 9 / Stopspell 10 / Outside 12\nReturn 13 / Repel 15\nHealmore 17 / Hurtmore 19",FontSize=14.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(8.0))) |> ignore
