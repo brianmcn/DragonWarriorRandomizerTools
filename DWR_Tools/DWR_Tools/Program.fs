@@ -897,10 +897,10 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
         if racingMode then
             let sp = new StackPanel(Background=Brushes.Black,Orientation=Orientation.Vertical)
             if not leagueMode then
-                //let kitty = makeKitty()
-                //sp.Children.Add(kitty) |> ignore
-                statsTextBox.Text<-"Stats not yet seen"
-                sp.Children.Add(statsTextBox) |> ignore
+                let kitty = makeKitty()
+                sp.Children.Add(kitty) |> ignore
+                //statsTextBox.Text<-"Stats not yet seen"
+                //sp.Children.Add(statsTextBox) |> ignore
             else
                 //sp.Children.Add(new TextBox(TextWrapping=TextWrapping.Wrap,Text="League mode, flags: CDGPRVWZks\nChanges:\n- no spell learning randomization\n- no keys\n- short Charlock\n- very fast XP\n\nSpells: Heal 3 / Hurt 4 / Sleep 7\nRadiant 9 / Stopspell 10 / Outside 12\nReturn 13 / Repel 15\nHealmore 17 / Hurtmore 19",FontSize=14.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(8.0))) |> ignore
                 sp.Children.Add(new TextBox(TextWrapping=TextWrapping.Wrap,Text="Super speed run\n- vanilla map\n- vanilla monsters\n- DWR monster xp & gold\n- very fast XP\n\nSpells: Heal 3 / Hurt 4 / Sleep 7\nRadiant 9 / Stopspell 10 / Outside 12\nReturn 13 / Repel 15\nHealmore 17 / Hurtmore 19",FontSize=14.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(8.0))) |> ignore
@@ -1184,6 +1184,17 @@ let inverted_power_curve(min, max, power, rand:System.Random) =
 let xmain argv = 
     if false then
         testSendMessage()
+        0
+    elif false then
+        // TODO
+        // summary is - assuming no opening double on DL2, my swings chart is good at around 105HP
+        // 100HP minus 10%
+        // 105HP swings chart
+        // 113HP plus 10%
+        // 119HP plus 20%   --  and now you're much more likely to get opening double, which makes it like plus 50%
+        for hp = 97 to 127 do
+            let w = ROM.simulate_dl2_core(84, 79, 80, hp, 86, 135)
+            printfn "%3d   %3d" hp w
         0
     elif false then
         ROM.initRNGValues(0)
