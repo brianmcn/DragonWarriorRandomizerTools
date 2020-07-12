@@ -1357,6 +1357,9 @@ average stats per level
         printfn "press enter"
         System.Console.ReadLine() |> ignore
         0
+    elif false then
+        ROM.dl2_swings_chart()
+        0
     else
 
     let DISPLAY_MAP_OF_SEED = argv.Length > 5

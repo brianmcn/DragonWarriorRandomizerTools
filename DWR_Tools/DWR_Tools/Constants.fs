@@ -64,34 +64,43 @@ type OverworldMapTile =
         let NO_WALK = System.Drawing.Color.LightGray
         let WALK = System.Drawing.Color.LightSlateGray 
         let TOWNY = System.Drawing.Color.Red
-        match this with
-        | Bridge      -> WALK
-        | Castle      -> TOWNY
-        | Cave        -> System.Drawing.Color.Black
-        | Desert      -> WALK
-        | Forest      -> WALK
-        | Hills       -> WALK
-        | Mountain    -> NO_WALK
-        | Plains      -> WALK
-        | Swamp       -> WALK
-        | Town        -> TOWNY
-        | Wall        -> System.Drawing.Color.DarkGray 
-        | Water_xxxx  -> NO_WALK
-        | Water_Nxxx  -> NO_WALK
-        | Water_NWxx  -> NO_WALK
-        | Water_NxEx  -> NO_WALK
-        | Water_NxxS  -> NO_WALK
-        | Water_NWEx  -> NO_WALK
-        | Water_NWxS  -> NO_WALK
-        | Water_NxES  -> NO_WALK
-        | Water_NWES  -> NO_WALK
-        | Water_xWxx  -> NO_WALK
-        | Water_xWEx  -> NO_WALK
-        | Water_xWxS  -> NO_WALK
-        | Water_xWES  -> NO_WALK
-        | Water_xxEx  -> NO_WALK
-        | Water_xxES  -> NO_WALK
-        | Water_xxxS  -> NO_WALK
+        let result = 
+            match this with
+            | Bridge      -> WALK
+            | Castle      -> TOWNY
+            | Cave        -> System.Drawing.Color.Black
+            | Desert      -> WALK
+            | Forest      -> WALK
+            | Hills       -> WALK
+            | Mountain    -> NO_WALK
+            | Plains      -> WALK
+            | Swamp       -> WALK
+            | Town        -> TOWNY
+            | Wall        -> System.Drawing.Color.DarkGray 
+            | Water_xxxx  -> NO_WALK
+            | Water_Nxxx  -> NO_WALK
+            | Water_NWxx  -> NO_WALK
+            | Water_NxEx  -> NO_WALK
+            | Water_NxxS  -> NO_WALK
+            | Water_NWEx  -> NO_WALK
+            | Water_NWxS  -> NO_WALK
+            | Water_NxES  -> NO_WALK
+            | Water_NWES  -> NO_WALK
+            | Water_xWxx  -> NO_WALK
+            | Water_xWEx  -> NO_WALK
+            | Water_xWxS  -> NO_WALK
+            | Water_xWES  -> NO_WALK
+            | Water_xxEx  -> NO_WALK
+            | Water_xxES  -> NO_WALK
+            | Water_xxxS  -> NO_WALK
+        if result = WALK then
+            let pc = this.ProjectionColor 
+            let r = (3 * int result.R + int pc.R) / 4 
+            let g = (3 * int result.G + int pc.G) / 4 
+            let b = (3 * int result.B + int pc.B) / 4 
+            System.Drawing.Color.FromArgb(r,g,b)
+        else
+            result
     member this.IsWalkable =
         match this with
         | Bridge      -> true

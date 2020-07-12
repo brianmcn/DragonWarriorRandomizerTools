@@ -95,13 +95,21 @@ let dl2_swings_chart() =
     let NUM_AP = 30
     let wins_per_ap_per_swings = Array2D.zeroCreate NUM_AP 30
     let cumulative_wins_per_ap_per_swings = Array2D.zeroCreate NUM_AP 30
+    let player(ap,fw) = 
+        if ap <= 132 && fw > 0 then
+            9+rng.Next(8), fw-1
+        else
+            player_attack(ap), fw
     for ap in [MIN..MIN+NUM_AP-1] do
         for dl_health in [150..165] do
             for i = 1 to 1000 do
+                let mutable fw = 5
                 let mutable h = dl_health
                 let mutable swings = 0
                 while h > 0 do
-                    h <- h - player_attack(ap)
+                    let d,f = player(ap,fw)
+                    fw <- f
+                    h <- h - d
                     swings <- swings + 1
                 wins_per_ap_per_swings.[ap-MIN,swings] <- wins_per_ap_per_swings.[ap-MIN,swings] + 1
         cumulative_wins_per_ap_per_swings.[ap-MIN,0] <- wins_per_ap_per_swings.[ap-MIN,0]
@@ -123,6 +131,23 @@ let dl2_swings_chart() =
             printf "%s" to_print
         printfn ""
 (*
+UPDATE: with 5 fairy waters, top of chart is now
+
+        05% 10% 15% 20% 25% 30% 35% 40% 45% 50% 55% 60% 65% 70% 75% 80% 85% 90% 95%100%
+AP=124           15                          16                      17          20
+AP=125   14                  15                          16                  17  19  20
+AP=126       14                          15                          16          19  20
+AP=127               14                              15                      16  18  20
+AP=128   13                      14                              15              18  20
+AP=129       13                          14                          15          17  20
+AP=130               13                              14                      15  17  20
+AP=131                       13                                  14              17  20
+AP=132   12                          13                              14          16  20
+AP=133   12                              13                              14      16  20
+
+so 124-127 gains two fewer attacks, 128-131 has about one fewer.
+
+
                              30              50              70              90
 
 AP=124       17                      18                          19              20
@@ -231,13 +256,18 @@ let simulate_dl2_core(ag, start_hp, start_mp, max_hp, dp, ap) =
             breath.[rng.Next(4)]
         else
             attack(max_bite*2)
-    let player() = player_attack(ap)
+    let player(fw) = 
+        if ap <= 132 && fw > 0 then
+            9+rng.Next(8), fw-1
+        else
+            player_attack(ap), fw
     let healmore() = 85 + rng.Next(16)
     let mutable wins = 0
     let mutable damage = 0
     let mutable sum_num_attacks = 0
     for i = 1 to 10000 do
         // simulate fight
+        let mutable num_fw = 0
         let mutable player_died = false
         let mutable hp = start_hp
         let mutable mp = start_mp
@@ -257,7 +287,8 @@ let simulate_dl2_core(ag, start_hp, start_mp, max_hp, dp, ap) =
                 if hp > max_hp then
                     hp <- max_hp
             else
-                let dmg = player()
+                let dmg,fw = player(num_fw)
+                num_fw <- fw
                 dl_hp <- dl_hp - dmg
                 damage <- damage + dmg
                 num_attacks <- num_attacks + 1
@@ -591,14 +622,13 @@ let decode_rom(file) =
             let K = 7
             bmp2.SetPixel(x,y, System.Drawing.Color.FromArgb(int c.R*K/8, int c.G*K/8, int c.B*K/8))
             pixelsWhereLabelsHaveModified.Add(x,y) |> ignore
-        let ok(c:System.Drawing.Color) = // TODO could just use not-in-pixelsWhereLabelsHaveModified now
-            c.ToArgb() = Constants.OverworldMapTile.Desert.AltProjectionColor.ToArgb() ||
-            c.ToArgb() = Constants.OverworldMapTile.Mountain.AltProjectionColor.ToArgb()
         let tryPlace(x,y,isCave,a:string[]) =
             let mutable works = true
             for i = 0 to 4 do
                 for j = 0 to 4 do
-                    if not(ok(bmp2.GetPixel(x+i,y+j))) then
+                    if pixelsWhereLabelsHaveModified.Contains(x+i,y+j) then
+                        works <- false
+                    if bmp2.GetPixel(x+i,y+j).ToArgb() = Constants.OverworldMapTile.Wall.AltProjectionColor.ToArgb() then
                         works <- false
             if works then
                 for i = 0 to 4 do
