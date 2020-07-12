@@ -628,6 +628,10 @@ let decode_rom(file) =
                 for j = 0 to 4 do
                     if pixelsWhereLabelsHaveModified.Contains(x+i,y+j) then
                         works <- false
+                    if bmp2.GetPixel(x+i,y+j).ToArgb() = Constants.OverworldMapTile.Town.AltProjectionColor.ToArgb() then
+                        works <- false
+                    if bmp2.GetPixel(x+i,y+j).ToArgb() = Constants.OverworldMapTile.Cave.AltProjectionColor.ToArgb() then
+                        works <- false
                     if bmp2.GetPixel(x+i,y+j).ToArgb() = Constants.OverworldMapTile.Wall.AltProjectionColor.ToArgb() then
                         works <- false
             if works then
