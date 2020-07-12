@@ -152,4 +152,27 @@ let identifyHP(getPixel) =
         Some(hp/10)
     else
         None
-            
+
+let isStatusScreenDisplayed(getPixel) =
+    // look for WEAPON - ensures we have drawn all stats above already
+    // matchLetter(getPixel, 104, 160, 'W')
+    matchLetter(getPixel, 112, 160, 'E') && matchLetter(getPixel, 120, 160, 'A')
+
+let getAGHPMPAPDP(getPixel) = 
+    let get3DigitNumberValue(x,y) =
+        let mutable r = 0
+        let mutable x = x
+        for place = 0 to 2 do
+            r <- r + value(getPixel,x,y)            
+            r <- r * 10
+            x <- x + 8
+        r/10
+    if isStatusScreenDisplayed(getPixel) then
+        let ag = get3DigitNumberValue(208,80)    
+        let hp = get3DigitNumberValue(208,96)    
+        let mp = get3DigitNumberValue(208,112)    
+        let ap = get3DigitNumberValue(208,128)    
+        let dp = get3DigitNumberValue(208,144)    
+        Some(ag,hp,mp,ap,dp)
+    else
+        None
