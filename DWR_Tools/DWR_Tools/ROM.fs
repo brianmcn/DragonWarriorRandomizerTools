@@ -601,68 +601,13 @@ let decode_rom(file) =
     printfn ""
 *)
 
-    let tiles = Array2D.init 120 120 (fun x y -> Constants.OverworldMapTile.FromROMByte tiles.[x,y])
-
-    let EDGE = 6
-    let bmp1 = new System.Drawing.Bitmap(120+2*EDGE,120+2*EDGE)
-    let bmp2 = new System.Drawing.Bitmap(120+2*EDGE,120+2*EDGE)
-    for x = 0 to bmp2.Width-1 do
-        for y = 0 to bmp2.Height-1 do
-            bmp1.SetPixel(y, x, Constants.OverworldMapTile.Water_xxxx.ProjectionColor)
-            bmp2.SetPixel(y, x, Constants.OverworldMapTile.Mountain.AltProjectionColor)
-    for x = 0 to 119 do
-        for y = 0 to 119 do
-            bmp1.SetPixel(y+EDGE, x+EDGE, tiles.[x,y].ProjectionColor)
-            bmp2.SetPixel(y+EDGE, x+EDGE, tiles.[x,y].AltProjectionColor)
-
-    let pixelsWhereLabelsHaveModified = new System.Collections.Generic.HashSet<_>()
-    let tryAllPlace(x,y,isCave,a:string[]) =
-        let darken(x,y) =
-            let c = bmp2.GetPixel(x,y)
-            let K = 7
-            bmp2.SetPixel(x,y, System.Drawing.Color.FromArgb(int c.R*K/8, int c.G*K/8, int c.B*K/8))
-            pixelsWhereLabelsHaveModified.Add(x,y) |> ignore
-        let tryPlace(x,y,isCave,a:string[]) =
-            let mutable works = true
-            for i = 0 to 4 do
-                for j = 0 to 4 do
-                    if pixelsWhereLabelsHaveModified.Contains(x+i,y+j) then
-                        works <- false
-                    if bmp2.GetPixel(x+i,y+j).ToArgb() = Constants.OverworldMapTile.Town.AltProjectionColor.ToArgb() then
-                        works <- false
-                    if bmp2.GetPixel(x+i,y+j).ToArgb() = Constants.OverworldMapTile.Cave.AltProjectionColor.ToArgb() then
-                        works <- false
-                    if bmp2.GetPixel(x+i,y+j).ToArgb() = Constants.OverworldMapTile.Wall.AltProjectionColor.ToArgb() then
-                        works <- false
-            if works then
-                for i = 0 to 4 do
-                    for j = 0 to 4 do
-                        if a.[j].[i] = 'X' then
-                            bmp2.SetPixel(x+i,y+j, if isCave then Constants.OverworldMapTile.Cave.AltProjectionColor else Constants.OverworldMapTile.Town.AltProjectionColor)
-                            pixelsWhereLabelsHaveModified.Add(x+i,y+j) |> ignore
-                        else
-                            darken(x+i,y+j)
-            works            
-        if not(tryPlace(x+EDGE-3, y, isCave, a)) then
-            if not(tryPlace(x, y+EDGE-1, isCave, a)) then
-                if not(tryPlace(x+EDGE-1, y+EDGE+2, isCave, a)) then
-                    if not(tryPlace(x+EDGE+2, y+EDGE-3, isCave, a)) then
-                        printfn "failed to place a label!"
-                    else
-                        darken(x+EDGE+1,y+EDGE)
-                else
-                    darken(x+EDGE,y+EDGE+1)
-            else
-                darken(x+EDGE-1,y+EDGE)
-        else
-            darken(x+EDGE,y+EDGE-1)
-
     let WARPS_INDEX_IN_BYTES = 0xf3d8
     let warps = bytes.[WARPS_INDEX_IN_BYTES..]
     let mapCoords = new System.Collections.Generic.Dictionary<_,_>()
     let mutable uc1i, uc2i = -1, -1           // useless charlock warp index 1 & 2
     let mutable rimi = -1                     // rimuldar index
     let mutable gf, tf = (fun _ -> ()), (fun _ -> ())  // thunks to backpatch basement labels when find topside coords later
+    let thingsToTryAllPlace = ResizeArray()
     for i = 0 to 50 do
         let d = i*3
         let from_map = warps.[0+d]
@@ -708,7 +653,7 @@ let decode_rom(file) =
             if Constants.MAP_LOCATIONS.IsLocation(dest) then
                 mapCoords.Add(dest, (int from_x,int from_y) )
             if a <> null then
-                tryAllPlace(int from_x, int from_y, isCave, a)
+                thingsToTryAllPlace.Add((int from_x, int from_y, isCave, a))
             if dest=Constants.MAP_LOCATIONS.GARINHAM then
                 gf(int from_x,int from_y)
             if dest=Constants.MAP_LOCATIONS.TANTAGEL then
@@ -717,18 +662,32 @@ let decode_rom(file) =
             let dest, isCave, a = dest()
             printfn "under Garin: %s" dest
             match mapCoords.TryGetValue(Constants.MAP_LOCATIONS.GARINHAM) with
-            | true, (gx,gy) -> tryAllPlace(gx, gy, isCave, a)
-            | _ -> gf <- fun (gx,gy) -> tryAllPlace(gx, gy, isCave, a)
+            | true, (gx,gy) -> thingsToTryAllPlace.Add((gx, gy, isCave, a))
+            | _ -> gf <- fun (gx,gy) -> thingsToTryAllPlace.Add((gx, gy, isCave, a))
         elif from_map = 4uy then
             let dest, isCave, a = dest()
             printfn "under Tantagel: %s" dest
             match mapCoords.TryGetValue(Constants.MAP_LOCATIONS.TANTAGEL) with
-            | true, (tx,ty) -> tryAllPlace(tx, ty, isCave, a)
-            | _ -> tf <- fun (tx,ty) -> tryAllPlace(tx, ty, isCave, a)
+            | true, (tx,ty) -> thingsToTryAllPlace.Add((tx, ty, isCave, a))
+            | _ -> tf <- fun (tx,ty) -> thingsToTryAllPlace.Add((tx, ty, isCave, a))
         else
             if debugPrint || printIt then
                 printfn ""
 
+    let tiles = Array2D.init 120 120 (fun x y -> Constants.OverworldMapTile.FromROMByte tiles.[x,y])
+
+    let EDGE = 6
+    let bmp1 = new System.Drawing.Bitmap(120+2*EDGE,120+2*EDGE)
+    let bmp2 = new System.Drawing.Bitmap(120+2*EDGE,120+2*EDGE)
+    for x = 0 to bmp2.Width-1 do
+        for y = 0 to bmp2.Height-1 do
+            bmp1.SetPixel(y, x, Constants.OverworldMapTile.Water_xxxx.ProjectionColor)
+            bmp2.SetPixel(y, x, Constants.OverworldMapTile.Mountain.AltProjectionColor)
+    for x = 0 to 119 do
+        for y = 0 to 119 do
+            bmp1.SetPixel(y+EDGE, x+EDGE, tiles.[x,y].ProjectionColor)
+            bmp2.SetPixel(y+EDGE, x+EDGE, tiles.[x,y].AltProjectionColor)
+    // remove unreachable continents
     let reachable_continents = Array2D.zeroCreate 120 120
     let walk(x, y, label) =
         let rec loop(x, y, label, acc, k) = 
@@ -761,6 +720,60 @@ let decode_rom(file) =
             walk(gx, gy, 2)  // garinham not on tantagel continent, label 2
         else
             0  // single continent
+    for x = 0 to 119 do
+        for y = 0 to 119 do
+            if reachable_continents.[x,y] = 0 then
+                // charlock is 'unreachable', but dont uncolor it
+                let cx,cy = mapCoords.[Constants.MAP_LOCATIONS.CHARLOCK]
+                if abs(x-cx) < 4 && abs(y-cy) < 4 then
+                    () // do nothing, dont discolor charlock
+                else
+                    bmp2.SetPixel(x+EDGE,y+EDGE, Constants.OverworldMapTile.Mountain.AltProjectionColor)
+
+    let pixelsWhereLabelsHaveModified = new System.Collections.Generic.HashSet<_>()
+    let tryAllPlace(x,y,isCave,a:string[]) =
+        let darken(x,y) =
+            let c = bmp2.GetPixel(x,y)
+            let K = 7
+            bmp2.SetPixel(x,y, System.Drawing.Color.FromArgb(int c.R*K/8, int c.G*K/8, int c.B*K/8))
+            pixelsWhereLabelsHaveModified.Add(x,y) |> ignore
+        let tryPlace(x,y,isCave,a:string[]) =
+            let mutable works = true
+            for i = 0 to 4 do
+                for j = 0 to 4 do
+                    if pixelsWhereLabelsHaveModified.Contains(x+i,y+j) then
+                        works <- false
+                    if bmp2.GetPixel(x+i,y+j).ToArgb() = Constants.OverworldMapTile.Town.AltProjectionColor.ToArgb() then
+                        works <- false
+                    if bmp2.GetPixel(x+i,y+j).ToArgb() = Constants.OverworldMapTile.Cave.AltProjectionColor.ToArgb() then
+                        works <- false
+                    if bmp2.GetPixel(x+i,y+j).ToArgb() = Constants.OverworldMapTile.Wall.AltProjectionColor.ToArgb() then
+                        works <- false
+            if works then
+                for i = 0 to 4 do
+                    for j = 0 to 4 do
+                        if a.[j].[i] = 'X' then
+                            bmp2.SetPixel(x+i,y+j, if isCave then Constants.OverworldMapTile.Cave.AltProjectionColor else Constants.OverworldMapTile.Town.AltProjectionColor)
+                            pixelsWhereLabelsHaveModified.Add(x+i,y+j) |> ignore
+                        else
+                            darken(x+i,y+j)
+            works            
+        if not(tryPlace(x+EDGE-3, y, isCave, a)) then
+            if not(tryPlace(x, y+EDGE-1, isCave, a)) then
+                if not(tryPlace(x+EDGE-1, y+EDGE+2, isCave, a)) then
+                    if not(tryPlace(x+EDGE+2, y+EDGE-3, isCave, a)) then
+                        printfn "failed to place a label!"
+                    else
+                        darken(x+EDGE+1,y+EDGE)
+                else
+                    darken(x+EDGE,y+EDGE+1)
+            else
+                darken(x+EDGE-1,y+EDGE)
+        else
+            darken(x+EDGE,y+EDGE-1)
+    for x,y,isCave,a in thingsToTryAllPlace do
+        tryAllPlace(x,y,isCave,a)
+
     (*
     let kx,ky = mapCoords.[Constants.MAP_LOCATIONS.KOL]
     let bx,by = mapCoords.[Constants.MAP_LOCATIONS.BRECCONARY]
@@ -796,17 +809,6 @@ let decode_rom(file) =
     if buried_dx <> -999 then  
         bmp2.SetPixel(EDGE+tx+buried_dx, EDGE+ty+buried_dy, BURIED_COLOR)
 
-    // remove unreachable continents
-    // TODO ideally do this before applying labels, both to avoid edge-of-unreachable-under-letter appearing, and also so could color two continents two different colors
-    for x = 0 to 119 do
-        for y = 0 to 119 do
-            if reachable_continents.[x,y] = 0 && bmp2.GetPixel(x+EDGE,y+EDGE).ToArgb() = Constants.OverworldMapTile.Desert.AltProjectionColor.ToArgb() then
-                // charlock is 'unreachable', but dont uncolor it
-                let cx,cy = mapCoords.[Constants.MAP_LOCATIONS.CHARLOCK]
-                if abs(x-cx) < 4 && abs(y-cy) < 4 then
-                    () // do nothing, dont discolor charlock
-                else
-                    bmp2.SetPixel(x+EDGE,y+EDGE, Constants.OverworldMapTile.Mountain.AltProjectionColor)
     // gridlines
     let darken(c:System.Drawing.Color) = 
         let F(b:byte) = int b * 7 / 8
