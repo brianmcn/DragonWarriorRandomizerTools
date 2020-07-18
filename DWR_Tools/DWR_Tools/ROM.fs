@@ -353,6 +353,7 @@ let show_go_mode_stats(bytes:byte[], print, file) =
               + if b1 &&&  2uy > 0uy then (hu <- 1; "HU ") else fives
 //        if i=0 && (b2 &&&  8uy > 0uy) then
 //            failwithf "radiant at start: %s" file
+        let have_healmore = b1 &&&  1uy > 0uy 
         let str, ag, hp, mp = bytes.[0x60DD+6*i+0], bytes.[0x60DD+6*i+1], bytes.[0x60DD+6*i+2], bytes.[0x60DD+6*i+3] 
         let agZ = ag - ((ag+9uy)/10uy) + 3uy
         let mpZ = mp - ((mp+9uy)/10uy) + 3uy
@@ -368,8 +369,16 @@ let show_go_mode_stats(bytes:byte[], print, file) =
         p_hp <- int hp
         p_mp <- int mpZ
         p_hu <- hu
-        let go_mode,mini_go_mode,wins,wins_less1_heal,wins_lg,wins_lg_less1_heal = compute_go_mode(str, agZ, hp, mpZ, s, print)
-        let strag_go_mode,strag_mini_go_mode,_,_,_,_ = compute_go_mode(str, ag, hpSTRAG, mpZ, s, false)
+        let go_mode,mini_go_mode,wins,wins_less1_heal,wins_lg,wins_lg_less1_heal = 
+            if have_healmore then
+                compute_go_mode(str, agZ, hp, mpZ, s, print)
+            else
+                false, false, 0, 0, 0, 0
+        let strag_go_mode,strag_mini_go_mode,_,_,_,_ = 
+            if have_healmore then
+                compute_go_mode(str, ag, hpSTRAG, mpZ, s, false)
+            else
+                false, false, 0, 0, 0, 0
         let x(b) = if b then "+" else " "
         if go_mode && go_mode_str_hp=31 then
             go_mode_str_hp <- i+1
