@@ -729,7 +729,6 @@ let decode_rom(file) =
                     () // do nothing, dont discolor charlock
                 else
                     bmp2.SetPixel(x+EDGE,y+EDGE, Constants.OverworldMapTile.Mountain.AltProjectionColor)
-
     let pixelsWhereLabelsHaveModified = new System.Collections.Generic.HashSet<_>()
     let tryAllPlace(x,y,isCave,a:string[]) =
         let darken(x,y) =
@@ -773,6 +772,17 @@ let decode_rom(file) =
             darken(x+EDGE,y+EDGE-1)
     for x,y,isCave,a in thingsToTryAllPlace do
         tryAllPlace(x,y,isCave,a)
+    // darken 2nd continent (brighten rest of map)
+    for x = 0 to 119 do
+        for y = 0 to 119 do
+            let c = bmp2.GetPixel(x+EDGE,y+EDGE)
+            let m(a) = 
+                if reachable_continents.[x,y] = 2 then
+                    max (int a - 0) 0
+                else
+                    min (int a + 40) 255
+            let c2 = System.Drawing.Color.FromArgb(m c.R, m c.G, m c.B)
+            bmp2.SetPixel(x+EDGE,y+EDGE, c2)
 
     (*
     let kx,ky = mapCoords.[Constants.MAP_LOCATIONS.KOL]
