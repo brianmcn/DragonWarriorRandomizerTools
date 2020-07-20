@@ -1285,6 +1285,36 @@ let xmain argv =
         for k,v in a do
             printfn "%2d: %5d %s" k v (String.replicate (v/10000) "X")
         0
+    elif false then
+        let strs = ResizeArray()
+        let agZs = ResizeArray()
+        let hps = ResizeArray()
+        let mpZs = ResizeArray()
+        let mutable count = 0
+        for file in System.IO.Directory.EnumerateFiles("""C:\Users\brianmcn\Desktop\fceux-2.2.3-win32\""", "DWRando*.nes") do
+            count <- count + 1
+            strs.Add(Array.zeroCreate 30)
+            agZs.Add(Array.zeroCreate 30)
+            hps.Add(Array.zeroCreate 30)
+            mpZs.Add(Array.zeroCreate 30)
+            let bytes = System.IO.File.ReadAllBytes(file)
+            for i = 0 to 29 do
+                let str, ag, hp, mp = bytes.[0x60DD+6*i+0], bytes.[0x60DD+6*i+1], bytes.[0x60DD+6*i+2], bytes.[0x60DD+6*i+3] 
+                let agZ = ag - ((ag+9uy)/10uy) + 3uy
+                let mpZ = mp - ((mp+9uy)/10uy) + 3uy
+                strs.[strs.Count-1].[i] <- str
+                agZs.[agZs.Count-1].[i] <- agZ
+                hps.[hps.Count-1].[i] <- hp
+                mpZs.[mpZs.Count-1].[i] <- mpZ
+        printfn "Summary of %d seeds" count
+        printfn "Lev: STR agZ  HP mpZ"
+        for i = 0 to 29 do
+            let stravg = (strs |> Seq.map (fun a -> int a.[i]) |> Seq.sum) / count
+            let agZavg = (agZs |> Seq.map (fun a -> int a.[i]) |> Seq.sum) / count
+            let hpavg = (hps |> Seq.map (fun a -> int a.[i]) |> Seq.sum) / count
+            let mpZavg = (mpZs |> Seq.map (fun a -> int a.[i]) |> Seq.sum) / count
+            printfn "L%2d: %3d %3d %3d %3d" (i+1) stravg agZavg hpavg mpZavg
+        0
     // Read all seeds in directory and summary-process
     elif false then
         let mutable count = 0
