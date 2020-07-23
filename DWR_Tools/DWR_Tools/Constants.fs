@@ -273,6 +273,40 @@ module MAP_LOCATIONS =
           SWAMP_NORTH; SWAMP_SOUTH; MOUNTAIN_CAVE; TABLET_CAVE; GARINS_TOMB|]
     let IsLocation(s) = ALL |> Array.contains s
 
+// maps as warps (encoded by game byte id) where chests are found
+let MAPS = [|
+    "NO_MAP",                                                               ""
+    "OVERWORLD",                                                            ""
+    "CHARLOCK",                                                             MAP_LOCATIONS.CHARLOCK
+    "HAUKSNESS",                                                            MAP_LOCATIONS.HAUKSNESS 
+    "TANTEGEL_TREASURY",   (* TANTEGEL *)                                   MAP_LOCATIONS.TANTAGEL 
+    "TANTEGEL_THRONE_ROOM",(* 5 *)                                          MAP_LOCATIONS.TANTAGEL 
+    "CHARLOCK_THRONE_ROOM",                                                 MAP_LOCATIONS.CHARLOCK 
+    "KOL",                                                                  MAP_LOCATIONS.KOL 
+    "BRECCONARY",                                                           MAP_LOCATIONS.BRECCONARY 
+    "GARINHAM",                                                             MAP_LOCATIONS.GARINHAM 
+    "CANTLIN", (* 10 *)                                                     MAP_LOCATIONS.CANTLIN 
+    "RIMULDAR",                                                             MAP_LOCATIONS.RIMULDAR 
+    "SUN_STONES_CAVE",   (* TANTEGEL_BASEMENT *)                            MAP_LOCATIONS.SUN_STONES_CAVE 
+    "NORTHERN_SHRINE",                                                      MAP_LOCATIONS.STAFF_CAVE 
+    "SOUTHERN_SHRINE",                                                      MAP_LOCATIONS.JERK_CAVE 
+    "CHARLOCK_CAVE_1", (* 15 *)                                             MAP_LOCATIONS.CHARLOCK 
+    "CHARLOCK_CAVE_2",                                                      MAP_LOCATIONS.CHARLOCK 
+    "CHARLOCK_CAVE_3",                                                      MAP_LOCATIONS.CHARLOCK 
+    "CHARLOCK_CAVE_4",                                                      MAP_LOCATIONS.CHARLOCK 
+    "CHARLOCK_CAVE_5",                                                      MAP_LOCATIONS.CHARLOCK 
+    "CHARLOCK_CAVE_6", (* 20 *)                                             MAP_LOCATIONS.CHARLOCK 
+    "SWAMP_CAVE",                                                           ""
+    "MOUNTAIN_CAVE",                                                        MAP_LOCATIONS.MOUNTAIN_CAVE 
+    "MOUNTAIN_CAVE_2",                                                      MAP_LOCATIONS.MOUNTAIN_CAVE 
+    "GARINS_GRAVE_1",                                                       MAP_LOCATIONS.GARINS_TOMB
+    "GARINS_GRAVE_2", (* 25 *)                                              MAP_LOCATIONS.GARINS_TOMB
+    "GARINS_GRAVE_3",                                                       MAP_LOCATIONS.GARINS_TOMB
+    "GARINS_GRAVE_4",                                                       MAP_LOCATIONS.GARINS_TOMB
+    "ERDRICKS_CAVE",                                                        MAP_LOCATIONS.TABLET_CAVE 
+    "ERDRICKS_CAVE_2",                                                      MAP_LOCATIONS.TABLET_CAVE 
+    |]
+
 ///////////////////////////////////////////////////////
 
 // locations and items are just for a manual 'checklist' - second string is optional image to bring up when clicked

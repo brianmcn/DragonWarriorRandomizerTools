@@ -1,38 +1,5 @@
 ﻿module ROM
 
-let MAPS = [|
-    "NO_MAP"
-    "OVERWORLD"
-    "CHARLOCK"
-    "HAUKSNESS"
-    "TANTEGEL_TREASURY"   // TANTEGEL
-    "TANTEGEL_THRONE_ROOM" // 5 
-    "CHARLOCK_THRONE_ROOM"
-    "KOL"
-    "BRECCONARY"
-    "GARINHAM"
-    "CANTLIN" // 10 
-    "RIMULDAR"
-    "SUN_STONES_CAVE"    // TANTEGEL_BASEMENT
-    "NORTHERN_SHRINE"
-    "SOUTHERN_SHRINE"
-    "CHARLOCK_CAVE_1" // 15 
-    "CHARLOCK_CAVE_2"
-    "CHARLOCK_CAVE_3"
-    "CHARLOCK_CAVE_4"
-    "CHARLOCK_CAVE_5"
-    "CHARLOCK_CAVE_6" // 20 
-    "SWAMP_CAVE"
-    "MOUNTAIN_CAVE"
-    "MOUNTAIN_CAVE_2"
-    "GARINS_GRAVE_1"
-    "GARINS_GRAVE_2" // 25 
-    "GARINS_GRAVE_3"
-    "GARINS_GRAVE_4"
-    "ERDRICKS_CAVE"
-    "ERDRICKS_CAVE_2"
-    |]
-
 let CHESTS = [|
     "unused"
     "ARMOR"
@@ -429,6 +396,7 @@ let decode_rom(file) =
     printfn "  swamp: %2d %s" swamp_enemy (EnemyData.ENEMY_NAME swamp_enemy)
     printfn "  charl: %2d %s" charlock_enemy (EnemyData.ENEMY_NAME charlock_enemy)
 
+    let uniqueItems = new System.Collections.Generic.Dictionary<_,_>()
     // buried items
     printfn ""
     printfn "BURIED ITEMS"    
@@ -438,6 +406,9 @@ let decode_rom(file) =
             let patched_data = content.[0x0e11d..0x0e11d+109]
             if int patched_data.[address_offset] = idx then
                 printfn "  %12s is located at %s %s" CHESTS.[idx] location (if address_offset=1 then sprintf "%d %s %d %s" (abs buried_dy) (if buried_dy<=0 then "N" else "S") (abs buried_dx) (if buried_dx<=0 then "W" else "E") else "")
+                uniqueItems.Add(idx, (if address_offset=1 then ("OVERWORLD",sprintf "%d,%d" buried_dx buried_dy) 
+                                                          elif address_offset=32 then ("KOL",Constants.MAP_LOCATIONS.KOL) 
+                                                          else ("HAUKSNESS",Constants.MAP_LOCATIONS.HAUKSNESS)))
 
     // chests
     // each chest data is 4 bytes: map, x, y, item
@@ -448,10 +419,12 @@ let decode_rom(file) =
     let ksb = new System.Text.StringBuilder()
     for i = 0 to 30 do
         let map, item = chest_bytes.[i*4], chest_bytes.[i*4+3] 
-        all.AppendLine(sprintf "  %20s    %-20s" MAPS.[int map] CHESTS.[int item]) |> ignore
+        all.AppendLine(sprintf "  %20s    %-20s" (fst Constants.MAPS.[int map]) CHESTS.[int item]) |> ignore
         match item with
-        | 1uy | 8uy | 9uy | 10uy | 13uy | 14uy | 15uy | 17uy -> sra.Add(CHESTS.[int item], MAPS.[int map])  // 7 key items plus RING
-        | 3uy -> if map <> 5uy then ksb.Append(MAPS.[int map]).Append("  ") |> ignore // KEY
+        | 1uy | 8uy | 9uy | 10uy | 13uy | 14uy | 15uy | 17uy -> 
+            sra.Add(CHESTS.[int item], (fst Constants.MAPS.[int map]))  // 7 key items plus RING
+            uniqueItems.Add(int item, ((fst Constants.MAPS.[int map]),(snd Constants.MAPS.[int map])))
+        | 3uy -> if map <> 5uy then ksb.Append(Constants.MAPS.[int map]).Append("  ") |> ignore // KEY
         | _ -> ()
     printfn "SUMMARY"
     let sorted = sra.ToArray() |> Array.sortBy (fun (item,_loc) ->
@@ -671,17 +644,38 @@ let decode_rom(file) =
             let dest, isCave, a = dest()
             printfn "under Garin: %s" dest
             match mapCoords.TryGetValue(Constants.MAP_LOCATIONS.GARINHAM) with
-            | true, (gx,gy) -> thingsToTryAllPlace.Add((gx, gy, isCave, a))
-            | _ -> gf <- fun (gx,gy) -> thingsToTryAllPlace.Add((gx, gy, isCave, a))
+            | true, (gx,gy) -> 
+                thingsToTryAllPlace.Add((gx, gy, isCave, a))
+                mapCoords.Add(dest, (gx,gy))
+            | _ -> gf <- fun (gx,gy) -> 
+                thingsToTryAllPlace.Add((gx, gy, isCave, a))
+                mapCoords.Add(dest, (gx,gy))
         elif from_map = 4uy then
             let dest, isCave, a = dest()
             printfn "under Tantagel: %s" dest
             match mapCoords.TryGetValue(Constants.MAP_LOCATIONS.TANTAGEL) with
-            | true, (tx,ty) -> thingsToTryAllPlace.Add((tx, ty, isCave, a))
-            | _ -> tf <- fun (tx,ty) -> thingsToTryAllPlace.Add((tx, ty, isCave, a))
+            | true, (tx,ty) -> 
+                thingsToTryAllPlace.Add((tx, ty, isCave, a))
+                mapCoords.Add(dest, (tx,ty))
+            | _ -> tf <- fun (tx,ty) -> 
+                thingsToTryAllPlace.Add((tx, ty, isCave, a))
+                mapCoords.Add(dest, (tx,ty))
         else
             if debugPrint || printIt then
                 printfn ""
+
+    // compute uniqueItem coordinates
+    let uniqueItemLocations = ResizeArray()
+    for KeyValue(item, (desc,location)) in uniqueItems do
+        match mapCoords.TryGetValue(location) with
+        | true, (x,y) ->
+            uniqueItemLocations.Add(item, (desc,x,y))
+        | _ ->
+            let tx,ty = mapCoords.[Constants.MAP_LOCATIONS.TANTAGEL]
+            let [|dxs;dys|] = location.Split(',')
+            let dx = System.Int32.Parse(dxs)
+            let dy = System.Int32.Parse(dys)
+            uniqueItemLocations.Add(item, (desc,tx+dx,ty+dy))
 
     let tiles = Array2D.init 120 120 (fun x y -> Constants.OverworldMapTile.FromROMByte tiles.[x,y])
 
@@ -979,7 +973,7 @@ let decode_rom(file) =
     System.IO.File.WriteAllBytes(new_file, new_bytes)
 *)
 
-    bmp1, bmp2, reachable_continents, mapCoords, cont_1_size, cont_2_size, compute_charlock_distance_to_inn(), ow_zones, zone_enemies
+    bmp1, bmp2, reachable_continents, mapCoords, cont_1_size, cont_2_size, compute_charlock_distance_to_inn(), ow_zones, zone_enemies, uniqueItemLocations 
 
 
 

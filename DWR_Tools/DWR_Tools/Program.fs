@@ -1335,7 +1335,7 @@ let xmain argv =
                 str_hp_wins <- str_hp_wins+1
             if strhp > strag then
                 str_ag_wins <- str_ag_wins+1
-            let _bmp1,_bmp2,reachable_continents,mapCoords,cont_1_size,cont_2_size,ch_dist_inn,_owz,_ze = ROM.decode_rom(file)
+            let _bmp1,_bmp2,reachable_continents,mapCoords,cont_1_size,cont_2_size,ch_dist_inn,_owz,_ze,_uil = ROM.decode_rom(file)
             count <- count + 1
             cont1 <- cont1 + cont_1_size
             charlock_inn_dist <- charlock_inn_dist + ch_dist_inn
@@ -1442,9 +1442,10 @@ average stats per level
         fd.CheckFileExists <- true
         fd.CheckPathExists <- true
         if fd.ShowDialog() = System.Windows.Forms.DialogResult.OK then
-            let bmp1,bmp2,_reachable_continents,_mapCoords,_cont_1_size,_cont_2_size,_ch_inn_dist,ow_zones,zone_enemies  = ROM.decode_rom(fd.FileName)
+            let bmp1,bmp2,_reachable_continents,_mapCoords,_cont_1_size,_cont_2_size,_ch_inn_dist,ow_zones,zone_enemies,uniqueItemLocations = ROM.decode_rom(fd.FileName)
             let w = new Window()
 
+            let c = new Canvas()
             let sp = new StackPanel()
             let g = new Grid()
             g.RowDefinitions.Add(new RowDefinition())
@@ -1460,6 +1461,136 @@ average stats per level
 
             gridAdd(g, image1, 0, 0)
             gridAdd(g, image2, 1, 0)
+
+            // item text (356 is 1/4 way)
+            let mutable px = 0
+            let mutable py = 16
+            let sorted = uniqueItemLocations.ToArray() |> Array.sortBy (fun (item,_loc) ->
+                match ROM.CHESTS.[item] with
+                | "STONES" -> 2
+                | "HARP" -> 3
+                | "TOKEN" -> 4
+                | "RING" -> 6
+                | "FLUTE" -> 8
+                | "NECKLACE" -> 7
+                | "SWORD" -> 5
+                | "ARMOR" -> 1
+                | _ -> failwith "bad summary item"
+                )
+            for item, (desc, ix, iy) in sorted do
+                let tb = new TextBlock(Text=sprintf "%s:  %s" ROM.CHESTS.[item] desc,Foreground=Brushes.White,Background=Brushes.Black)
+                c.Children.Add(tb) |> ignore
+                Canvas.SetTop(tb, float py)
+                Canvas.SetLeft(tb, float (px + 32))
+                px <- px + 356
+                if px >= 1424 then
+                    px <- 0
+                    py <- py + 32
+                match ROM.CHESTS.[item] with
+                | "STONES" ->
+                    // background grid
+                    let g = new System.Windows.Shapes.Rectangle(Width=24.0,Height=24.0,StrokeThickness=2.0)
+                    g.Fill <- Brushes.LightGray 
+                    Canvas.SetTop(g, 10.0)
+                    Canvas.SetLeft(g, 356.0)
+                    c.Children.Add(g) |> ignore
+                    // key icon
+                    let o = new System.Windows.Shapes.Ellipse(Width=20.0,Height=20.0,StrokeThickness=3.0)
+                    o.Stroke <- Brushes.Orange 
+                    Canvas.SetTop(o, 12.0)
+                    Canvas.SetLeft(o, 358.0)
+                    c.Children.Add(o) |> ignore
+                    // map marker
+                    let m = new System.Windows.Shapes.Ellipse(Width=20.0,Height=20.0,StrokeThickness=3.0)
+                    m.Stroke <- Brushes.Orange
+                                // right grid corner   coordinate  half circle  'pixel' width
+                    Canvas.SetTop(m, -712.0 + 32.0 + 5.4*float iy   - 10.0         + 2.0)
+                    Canvas.SetLeft(m, 712.0 + 32.0 + 5.4*float ix   - 10.0         + 2.0)
+                    c.Children.Add(m) |> ignore
+                | "HARP" ->
+                    // background grid
+                    let g = new System.Windows.Shapes.Rectangle(Width=24.0,Height=24.0,StrokeThickness=2.0)
+                    g.Fill <- Brushes.LightGray 
+                    Canvas.SetTop(g, 10.0)
+                    Canvas.SetLeft(g, 712.0)
+                    c.Children.Add(g) |> ignore
+                    // key icon
+                    let o = new System.Windows.Shapes.Line(X1=20.0,Y1=20.0,X2=0.0,Y2=0.0,StrokeThickness=3.0)
+                    o.Stroke <- Brushes.SlateGray 
+                    Canvas.SetTop(o, 14.0)
+                    Canvas.SetLeft(o, 716.0)
+                    c.Children.Add(o) |> ignore
+                    // map marker
+                    let m = new System.Windows.Shapes.Line(X1=20.0,Y1=20.0,X2=0.0,Y2=0.0,StrokeThickness=3.0)
+                    m.Stroke <- Brushes.SlateGray 
+                                // right grid corner   coordinate  half line  'pixel' width
+                    Canvas.SetTop(m, -712.0 + 32.0 + 5.4*float iy   - 10.0         + 2.0)
+                    Canvas.SetLeft(m, 712.0 + 32.0 + 5.4*float ix   - 10.0         + 2.0)
+                    c.Children.Add(m) |> ignore
+                | "TOKEN" ->
+                    // background grid
+                    let g = new System.Windows.Shapes.Rectangle(Width=24.0,Height=24.0,StrokeThickness=2.0)
+                    g.Fill <- Brushes.LightGray 
+                    Canvas.SetTop(g, 10.0)
+                    Canvas.SetLeft(g, 1068.0)
+                    c.Children.Add(g) |> ignore
+                    // key icon
+                    let o = new System.Windows.Shapes.Ellipse(Width=16.0,Height=16.0,StrokeThickness=5.0)
+                    o.Stroke <- Brushes.Yellow
+                    Canvas.SetTop(o, 14.0)
+                    Canvas.SetLeft(o, 1072.0)
+                    c.Children.Add(o) |> ignore
+                    // map marker
+                    let m = new System.Windows.Shapes.Ellipse(Width=16.0,Height=16.0,StrokeThickness=5.0)
+                    m.Stroke <- Brushes.Yellow
+                                // right grid corner   coordinate  half circle  'pixel' width
+                    Canvas.SetTop(m, -712.0 + 32.0 + 5.4*float iy   - 8.0         + 2.0)
+                    Canvas.SetLeft(m, 712.0 + 32.0 + 5.4*float ix   - 8.0         + 2.0)
+                    c.Children.Add(m) |> ignore
+                | "RING" -> ()
+                | "FLUTE" -> ()
+                | "NECKLACE" -> ()
+                | "SWORD" ->
+                    // background grid
+                    let g = new System.Windows.Shapes.Rectangle(Width=24.0,Height=24.0,StrokeThickness=2.0)
+                    g.Fill <- Brushes.LightGray 
+                    Canvas.SetTop(g, 42.0)
+                    Canvas.SetLeft(g, 0.0)
+                    c.Children.Add(g) |> ignore
+                    // key icon
+                    let o = new System.Windows.Shapes.Line(X1=0.0,Y1=20.0,X2=20.0,Y2=0.0,StrokeThickness=3.0)
+                    o.Stroke <- Brushes.Blue 
+                    Canvas.SetTop(o, 44.0)
+                    Canvas.SetLeft(o, 2.0)
+                    c.Children.Add(o) |> ignore
+                    // map marker
+                    let m = new System.Windows.Shapes.Line(X1=0.0,Y1=20.0,X2=20.0,Y2=0.0,StrokeThickness=3.0)
+                    m.Stroke <- Brushes.Blue 
+                                // right grid corner   coordinate  half line   'pixel' width
+                    Canvas.SetTop(m, -712.0 + 32.0 + 5.4*float iy   - 10.0         + 2.0)
+                    Canvas.SetLeft(m, 712.0 + 32.0 + 5.4*float ix   - 10.0         + 2.0)
+                    c.Children.Add(m) |> ignore
+                | "ARMOR" -> 
+                    // background grid
+                    let g = new System.Windows.Shapes.Rectangle(Width=24.0,Height=24.0,StrokeThickness=2.0)
+                    g.Fill <- Brushes.LightGray 
+                    Canvas.SetTop(g, 10.0)
+                    Canvas.SetLeft(g, 0.0)
+                    c.Children.Add(g) |> ignore
+                    // key icon
+                    let o = new System.Windows.Shapes.Ellipse(Width=24.0,Height=24.0,StrokeThickness=3.0)
+                    o.Stroke <- Brushes.Blue 
+                    Canvas.SetTop(o, 10.0)
+                    Canvas.SetLeft(o, 0.0)
+                    c.Children.Add(o) |> ignore
+                    // map marker
+                    let m = new System.Windows.Shapes.Ellipse(Width=24.0,Height=24.0,StrokeThickness=3.0)
+                    m.Stroke <- Brushes.Blue 
+                                // right grid corner   coordinate  half circle  'pixel' width
+                    Canvas.SetTop(m, -712.0 + 32.0 + 5.4*float iy   - 12.0         + 2.0)
+                    Canvas.SetLeft(m, 712.0 + 32.0 + 5.4*float ix   - 12.0         + 2.0)
+                    c.Children.Add(m) |> ignore
+                | _ -> failwith "bad summary item"
 
             // zone popups
             let popup = new System.Windows.Controls.Primitives.Popup()
@@ -1491,7 +1622,11 @@ average stats per level
             w.Title <- System.IO.Path.GetFileNameWithoutExtension(fd.FileName)
             sp.Children.Add(g) |> ignore
             sp.Children.Add(popup) |> ignore
+            sp.Children.Add(c) |> ignore
+            StackPanel.SetZIndex(c, 2)
+            StackPanel.SetZIndex(g, 1)
             w.Content <- sp
+            w.Background <- Brushes.Black 
             (new Application()).Run(w)
         else
             printfn "bad file selection"
