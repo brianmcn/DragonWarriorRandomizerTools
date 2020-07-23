@@ -839,6 +839,7 @@ let decode_rom(file) =
             let y = EDGE+j*15
             bmp1.SetPixel(x, y, darken(bmp1.GetPixel(x,y)))
             bmp2.SetPixel(x, y, darken(bmp2.GetPixel(x,y)))
+(*
     // redden charlock-enemy zones, bluen-grid metal-slime zones 
     let redden(c:System.Drawing.Color) = 
         let F(b:byte) = int b * 29 / 32
@@ -867,6 +868,13 @@ let decode_rom(file) =
                             if (x+y)%2=0 then
                                 for r = 1 to zone_has_y.[ int ow_zones.[i,j] ] do
                                     bmp2.SetPixel(x, y, bluen(bmp2.GetPixel(x,y)))
+*)
+    let zone_charlock_count = Array2D.zeroCreate 8 8
+    let zone_metal_count = Array2D.zeroCreate 8 8
+    for j = 0 to 7 do
+        for i = 0 to 7 do
+            zone_charlock_count.[i,j] <- zone_has_charlock_enemy.[ int ow_zones.[i,j] ]
+            zone_metal_count.[i,j] <- zone_has_metal_slime.[ int ow_zones.[i,j] ]
 
     let monster_data = bytes.[0x5E5B..0x60DB]
     //Strength, Agility, HP, spells, resistance, dodge, xp, gold, 8 bytes of graphics
@@ -973,7 +981,7 @@ let decode_rom(file) =
     System.IO.File.WriteAllBytes(new_file, new_bytes)
 *)
 
-    bmp1, bmp2, reachable_continents, mapCoords, cont_1_size, cont_2_size, compute_charlock_distance_to_inn(), ow_zones, zone_enemies, uniqueItemLocations 
+    bmp1, bmp2, reachable_continents, mapCoords, cont_1_size, cont_2_size, compute_charlock_distance_to_inn(), ow_zones, zone_enemies, uniqueItemLocations, zone_charlock_count, zone_metal_count
 
 
 

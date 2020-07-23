@@ -1335,7 +1335,7 @@ let xmain argv =
                 str_hp_wins <- str_hp_wins+1
             if strhp > strag then
                 str_ag_wins <- str_ag_wins+1
-            let _bmp1,_bmp2,reachable_continents,mapCoords,cont_1_size,cont_2_size,ch_dist_inn,_owz,_ze,_uil = ROM.decode_rom(file)
+            let _bmp1,_bmp2,reachable_continents,mapCoords,cont_1_size,cont_2_size,ch_dist_inn,_owz,_ze,_uil,_zcl,_zmc = ROM.decode_rom(file)
             count <- count + 1
             cont1 <- cont1 + cont_1_size
             charlock_inn_dist <- charlock_inn_dist + ch_dist_inn
@@ -1442,7 +1442,7 @@ average stats per level
         fd.CheckFileExists <- true
         fd.CheckPathExists <- true
         if fd.ShowDialog() = System.Windows.Forms.DialogResult.OK then
-            let bmp1,bmp2,_reachable_continents,_mapCoords,_cont_1_size,_cont_2_size,_ch_inn_dist,ow_zones,zone_enemies,uniqueItemLocations = ROM.decode_rom(fd.FileName)
+            let bmp1,bmp2,_reachable_continents,_mapCoords,_cont_1_size,_cont_2_size,_ch_inn_dist,ow_zones,zone_enemies,uniqueItemLocations,zone_charlock_count,zone_metal_count = ROM.decode_rom(fd.FileName)
             let w = new Window()
 
             let c = new Canvas()
@@ -1462,7 +1462,42 @@ average stats per level
             gridAdd(g, image1, 0, 0)
             gridAdd(g, image2, 1, 0)
 
-            // item text (356 is 1/4 way)
+            // zone highlights
+            for i = 0 to 7 do
+                for j = 0 to 7 do
+                    let n = zone_charlock_count.[i,j]
+                    if n > 0 then
+                        let g = new System.Windows.Shapes.Rectangle(Width=77.0,Height=77.0,StrokeThickness=float n)
+                        g.Stroke <- Brushes.Red 
+                        Canvas.SetTop(g, -712.0 + 32.0 + 81.0*float j + 2.0)
+                        Canvas.SetLeft(g, 712.0 + 32.0 + 81.0*float i + 2.0)
+                        c.Children.Add(g) |> ignore
+                    let n = zone_metal_count.[i,j]
+                    if n > 0 then
+                        let g = new System.Windows.Shapes.Rectangle(Width=67.0,Height=67.0,StrokeThickness=float n)
+                        g.Stroke <- Brushes.Blue
+                        Canvas.SetTop(g, -712.0 + 32.0 + 81.0*float j + 7.0)
+                        Canvas.SetLeft(g, 712.0 + 32.0 + 81.0*float i + 7.0)
+                        c.Children.Add(g) |> ignore
+            // zone key
+            let tb = new TextBlock(Text=sprintf " Charlock enemy ",Foreground=Brushes.White,Background=Brushes.Black)
+            c.Children.Add(tb) |> ignore
+            Canvas.SetTop(tb, 16.0)
+            Canvas.SetLeft(tb, 1300.0)
+            let r = new System.Windows.Shapes.Rectangle(Width=100.0,Height=22.0,StrokeThickness=1.0,Stroke=Brushes.Red)
+            c.Children.Add(r) |> ignore
+            Canvas.SetTop(r, 13.0)
+            Canvas.SetLeft(r, 1295.0)
+            let tb = new TextBlock(Text=sprintf " Metal slime ",Foreground=Brushes.White,Background=Brushes.Black)
+            c.Children.Add(tb) |> ignore
+            Canvas.SetTop(tb, 48.0)
+            Canvas.SetLeft(tb, 1300.0)
+            let r = new System.Windows.Shapes.Rectangle(Width=76.0,Height=22.0,StrokeThickness=1.0,Stroke=Brushes.Blue)
+            c.Children.Add(r) |> ignore
+            Canvas.SetTop(r, 45.0)
+            Canvas.SetLeft(r, 1295.0)
+
+            // item text & icons
             let mutable px = 0
             let mutable py = 16
             let sorted = uniqueItemLocations.ToArray() |> Array.sortBy (fun (item,_loc) ->
@@ -1478,7 +1513,7 @@ average stats per level
                 | _ -> failwith "bad summary item"
                 )
             for item, (desc, ix, iy) in sorted do
-                let tb = new TextBlock(Text=sprintf "%s:  %s" ROM.CHESTS.[item] desc,Foreground=Brushes.White,Background=Brushes.Black)
+                let tb = new TextBlock(Text=sprintf " %s:  %s " ROM.CHESTS.[item] desc,Foreground=Brushes.White,Background=Brushes.Black)
                 c.Children.Add(tb) |> ignore
                 Canvas.SetTop(tb, float py)
                 Canvas.SetLeft(tb, float (px + 32))
@@ -1488,12 +1523,6 @@ average stats per level
                     py <- py + 32
                 match ROM.CHESTS.[item] with
                 | "STONES" ->
-                    // background grid
-                    let g = new System.Windows.Shapes.Rectangle(Width=24.0,Height=24.0,StrokeThickness=2.0)
-                    g.Fill <- Brushes.LightGray 
-                    Canvas.SetTop(g, 10.0)
-                    Canvas.SetLeft(g, 356.0)
-                    c.Children.Add(g) |> ignore
                     // key icon
                     let o = new System.Windows.Shapes.Ellipse(Width=20.0,Height=20.0,StrokeThickness=3.0)
                     o.Stroke <- Brushes.Orange 
@@ -1508,12 +1537,6 @@ average stats per level
                     Canvas.SetLeft(m, 712.0 + 32.0 + 5.4*float ix   - 10.0         + 2.0)
                     c.Children.Add(m) |> ignore
                 | "HARP" ->
-                    // background grid
-                    let g = new System.Windows.Shapes.Rectangle(Width=24.0,Height=24.0,StrokeThickness=2.0)
-                    g.Fill <- Brushes.LightGray 
-                    Canvas.SetTop(g, 10.0)
-                    Canvas.SetLeft(g, 712.0)
-                    c.Children.Add(g) |> ignore
                     // key icon
                     let o = new System.Windows.Shapes.Line(X1=20.0,Y1=20.0,X2=0.0,Y2=0.0,StrokeThickness=3.0)
                     o.Stroke <- Brushes.SlateGray 
@@ -1528,12 +1551,6 @@ average stats per level
                     Canvas.SetLeft(m, 712.0 + 32.0 + 5.4*float ix   - 10.0         + 2.0)
                     c.Children.Add(m) |> ignore
                 | "TOKEN" ->
-                    // background grid
-                    let g = new System.Windows.Shapes.Rectangle(Width=24.0,Height=24.0,StrokeThickness=2.0)
-                    g.Fill <- Brushes.LightGray 
-                    Canvas.SetTop(g, 10.0)
-                    Canvas.SetLeft(g, 1068.0)
-                    c.Children.Add(g) |> ignore
                     // key icon
                     let o = new System.Windows.Shapes.Ellipse(Width=16.0,Height=16.0,StrokeThickness=5.0)
                     o.Stroke <- Brushes.Yellow
@@ -1551,12 +1568,6 @@ average stats per level
                 | "FLUTE" -> ()
                 | "NECKLACE" -> ()
                 | "SWORD" ->
-                    // background grid
-                    let g = new System.Windows.Shapes.Rectangle(Width=24.0,Height=24.0,StrokeThickness=2.0)
-                    g.Fill <- Brushes.LightGray 
-                    Canvas.SetTop(g, 42.0)
-                    Canvas.SetLeft(g, 0.0)
-                    c.Children.Add(g) |> ignore
                     // key icon
                     let o = new System.Windows.Shapes.Line(X1=0.0,Y1=20.0,X2=20.0,Y2=0.0,StrokeThickness=3.0)
                     o.Stroke <- Brushes.Blue 
@@ -1571,12 +1582,6 @@ average stats per level
                     Canvas.SetLeft(m, 712.0 + 32.0 + 5.4*float ix   - 10.0         + 2.0)
                     c.Children.Add(m) |> ignore
                 | "ARMOR" -> 
-                    // background grid
-                    let g = new System.Windows.Shapes.Rectangle(Width=24.0,Height=24.0,StrokeThickness=2.0)
-                    g.Fill <- Brushes.LightGray 
-                    Canvas.SetTop(g, 10.0)
-                    Canvas.SetLeft(g, 0.0)
-                    c.Children.Add(g) |> ignore
                     // key icon
                     let o = new System.Windows.Shapes.Ellipse(Width=24.0,Height=24.0,StrokeThickness=3.0)
                     o.Stroke <- Brushes.Blue 
@@ -1626,7 +1631,7 @@ average stats per level
             StackPanel.SetZIndex(c, 2)
             StackPanel.SetZIndex(g, 1)
             w.Content <- sp
-            w.Background <- Brushes.Black 
+            w.Background <- Brushes.LightGray  
             (new Application()).Run(w)
         else
             printfn "bad file selection"
