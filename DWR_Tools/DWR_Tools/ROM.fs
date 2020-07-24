@@ -405,8 +405,9 @@ let decode_rom(file) =
         for idx in [17; 1; 14; 13; 15; 8; 10] do // 7 special items that can be buried
             let patched_data = content.[0x0e11d..0x0e11d+109]
             if int patched_data.[address_offset] = idx then
-                printfn "  %12s is located at %s %s" CHESTS.[idx] location (if address_offset=1 then sprintf "%d %s %d %s" (abs buried_dy) (if buried_dy<=0 then "N" else "S") (abs buried_dx) (if buried_dx<=0 then "W" else "E") else "")
-                uniqueItems.Add(idx, (if address_offset=1 then ("OVERWORLD",sprintf "%d,%d" buried_dx buried_dy) 
+                let prettyCoords() = sprintf "%d %s %d %s" (abs buried_dy) (if buried_dy<=0 then "N" else "S") (abs buried_dx) (if buried_dx<=0 then "W" else "E")
+                printfn "  %12s is located at %s %s" CHESTS.[idx] location (if address_offset=1 then prettyCoords() else "")
+                uniqueItems.Add(idx, (if address_offset=1 then (sprintf "OVERWORLD %s" (prettyCoords()),sprintf "%d,%d" buried_dx buried_dy) 
                                                           elif address_offset=32 then ("KOL",Constants.MAP_LOCATIONS.KOL) 
                                                           else ("HAUKSNESS",Constants.MAP_LOCATIONS.HAUKSNESS)))
 
