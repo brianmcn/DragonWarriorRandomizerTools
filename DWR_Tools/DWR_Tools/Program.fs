@@ -1285,36 +1285,6 @@ let xmain argv =
         for k,v in a do
             printfn "%2d: %5d %s" k v (String.replicate (v/10000) "X")
         0
-    elif false then
-        let strs = ResizeArray()
-        let agZs = ResizeArray()
-        let hps = ResizeArray()
-        let mpZs = ResizeArray()
-        let mutable count = 0
-        for file in System.IO.Directory.EnumerateFiles("""C:\Users\brianmcn\Desktop\fceux-2.2.3-win32\""", "DWRando*.nes") do
-            count <- count + 1
-            strs.Add(Array.zeroCreate 30)
-            agZs.Add(Array.zeroCreate 30)
-            hps.Add(Array.zeroCreate 30)
-            mpZs.Add(Array.zeroCreate 30)
-            let bytes = System.IO.File.ReadAllBytes(file)
-            for i = 0 to 29 do
-                let str, ag, hp, mp = bytes.[0x60DD+6*i+0], bytes.[0x60DD+6*i+1], bytes.[0x60DD+6*i+2], bytes.[0x60DD+6*i+3] 
-                let agZ = ag - ((ag+9uy)/10uy) + 3uy
-                let mpZ = mp - ((mp+9uy)/10uy) + 3uy
-                strs.[strs.Count-1].[i] <- str
-                agZs.[agZs.Count-1].[i] <- agZ
-                hps.[hps.Count-1].[i] <- hp
-                mpZs.[mpZs.Count-1].[i] <- mpZ
-        printfn "Summary of %d seeds" count
-        printfn "Lev: STR agZ  HP mpZ"
-        for i = 0 to 29 do
-            let stravg = (strs |> Seq.map (fun a -> int a.[i]) |> Seq.sum) / count
-            let agZavg = (agZs |> Seq.map (fun a -> int a.[i]) |> Seq.sum) / count
-            let hpavg = (hps |> Seq.map (fun a -> int a.[i]) |> Seq.sum) / count
-            let mpZavg = (mpZs |> Seq.map (fun a -> int a.[i]) |> Seq.sum) / count
-            printfn "L%2d: %3d %3d %3d %3d" (i+1) stravg agZavg hpavg mpZavg
-        0
     // Read all seeds in directory and summary-process
     elif false then
         let mutable count = 0
@@ -1327,8 +1297,8 @@ let xmain argv =
         let mutable charlock_inn_dist = 0
         let mutable str_hp_wins,str_ag_wins = 0,0
         let debug_files = ResizeArray()
-        //for file in System.IO.Directory.EnumerateFiles("""C:\Users\Admin1\Desktop\dwrandomizer-2.0.6-windows\""", "*.CDFGMPRWZ.nes") do
-        for file in System.IO.Directory.EnumerateFiles("""C:\Users\Admin1\Desktop\dwrandomizer-2.1.2-windows\""", "*.CDFGMPRWZ.nes") do
+        let walkable_size = ResizeArray()
+        for file in System.IO.Directory.EnumerateFiles("""C:\Users\Admin1\Desktop\fceux-2.2.3-win32\""", "DWRando*.CDFGMPRSTWZlr.nes") do
             let bytes = System.IO.File.ReadAllBytes(file)
             let strhp,strag = ROM.show_go_mode_stats(bytes,false,file)
             if strhp < strag then
@@ -1336,6 +1306,12 @@ let xmain argv =
             if strhp > strag then
                 str_ag_wins <- str_ag_wins+1
             let _bmp1,_bmp2,reachable_continents,mapCoords,cont_1_size,cont_2_size,ch_dist_inn,_owz,_ze,_uil,_zcl,_zmc = ROM.decode_rom(file)
+            let mutable walkable_tiles = 0
+            for x = 0 to 119 do
+                for y = 0 to 119 do
+                    if reachable_continents.[x,y] <> 0 then
+                        walkable_tiles <- walkable_tiles + 1
+            walkable_size.Add(walkable_tiles)
             count <- count + 1
             cont1 <- cont1 + cont_1_size
             charlock_inn_dist <- charlock_inn_dist + ch_dist_inn
@@ -1385,9 +1361,17 @@ let xmain argv =
         for file in debug_files do
             printfn "single cont: %s" file
         printfn ""
+        printfn "Histogram of walkable tile size:"
+        let a = walkable_size |> Array.ofSeq |> Array.sort 
+        for i = 45 to 85 do
+            let n = a |> Array.filter (fun x -> x >= i*100 && x <= i*100+99) |> Array.length 
+            printfn "%2d00: %s" i (String.replicate n "X")
+        printfn ""
         printfn "average stats per level"
+        printfn "Lev: STR agZ  HP mpZ"
         for i = 0 to 29 do
-            printfn "%3d  %3d  %3d  %3d" (ROM.agg_stats.[i,0]/ROM.agg_count) (ROM.agg_stats.[i,1]/ROM.agg_count) (ROM.agg_stats.[i,2]/ROM.agg_count) (ROM.agg_stats.[i,3]/ROM.agg_count)
+            printfn "L%2d: %3d %3d %3d %3d" (i+1) (ROM.agg_stats.[i,0]/ROM.agg_count) (ROM.agg_stats.[i,1]/ROM.agg_count) (ROM.agg_stats.[i,2]/ROM.agg_count) (ROM.agg_stats.[i,3]/ROM.agg_count)
+
 (*
 STR   AG   HP   MP
 average stats per level
@@ -1442,7 +1426,14 @@ average stats per level
         fd.CheckFileExists <- true
         fd.CheckPathExists <- true
         if fd.ShowDialog() = System.Windows.Forms.DialogResult.OK then
-            let bmp1,bmp2,_reachable_continents,_mapCoords,_cont_1_size,_cont_2_size,_ch_inn_dist,ow_zones,zone_enemies,uniqueItemLocations,zone_charlock_count,zone_metal_count = ROM.decode_rom(fd.FileName)
+            let bmp1,bmp2,reachable_continents,_mapCoords,_cont_1_size,_cont_2_size,_ch_inn_dist,ow_zones,zone_enemies,uniqueItemLocations,zone_charlock_count,zone_metal_count = ROM.decode_rom(fd.FileName)
+
+            let mutable walkable_tiles = 0
+            for x = 0 to 119 do
+                for y = 0 to 119 do
+                    if reachable_continents.[x,y] <> 0 then
+                        walkable_tiles <- walkable_tiles + 1
+
             let w = new Window()
 
             let c = new Canvas()
@@ -1597,6 +1588,12 @@ average stats per level
                     c.Children.Add(m) |> ignore
                 | _ -> failwith "bad summary item"
 
+            // walkable tiles
+            let tb = new TextBlock(Text=sprintf " %d walkable tiles " walkable_tiles,Foreground=Brushes.White,Background=Brushes.Black)
+            c.Children.Add(tb) |> ignore
+            Canvas.SetTop(tb, 80.0)
+            Canvas.SetLeft(tb, 32.0)
+
             // zone popups
             let popup = new System.Windows.Controls.Primitives.Popup()
             let tb = new TextBlock(Text="testing",Foreground=Brushes.White,Background=Brushes.Black)
@@ -1623,8 +1620,9 @@ average stats per level
                 )
 
             //w.Width <- 960.0
-            //w.Height <- 960.0
+            w.Height <- 880.0
             w.Title <- System.IO.Path.GetFileNameWithoutExtension(fd.FileName)
+            w.Top <- 20.0
             sp.Children.Add(g) |> ignore
             sp.Children.Add(popup) |> ignore
             sp.Children.Add(c) |> ignore
