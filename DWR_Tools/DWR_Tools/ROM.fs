@@ -300,7 +300,8 @@ let show_go_mode_stats(bytes:byte[], print, file) =
     let header1 = "       silver shield   large shield" 
     let header2 = "        full down1heal full down1   LV    STR   AGI    HP    MP  rawAG rawMP" 
     let mutable p_str, p_ag, p_hp, p_mp, p_hu, hu = 0, 0, 0, 0, 0, 0
-    let mutable go_mode_str_hp,go_mode_str_ag = 31, 31
+    let mutable go_mode_str_hp,go_mode_str_ag,lhe,lHE,lhu,lHU = 31, 31, 31, 31, 31, 31
+    let mutable return_L1 = false
     if print then
         printfn "%s" header1
         printfn "%s" header2
@@ -308,16 +309,16 @@ let show_go_mode_stats(bytes:byte[], print, file) =
         let fives = (if i%5=4 then "-- " else "   ")
         let b1 = bytes.[0x60DD+6*i+4]
         let b2 = bytes.[0x60DD+6*i+5]
-        let s = if b2 &&&  1uy > 0uy then "HE " else fives 
-              + if b2 &&&  2uy > 0uy then "HU " else fives
+        let s = if b2 &&&  1uy > 0uy then ((if lhe=31 then lhe <- i+1); "HE ") else fives 
+              + if b2 &&&  2uy > 0uy then ((if lhu=31 then lhu <- i+1); "HU ") else fives
               + if b2 &&&  4uy > 0uy then "SL " else fives
               + if b2 &&&  8uy > 0uy then "RA " else fives
               + if b2 &&& 16uy > 0uy then "ST " else fives
               + if b2 &&& 32uy > 0uy then "OU " else fives
-              + if b2 &&& 64uy > 0uy then "RT " else fives
+              + if b2 &&& 64uy > 0uy then ((if i=0 then return_L1 <- true); "RT ") else fives
               + if b2 &&&128uy > 0uy then "RP " else fives
-              + if b1 &&&  1uy > 0uy then "HE " else fives
-              + if b1 &&&  2uy > 0uy then (hu <- 1; "HU ") else fives
+              + if b1 &&&  1uy > 0uy then ((if lHE=31 then lHE <- i+1); "HE ") else fives
+              + if b1 &&&  2uy > 0uy then ((if lHU=31 then lHU <- i+1); hu <- 1; "HU ") else fives
 //        if i=0 && (b2 &&&  8uy > 0uy) then
 //            failwithf "radiant at start: %s" file
         let have_healmore = b1 &&&  1uy > 0uy 
@@ -363,7 +364,7 @@ let show_go_mode_stats(bytes:byte[], print, file) =
         agg_stats.[i,2] <- int hp  + agg_stats.[i,2]
         agg_stats.[i,3] <- int mpZ + agg_stats.[i,3]
     agg_count <- agg_count+1
-    go_mode_str_hp, go_mode_str_ag 
+    go_mode_str_hp, go_mode_str_ag, lhe, lhu, lHE, lHU, return_L1
 
 let decode_rom(file) =
     let bytes = System.IO.File.ReadAllBytes(file)
@@ -418,6 +419,10 @@ let decode_rom(file) =
     let all = new System.Text.StringBuilder()
     let sra = ResizeArray()
     let ksb = new System.Text.StringBuilder()
+    let mutable num_keys_throne_room = 0
+    let mutable wings_in_throne_room = false
+    let throne_room_items = ResizeArray()
+    let tantagel_treasury_items = ResizeArray()
     for i = 0 to 30 do
         let map, item = chest_bytes.[i*4], chest_bytes.[i*4+3] 
         all.AppendLine(sprintf "  %20s    %-20s" (fst Constants.MAPS.[int map]) CHESTS.[int item]) |> ignore
@@ -425,8 +430,18 @@ let decode_rom(file) =
         | 1uy | 8uy | 9uy | 10uy | 13uy | 14uy | 15uy | 17uy -> 
             sra.Add(CHESTS.[int item], (fst Constants.MAPS.[int map]))  // 7 key items plus RING
             uniqueItems.Add(int item, ((fst Constants.MAPS.[int map]),(snd Constants.MAPS.[int map])))
-        | 3uy -> if map <> 5uy then ksb.Append(Constants.MAPS.[int map]).Append("  ") |> ignore // KEY
+        | 3uy -> 
+            if map <> 5uy then 
+                ksb.Append(Constants.MAPS.[int map]).Append("  ") |> ignore // KEY
+            else
+                num_keys_throne_room <- num_keys_throne_room + 1
+        | 6uy -> if map = 5uy then wings_in_throne_room <- true
         | _ -> ()
+        if map = 5uy then
+            if item<>3uy || num_keys_throne_room > 1 then
+                throne_room_items.Add(CHESTS.[int item])
+        if map = 4uy then
+            tantagel_treasury_items.Add(CHESTS.[int item])
     printfn "SUMMARY"
     let sorted = sra.ToArray() |> Array.sortBy (fun (item,_loc) ->
         match item with
@@ -500,7 +515,7 @@ let decode_rom(file) =
     let zone_has_y = Array.zeroCreate 20  // for ad-hoc mapping
     let zone_enemies = Array.create 20 null
     for zone = 0 to 19 do
-        let data = content.[0xf54f+5*zone..0xf54f+5*zone+4]
+        let data = content.[0xf54f+5*zone..0xf54f+5*zone+4] |> Array.sort
         let extra = 
             match zone with
             | 13 -> "HAUKS"
@@ -924,9 +939,20 @@ let decode_rom(file) =
         | "" -> ()
         | s -> printfn "                                              %s" s
 
-    show_go_mode_stats(bytes, true, file) |> ignore
+    let str_hp_go_level,_,lhe,lhu,lHE,lHU,rL1 = show_go_mode_stats(bytes, true, file)
+    let first_heal_level = min lhe lHE
+    let start_with_keys = rL1 || (num_keys_throne_room>1) || wings_in_throne_room
+    printfn ""
+    if start_with_keys then
+        printfn "key start: %s%s%s" (if rL1 then "RETURN   " else "") (if num_keys_throne_room>1 then "extra key   " else "") (if wings_in_throne_room then "WINGS" else "")
+    printfn "starting items available: %A %A" (throne_room_items.ToArray()) (if start_with_keys then tantagel_treasury_items.ToArray() else [||])
+    printfn "healing at level  %2d" first_heal_level
+    printfn "hurtmore at level %2d" lHU
+    printfn "first GO at level %2d" str_hp_go_level 
 
 // TODO how fast is start (keys, sword, zones, swamp, hurtmore ...)
+// starting str/ag/hp, steps to nearest non-hauks town, is it keylocked?, swamp start?
+// opaque versions of long/short, easy/hard start, etc
 
 (*
     // make minor change to map warps

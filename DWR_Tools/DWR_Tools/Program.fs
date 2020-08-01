@@ -1300,7 +1300,7 @@ let xmain argv =
         let walkable_size = ResizeArray()
         for file in System.IO.Directory.EnumerateFiles("""C:\Users\Admin1\Desktop\fceux-2.2.3-win32\""", "DWRando*.CDFGMPRSTWZlr.nes") do
             let bytes = System.IO.File.ReadAllBytes(file)
-            let strhp,strag = ROM.show_go_mode_stats(bytes,false,file)
+            let strhp,strag,_lhe,_lhu,_lHE,_lHU,_rl1 = ROM.show_go_mode_stats(bytes,false,file)
             if strhp < strag then
                 str_hp_wins <- str_hp_wins+1
             if strhp > strag then
