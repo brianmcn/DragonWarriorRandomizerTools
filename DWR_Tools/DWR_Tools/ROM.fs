@@ -276,21 +276,14 @@ let simulate_dl2(ag, start_hp, start_mp, max_hp, dp, ap) =
     let dn = simulate_dl2_core(ag, start_hp-max_hp/4, start_mp, max_hp*3/4, dp, ap+10)
     max no_dn dn
 
-let compute_go_mode(str, ag, hp, mp, s:string, full_simulation) =
+let compute_go_mode(str, ag, hp, mp, s:string) =
     let str, ag, hp, mp = int str, int ag, int hp, int mp
     let max_dl = ((int str + 42) - 100) / 2
     let avg_dl = max_dl * 3 / 4
-    let go_mode = int hp > 96 && ((int mp/8)+2)*avg_dl > 155  // quick approx
-    let mini_go_mode = int hp > 96 && ((int mp/8)+2)*avg_dl > 150  // quick approx
-    let go_mode = go_mode || int hp >= 129 && ((int mp/8)+2)*(avg_dl+3) > 155  // quick approx with DN
-    let mini_go_mode = mini_go_mode || int hp >= 129 && ((int mp/8)+2)*(avg_dl+3) > 150  // quick approx with DN
-    let go_mode = go_mode && (s.[24] = 'H') // need healmore
-    let mini_go_mode = mini_go_mode && (s.[24] = 'H') // need healmore
-    go_mode, mini_go_mode, 
-        (if full_simulation then simulate_dl2(ag,hp-20,mp,hp,(ag/2)+48,str+42) else 0), // assumes survive dl1 with max-20, silver shield, sword+FR
-        (if full_simulation then simulate_dl2(ag,hp-20,mp-8,hp,(ag/2)+48,str+42) else 0),  // assumes survive dl1 with max-20, silver shield, sword+FR, lost a healmore
-        (if full_simulation then simulate_dl2(ag,hp-20,mp,hp,(ag/2)+38,str+42) else 0), // assumes survive dl1 with max-20, large shield, sword+FR
-        (if full_simulation then simulate_dl2(ag,hp-20,mp-8,hp,(ag/2)+38,str+42) else 0)  // assumes survive dl1 with max-20, large shield, sword+FR, lost a healmore
+    (simulate_dl2(ag,hp-20,mp,hp,(ag/2)+48,str+42)), // assumes survive dl1 with max-20, silver shield, sword+FR
+        (simulate_dl2(ag,hp-20,mp-8,hp,(ag/2)+48,str+42)),  // assumes survive dl1 with max-20, silver shield, sword+FR, lost a healmore
+        (simulate_dl2(ag,hp-20,mp,hp,(ag/2)+38,str+42)), // assumes survive dl1 with max-20, large shield, sword+FR
+        (simulate_dl2(ag,hp-20,mp-8,hp,(ag/2)+38,str+42))  // assumes survive dl1 with max-20, large shield, sword+FR, lost a healmore
 
 let mutable agg_count = 0
 let agg_stats = Array2D.zeroCreate 30 4
@@ -300,7 +293,7 @@ let show_go_mode_stats(bytes:byte[], print, file) =
     let header1 = "       silver shield   large shield" 
     let header2 = "        full down1heal full down1   LV    STR   AGI    HP    MP  rawAG rawMP" 
     let mutable p_str, p_ag, p_hp, p_mp, p_hu, hu = 0, 0, 0, 0, 0, 0
-    let mutable go_mode_str_hp,go_mode_str_ag,lhe,lHE,lhu,lHU = 31, 31, 31, 31, 31, 31
+    let mutable go_mode,lhe,lHE,lhu,lHU = 31, 31, 31, 31, 31
     let mutable return_L1 = false
     if print then
         printfn "%s" header1
@@ -337,25 +330,19 @@ let show_go_mode_stats(bytes:byte[], print, file) =
         p_hp <- int hp
         p_mp <- int mpZ
         p_hu <- hu
-        let go_mode,mini_go_mode,wins,wins_less1_heal,wins_lg,wins_lg_less1_heal = 
+        let wins,wins_less1_heal,wins_lg,wins_lg_less1_heal = 
             if have_healmore then
-                compute_go_mode(str, agZ, hp, mpZ, s, print)
+                compute_go_mode(str, agZ, hp, mpZ, s)
             else
-                false, false, 0, 0, 0, 0
-        let strag_go_mode,strag_mini_go_mode,_,_,_,_ = 
-            if have_healmore then
-                compute_go_mode(str, ag, hpSTRAG, mpZ, s, false)
-            else
-                false, false, 0, 0, 0, 0
+                0, 0, 0, 0
         let x(b) = if b then "+" else " "
-        if go_mode && go_mode_str_hp=31 then
-            go_mode_str_hp <- i+1
-        if strag_go_mode && go_mode_str_ag=31 then
-            go_mode_str_ag <- i+1
         if print then
-            printfn "%s %s %5.1f%% %5.1f%% %5.1f%% %5.1f%% %3d %s%3d%s  %3d%s  %3d%s  %3d%s  %3d  %3d   %s" 
-                (if big_any then "**" else "  ") (if go_mode then "GO " elif mini_go_mode then "go " else "   ") (float wins / 10.0) (float wins_less1_heal / 10.0) (float wins_lg / 10.0) (float wins_lg_less1_heal / 10.0) 
+            printfn "%s %5.1f%% %5.1f%% %5.1f%% %5.1f%% %3d %s%3d%s  %3d%s  %3d%s  %3d%s  %3d  %3d   %s" 
+                (if big_any then "**" else "  ") (float wins / 10.0) (float wins_less1_heal / 10.0) (float wins_lg / 10.0) (float wins_lg_less1_heal / 10.0) 
                 (i+1) fives str (x big_str) agZ (x big_ag) hp (x big_hp) mpZ (x big_mp) ag mp s 
+        if (float wins_lg / 10.0) > 60. then  // if >60% with large, call it go-mode
+            if go_mode=31 then
+                go_mode <- i+1
         if i=14 && print then
             printfn "%s" header1
             printfn "%s" header2
@@ -364,7 +351,7 @@ let show_go_mode_stats(bytes:byte[], print, file) =
         agg_stats.[i,2] <- int hp  + agg_stats.[i,2]
         agg_stats.[i,3] <- int mpZ + agg_stats.[i,3]
     agg_count <- agg_count+1
-    go_mode_str_hp, go_mode_str_ag, lhe, lhu, lHE, lHU, return_L1
+    go_mode, lhe, lhu, lHE, lHU, return_L1
 
 let decode_rom(file) =
     let bytes = System.IO.File.ReadAllBytes(file)
@@ -945,7 +932,7 @@ let decode_rom(file) =
             if x = charlock_enemy then
                 charlock_info <- charlock_info + "          " + s
 
-    let str_hp_go_level,_,lhe,lhu,lHE,lHU,rL1 = show_go_mode_stats(bytes, true, file)
+    let str_hp_go_level,lhe,lhu,lHE,lHU,rL1 = show_go_mode_stats(bytes, true, file)
     let first_heal_level = min lhe lHE
     let start_with_keys = rL1 || (num_keys_throne_room>1) || wings_in_throne_room
     printfn ""
