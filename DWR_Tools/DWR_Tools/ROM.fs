@@ -389,13 +389,12 @@ let decode_rom(file) =
         with _ -> -999, -999
 
     // spike tile enemies
-    printfn "SPIKE TILES"
     let hauks_enemy    = int content.[0xcd64]
     let swamp_enemy    = int content.[0xcd81]
     let charlock_enemy = int content.[0xcd9e]
-    printfn "  hauks: %2d %s" hauks_enemy (EnemyData.ENEMY_NAME hauks_enemy)
-    printfn "  swamp: %2d %s" swamp_enemy (EnemyData.ENEMY_NAME swamp_enemy)
-    printfn "  charl: %2d %s" charlock_enemy (EnemyData.ENEMY_NAME charlock_enemy)
+    let mutable hauks_info = sprintf "  hauks: %2d %s" hauks_enemy (EnemyData.ENEMY_NAME hauks_enemy)
+    let mutable swamp_info = sprintf "  swamp: %2d %s" swamp_enemy (EnemyData.ENEMY_NAME swamp_enemy)
+    let mutable charlock_info = sprintf "  charl: %2d %s" charlock_enemy (EnemyData.ENEMY_NAME charlock_enemy)
 
     let uniqueItems = new System.Collections.Generic.Dictionary<_,_>()
     // buried items
@@ -937,7 +936,14 @@ let decode_rom(file) =
         printfn "%16s: str %3d agi %3d hp %3d spells %2x s_ss_resist %2x dodge_mag_phys %2x xp %3d gold %3d" (let n,_,_,_,_,_=EnemyData.ENEMY_DATA.[x] in n) golem.[0] golem.[1] golem.[2] golem.[3] golem.[4] golem.[5] golem.[6] golem.[7]
         match spell(golem.[3]) with
         | "" -> ()
-        | s -> printfn "                                              %s" s
+        | s -> 
+            printfn "                                              %s" s
+            if x = hauks_enemy then
+                hauks_info <- hauks_info + "          " + s
+            if x = swamp_enemy then
+                swamp_info <- swamp_info + "          " + s
+            if x = charlock_enemy then
+                charlock_info <- charlock_info + "          " + s
 
     let str_hp_go_level,_,lhe,lhu,lHE,lHU,rL1 = show_go_mode_stats(bytes, true, file)
     let first_heal_level = min lhe lHE
@@ -949,6 +955,10 @@ let decode_rom(file) =
     printfn "healing at level  %2d" first_heal_level
     printfn "hurtmore at level %2d" lHU
     printfn "first GO at level %2d" str_hp_go_level 
+    printfn "SPIKE TILES"
+    printfn "%s" hauks_info
+    printfn "%s" swamp_info
+    printfn "%s" charlock_info
 
 // TODO how fast is start (keys, sword, zones, swamp, hurtmore ...)
 // starting str/ag/hp, steps to nearest non-hauks town, is it keylocked?, swamp start?
