@@ -290,8 +290,8 @@ let agg_stats = Array2D.zeroCreate 30 4
 let show_go_mode_stats(bytes:byte[], print, file) =
     if print then
         printfn "for build 'Z' (STR+HP)..."
-    let header1 = "       silver shield   large shield" 
-    let header2 = "        full down1heal full down1   LV    STR   AGI    HP    MP  rawAG rawMP" 
+    let header1 = "   silver shield   large shield" 
+    let header2 = "    full down1heal full down1   LV    STR   AGI    HP    MP  rawAG rawMP" 
     let mutable p_str, p_ag, p_hp, p_mp, p_hu, hu = 0, 0, 0, 0, 0, 0
     let mutable go_mode,lhe,lHE,lhu,lHU = 31, 31, 31, 31, 31
     let mutable return_L1 = false
