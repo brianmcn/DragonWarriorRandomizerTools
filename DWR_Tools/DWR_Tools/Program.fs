@@ -1594,6 +1594,8 @@ average stats per level
             popup.IsOpen <- true
             popup.VerticalOffset <- 16.0
             popup.HorizontalOffset <- 16.0
+            w.LostFocus.Add(fun _ -> popup.IsOpen <- false)
+            w.Deactivated.Add(fun _ -> popup.IsOpen <- false)
             sp.MouseMove.Add(fun e ->
                 popup.IsOpen <- false
                 let p = e.GetPosition(sp)
