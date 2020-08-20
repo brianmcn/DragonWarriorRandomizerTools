@@ -1608,7 +1608,8 @@ average stats per level
                     let a = zone_enemies.[int ow_zones.[x,y]] |> Array.sort 
                     let enemies = new System.Text.StringBuilder()
                     for i = 0 to 4 do
-                        enemies.AppendLine(snd a.[i]) |> ignore
+                        let n,name,spells = a.[i]
+                        enemies.AppendLine(name + " " + spells) |> ignore
                     popup.IsOpen <- true
                     tb.Text <- enemies.ToString()
                 )

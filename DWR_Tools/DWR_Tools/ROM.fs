@@ -495,6 +495,43 @@ let decode_rom(file) =
     for i = 0 to 5 do
         printfn "%-26s %-26s %-26s" (si(s1,i)) (si(s2,i)) (si(s3,i))
     
+    let monster_data = bytes.[0x5E5B..0x60DB]
+    //Strength, Agility, HP, spells, resistance, dodge, xp, gold, 8 bytes of graphics
+    // XX-- ----    00 = sleep, 01 = stopspell, 10 = heal, 11 = healmore
+    // ---- XX--    00 = hurt, 01 = hurtmore, 10 = weak breath, 11 = dl2 breath
+    // --XX ----    0, 25, 50, 75%
+    // ---- --XX    0, 25, 50, 75%
+    let spell(b) =
+        let util_spell = (b &&& 0xc0uy) / 64uy
+        let util_pct   = (b &&& 0x30uy) / 16uy
+        let attack     = (b &&& 0x0cuy) / 4uy
+        let attack_pct = (b &&& 0x03uy)
+        let pct(x) = 
+            match x with
+            | 0uy -> 0
+            | 1uy -> 25
+            | 2uy -> 50
+            | 3uy -> 75
+        let util(x) = 
+            match x with
+            | 0uy -> "SLEEP"
+            | 1uy -> "STOPSPELL"
+            | 2uy -> "HEAL"
+            | 3uy -> "HEALMORE"
+        let atk(x) = 
+            match x with
+            | 0uy -> "HURT"
+            | 1uy -> "HURTMORE"
+            | 2uy -> "WEAK BREATH"
+            | 3uy -> "DL2 BREATH"
+        let sb = new System.Text.StringBuilder()
+        let u = pct(util_pct)
+        let a = pct(attack_pct)
+        match u, a with
+        | 0, 0 -> ""
+        | 0, _ -> sprintf "%d%% %s" a (atk attack)
+        | _, 0 -> sprintf "%d%% %s" u (util util_spell)
+        | _, _ -> sprintf "%d%% %s, %d%% %s" a (atk attack) u (util util_spell)
     let zone_has_charlock_enemy = Array.zeroCreate 20
     let zone_has_metal_slime = Array.zeroCreate 20
     let zone_has_x = Array.zeroCreate 20  // for ad-hoc mapping
@@ -511,11 +548,12 @@ let decode_rom(file) =
             | 19 -> "SWAMP"
             | _  -> "     "
         printf "zone %2d (%s): " zone extra
-        zone_enemies.[zone] <- Array.create 5 (0,"")
+        zone_enemies.[zone] <- Array.create 5 (0,"","")
         for i = 0 to 4 do
             let enemy=data.[i]
             let name,_,_,_,_,_ = EnemyData.ENEMY_DATA.[int enemy]
-            zone_enemies.[zone].[i] <- int enemy, name
+            let spells = spell(monster_data.[16*(int enemy)..16*(int enemy)+15].[3])
+            zone_enemies.[zone].[i] <- int enemy, name, spells
             printf "%3d %-16s " enemy name
             if enemy = 16uy then
                 zone_has_metal_slime.[zone] <- zone_has_metal_slime.[zone] + 1
@@ -877,45 +915,6 @@ let decode_rom(file) =
         for i = 0 to 7 do
             zone_charlock_count.[i,j] <- zone_has_charlock_enemy.[ int ow_zones.[i,j] ]
             zone_metal_count.[i,j] <- zone_has_metal_slime.[ int ow_zones.[i,j] ]
-
-    let monster_data = bytes.[0x5E5B..0x60DB]
-    //Strength, Agility, HP, spells, resistance, dodge, xp, gold, 8 bytes of graphics
-    // XX-- ----    00 = sleep, 01 = stopspell, 10 = heal, 11 = healmore
-    // ---- XX--    00 = hurt, 01 = hurtmore, 10 = weak breath, 11 = dl2 breath
-    // --XX ----    0, 25, 50, 75%
-    // ---- --XX    0, 25, 50, 75%
-
-    let spell(b) =
-        let util_spell = (b &&& 0xc0uy) / 64uy
-        let util_pct   = (b &&& 0x30uy) / 16uy
-        let attack     = (b &&& 0x0cuy) / 4uy
-        let attack_pct = (b &&& 0x03uy)
-        let pct(x) = 
-            match x with
-            | 0uy -> 0
-            | 1uy -> 25
-            | 2uy -> 50
-            | 3uy -> 75
-        let util(x) = 
-            match x with
-            | 0uy -> "SLEEP"
-            | 1uy -> "STOPSPELL"
-            | 2uy -> "HEAL"
-            | 3uy -> "HEALMORE"
-        let atk(x) = 
-            match x with
-            | 0uy -> "HURT"
-            | 1uy -> "HURTMORE"
-            | 2uy -> "WEAK BREATH"
-            | 3uy -> "DL2 BREATH"
-        let sb = new System.Text.StringBuilder()
-        let u = pct(util_pct)
-        let a = pct(attack_pct)
-        match u, a with
-        | 0, 0 -> ""
-        | 0, _ -> sprintf "%d%% %s" a (atk attack)
-        | _, 0 -> sprintf "%d%% %s" u (util util_spell)
-        | _, _ -> sprintf "%d%% %s, %d%% %s" a (atk attack) u (util util_spell)
 
     // sleep/stopspell resists, sleep is high nibble
     for x in [0..39] do
