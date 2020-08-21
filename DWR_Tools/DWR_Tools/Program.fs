@@ -1586,7 +1586,50 @@ average stats per level
             Canvas.SetTop(tb, 80.0)
             Canvas.SetLeft(tb, 32.0)
 
+            // dungeon zone names and mouse popup locations
+            let dxh = 32.0+128.0
+            let dtb = new TextBlock(Text="HAUKS",Foreground=Brushes.White,Background=Brushes.Black)
+            c.Children.Add(dtb) |> ignore
+            Canvas.SetTop(dtb, 80.0)
+            Canvas.SetLeft(dtb, dxh)
+            let dxs = dxh+128.0
+            let dtb = new TextBlock(Text="SWAMP",Foreground=Brushes.White,Background=Brushes.Black)
+            c.Children.Add(dtb) |> ignore
+            Canvas.SetTop(dtb, 80.0)
+            Canvas.SetLeft(dtb, dxs)
+            let dxm = dxs+128.0
+            let dtb = new TextBlock(Text="M2/G1",Foreground=Brushes.White,Background=Brushes.Black)
+            c.Children.Add(dtb) |> ignore
+            Canvas.SetTop(dtb, 80.0)
+            Canvas.SetLeft(dtb, dxm)
+            let dxg = dxm+128.0
+            let dtb = new TextBlock(Text="GTLOW",Foreground=Brushes.White,Background=Brushes.Black)
+            c.Children.Add(dtb) |> ignore
+            Canvas.SetTop(dtb, 80.0)
+            Canvas.SetLeft(dtb, dxg)
+            let dxc1 = dxg+128.0
+            let dtb = new TextBlock(Text="CHAR1",Foreground=Brushes.White,Background=Brushes.Black)
+            c.Children.Add(dtb) |> ignore
+            Canvas.SetTop(dtb, 80.0)
+            Canvas.SetLeft(dtb, dxc1)
+            let dxc2 = dxc1+128.0
+            let dtb = new TextBlock(Text="CHAR2",Foreground=Brushes.White,Background=Brushes.Black)
+            c.Children.Add(dtb) |> ignore
+            Canvas.SetTop(dtb, 80.0)
+            Canvas.SetLeft(dtb, dxc2)
+            let dxc3 = dxc2+128.0
+            let dtb = new TextBlock(Text="CHAR3",Foreground=Brushes.White,Background=Brushes.Black)
+            c.Children.Add(dtb) |> ignore
+            Canvas.SetTop(dtb, 80.0)
+            Canvas.SetLeft(dtb, dxc3)
             // zone popups
+            let makeEnemyString(zone) =
+                let a = zone_enemies.[zone] |> Array.sort 
+                let enemies = new System.Text.StringBuilder()
+                for i = 0 to 4 do
+                    let n,name,spells = a.[i]
+                    enemies.AppendLine(name + " " + spells) |> ignore
+                enemies.ToString()
             let popup = new System.Windows.Controls.Primitives.Popup()
             let tb = new TextBlock(Text="testing",Foreground=Brushes.White,Background=Brushes.Black)
             popup.Child <- tb
@@ -1605,13 +1648,29 @@ average stats per level
                 if x >= 0 && x < 8*81 && y >= 0 && y < 8*81 then
                     let x = x/81
                     let y = y/81
-                    let a = zone_enemies.[int ow_zones.[x,y]] |> Array.sort 
-                    let enemies = new System.Text.StringBuilder()
-                    for i = 0 to 4 do
-                        let n,name,spells = a.[i]
-                        enemies.AppendLine(name + " " + spells) |> ignore
+                    tb.Text <- makeEnemyString(int ow_zones.[x,y])
                     popup.IsOpen <- true
-                    tb.Text <- enemies.ToString()
+                elif p.X >= dxh && p.X <= dxh+20.0 && p.Y >= 712.0+80.0 && p.Y <= 712.0+100.0 then
+                    tb.Text <- makeEnemyString(13) // HAUKS
+                    popup.IsOpen <- true
+                elif p.X >= dxs && p.X <= dxs+20.0 && p.Y >= 712.0+80.0 && p.Y <= 712.0+100.0 then
+                    tb.Text <- makeEnemyString(19) // SWAMP
+                    popup.IsOpen <- true
+                elif p.X >= dxm && p.X <= dxm+20.0 && p.Y >= 712.0+80.0 && p.Y <= 712.0+100.0 then
+                    tb.Text <- makeEnemyString(14) // M2/G1
+                    popup.IsOpen <- true
+                elif p.X >= dxg && p.X <= dxg+20.0 && p.Y >= 712.0+80.0 && p.Y <= 712.0+100.0 then
+                    tb.Text <- makeEnemyString(15) // GTLOW
+                    popup.IsOpen <- true
+                elif p.X >= dxc1 && p.X <= dxc1+20.0 && p.Y >= 712.0+80.0 && p.Y <= 712.0+100.0 then
+                    tb.Text <- makeEnemyString(16) // CHAR1
+                    popup.IsOpen <- true
+                elif p.X >= dxc2 && p.X <= dxc2+20.0 && p.Y >= 712.0+80.0 && p.Y <= 712.0+100.0 then
+                    tb.Text <- makeEnemyString(17) // CHAR2
+                    popup.IsOpen <- true
+                elif p.X >= dxc3 && p.X <= dxc3+20.0 && p.Y >= 712.0+80.0 && p.Y <= 712.0+100.0 then
+                    tb.Text <- makeEnemyString(18) // CHAR3
+                    popup.IsOpen <- true
                 )
 
             //w.Width <- 960.0
