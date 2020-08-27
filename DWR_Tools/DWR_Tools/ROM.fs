@@ -548,12 +548,13 @@ let decode_rom(file) =
             | 19 -> "SWAMP"
             | _  -> "     "
         printf "zone %2d (%s): " zone extra
-        zone_enemies.[zone] <- Array.create 5 (0,"","")
+        zone_enemies.[zone] <- Array.create 5 (0,"","",0uy)
         for i = 0 to 4 do
             let enemy=data.[i]
             let name,_,_,_,_,_ = EnemyData.ENEMY_DATA.[int enemy]
             let spells = spell(monster_data.[16*(int enemy)..16*(int enemy)+15].[3])
-            zone_enemies.[zone].[i] <- int enemy, name, spells
+            let ss_resist = monster_data.[16*(int enemy)..16*(int enemy)+15].[4] &&& 0xFuy
+            zone_enemies.[zone].[i] <- int enemy, name, spells, ss_resist
             printf "%3d %-16s " enemy name
             if enemy = 16uy then
                 zone_has_metal_slime.[zone] <- zone_has_metal_slime.[zone] + 1

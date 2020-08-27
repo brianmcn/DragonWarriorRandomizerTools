@@ -1627,8 +1627,9 @@ average stats per level
                 let a = zone_enemies.[zone] |> Array.sort 
                 let enemies = new System.Text.StringBuilder()
                 for i = 0 to 4 do
-                    let n,name,spells = a.[i]
-                    enemies.AppendLine(name + " " + spells) |> ignore
+                    let n,name,spells,ss_resist = a.[i]
+                    let resist = if spells <> "" then sprintf " (%d/16 stop resist)" (int ss_resist) else ""
+                    enemies.AppendLine(name + " " + spells + resist) |> ignore
                 enemies.ToString()
             let popup = new System.Windows.Controls.Primitives.Popup()
             let tb = new TextBlock(Text="testing",Foreground=Brushes.White,Background=Brushes.Black)
