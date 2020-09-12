@@ -71,6 +71,7 @@
     <Compile Include="PixelLayout.fs" />
     <Compile Include="ROM.fs" />
     <Compile Include="ROM_mods.fs" />
+    <Compile Include="OneOffs.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config" />
     <EmbeddedResource Include="CroppedBrianKitty.png" />

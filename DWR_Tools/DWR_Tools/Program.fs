@@ -1183,7 +1183,7 @@ let inverted_power_curve(min, max, power, rand:System.Random) =
 [<EntryPoint>]
 let xmain argv = 
     if false then
-        testSendMessage()
+        OneOffs.up2ngScorpionFight()
         0
     elif false then
         // TODO
