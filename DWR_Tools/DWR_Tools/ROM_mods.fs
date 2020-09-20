@@ -484,3 +484,64 @@ LB51B:  BNE $B53E
         failwith "unexpected bytes"
 
     System.IO.File.WriteAllBytes(file+".patched.nes", bytes)
+
+
+
+//////////////////////////////////////////////////////////////////
+// Feature: "Monster pit"
+//
+// Stairs downward on the overworld are walkable tiles that 
+// have 8x the encounter rate of desert tiles
+//
+// Intent: Give the player more overworld grind options to consider
+// throughout the game, and especially offer possible alternatives to
+// spike tiles for late game grinds.
+//
+// Details: 'stairs down' do not currently appear on overworld in 
+// randomizer, but they are supported (e.g. vanilla has them). 
+// Use this otherwise-unused tile to have a different encounter rate.
+//////////////////////////////////////////////////////////////////
+
+(*
+
+Big picture:
+
+When walking onto a new tile, the code checks a few tiles types for encounters.  The rough logic is:
+
+Lookup the tile being stood on
+
+- if it's a town, castle, or cave, warp to that map
+
+- if it's swamp, check for swamp damage and then random encounter with 1/16 chance
+
+- if it's sand or hill, do random encounter with 1/8 chance (and slow-walk hills)
+
+- if it's trees or bricks, do random encounter with 1/16 chance
+
+- if it's forcefield, check for forcefield damage and then random encounter with 1/16 chance
+
+- else (grass, stairs, bridge, treasure chest) do complicated logic that amounts to 
+      check X,Y and if sum is odd, 1/16 chance, else 1/32 chance random encounter
+
+The goal would be to add a new case before the final else, which would be
+
+- if it's stairs down, and we're on the overworld, then random encounter with 1/1 chance
+
+That would behave kind of like a spike tile, but with 5 possible enemies, any subset of which you might repel.
+
+Then a sprinkling of those down-stairs tiles would be added randomly to the overworld map during terrain generation.
+
+
+Implementation:
+
+At the outset, there is no space to add an extra check.  But the code is written inefficiently, with a bit of
+duplicated code, and also extra-complicated code for the final X,Y 1/16 v 1/32 check.  
+
+First rewrite the code to be more efficient (a refactoring with no behavior change, but that compresses the code 
+and leaves a bunch of NOPs that we can later replace).  Test that code.
+
+Then overwrite the NOPs with the extra check for overworld stairs leading to a 1/1 encounter.
+
+// TODO what happens if player uses 'stairs' command?
+
+*)
