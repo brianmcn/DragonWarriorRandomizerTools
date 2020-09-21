@@ -542,6 +542,62 @@ and leaves a bunch of NOPs that we can later replace).  Test that code.
 
 Then overwrite the NOPs with the extra check for overworld stairs leading to a 1/1 encounter.
 
-// TODO what happens if player uses 'stairs' command?
+// TODO what happens if player uses 'stairs' command? should get "Thou cannot enter here..." since there is no entry in the warp table, but test this
+
+*)
+
+(*
+
+original code
+
+ChkFight6:
+LCE63:  LDA CharXPos            ;Is character on an odd X map position?
+LCE65:  LSR                     ;
+LCE66:  BCS ChkFight5           ;If not, branch to check for normal chance for a fight.
+
+LCE68:  LDA CharYPos            ;Is character on an odd Y map position?
+LCE6A:  LSR                     ;
+LCE6B:  BCC HighFightChance     ;Even X and even Y map location is higher fight chance.
+LCE6D:  BCS NormFightChance     ;Odd Y position. Check for normal fight chance.
+
+ChkFight5:
+LCE6F:  LDA CharYPos            ;Is character on an odd Y map position?
+LCE71:  LSR                     ;If not, branch for normal fight chance.
+LCE72:  BCC NormFightChance     ;Odd X and odd Y map location is higher fight chance.
+
+HighFightChance:
+LCE74:  LDA #$1F                ;Higher chance for fight. Check 5 bits instead of 4.
+LCE76:* BNE ChkFight2           ;Branch always.
+
+NormFightChance:
+LCE78:  LDA #$0F                ;Prepare to check lower nibble of random number for a fight.
+LCE7A:  BNE -                   ;Branch always.
+
+(25 bytes)
+
+
+shorter code
+
+LDA $3A          // load CharXPos
+ADC $3B          // add CharYPos
+LSR A            // logical shift right (carry bit has even/odd -ness)
+BCC +TODO        // if even go to (displacement)
+LDA #$0F         // load 1/16 chance
+BNE ChkFight2    // ChkFight2 is located at CDFD, it ANDs accumulator with a random number and if 0 starts a fight
++LDA #$1F        // load 1/32 chance
+BNE ChkFight2    // ChkFight2 is located at CDFD, it ANDs accumulator with a random number and if 0 starts a fight
+
+(15 bytes)
+
+thus we can insert 10 NOPs before shorter code just to verify behavior unchanged
+
+then can replace those NOPs with
+
+CMP #BLK_STAIR_DN   // #$05
+BNE ++TODO
+LDA MapNumber       // $45
+CMP #MAP_OVERWORLD  // #$01
+BEQ DoRandomFight   // DoRandomFight is located at CE7C
+++
 
 *)
