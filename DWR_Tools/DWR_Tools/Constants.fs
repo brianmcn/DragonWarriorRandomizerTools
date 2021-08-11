@@ -338,36 +338,8 @@ type LocationIDs =
     | GARINS_TOMB_3_BOXES     = 23
     | GARINS_TOMB_2_BOXES     = 24
 let mutable UIThreadSynchronizationContext = null : System.Threading.SynchronizationContext
-let LocationCheckboxes : System.Windows.Controls.CheckBox[] = Array.zeroCreate 25
 let ItemCheckboxes : System.Windows.Controls.CheckBox[] = Array.zeroCreate 10
-let LOCATIONS = [|
-    "---Tantagel (4box, cave)", ""                       , (fun () -> ())              
-    "Charlock Castle", "DW_Charlock.png"                 , (fun () -> ())
-    "Brecconary (Motel 6)", ""                           , (fun () -> ())
-    "Rimuldar (keys)", ""                                , (fun () -> ())
-    "---Rimuldar (1box)", ""                             , (fun () -> LocationCheckboxes.[int LocationIDs.RIMULDAR].IsChecked <- System.Nullable.op_Implicit true)
-    "Cantlin", ""                                        , (fun () -> if not LocationCheckboxes.[int LocationIDs.CANTLIN_COORDS].IsChecked.Value then async { voice.Speak("If you don't have keys, write down the location") } |> Async.Start)
-    "---Cantlin coordinates", ""                         , (fun () -> LocationCheckboxes.[int LocationIDs.CANTLIN].IsChecked <- System.Nullable.op_Implicit true)
-    "Kol (fountain)", ""                                 , (fun () -> ())
-    "Hauksness (dead)", ""                               , (fun () -> if not LocationCheckboxes.[int LocationIDs.HAUKSNESS_ITEM].IsChecked.Value then async { voice.Speak("If you aren't strong enough, write down the location") } |> Async.Start)
-    "---Hauksness item", ""                              , (fun () -> LocationCheckboxes.[int LocationIDs.HAUKSNESS].IsChecked <- System.Nullable.op_Implicit true)
-    "Garinham (grave below)", ""                         , (fun () -> if not LocationCheckboxes.[int LocationIDs.GARINHAM_BOXES].IsChecked.Value then async { voice.Speak("If you don't have keys, write down the location") } |> Async.Start)
-    "---Garinham (3box)", ""                             , (fun () -> LocationCheckboxes.[int LocationIDs.GARINHAM].IsChecked <- System.Nullable.op_Implicit true)
-    "Sun Stones Cave (v)", ""                            , (fun () -> LocationCheckboxes.[int LocationIDs.SUN_STONES_CAVE_BOX].IsChecked <- System.Nullable.op_Implicit true)
-    "---1 box", ""                                       , (fun () -> LocationCheckboxes.[int LocationIDs.SUN_STONES_CAVE].IsChecked <- System.Nullable.op_Implicit true)
-    "Staff Rain Cave (>)", ""                            , (fun () -> if ItemCheckboxes.[1].IsChecked.Value && not ItemCheckboxes.[2].IsChecked.Value then async { voice.Speak("Turn in the silver harp") } |> Async.Start)
-    "Jerk Cave (<)", ""                                  , (fun () -> if ItemCheckboxes.[0].IsChecked.Value && ItemCheckboxes.[2].IsChecked.Value && ItemCheckboxes.[3].IsChecked.Value && not ItemCheckboxes.[4].IsChecked.Value then async { voice.Speak("Get raindbow drop from jerk") } |> Async.Start)
-    "Swamp Cave North", "DW_SwampCave.png"               , (fun () -> ())
-    "Swamp Cave South", "DW_SwampCave.png"               , (fun () -> ())
-    "Mountain Cave (5box)", "DW_MountainCave.png"        , (fun () -> ())
-    "---all 5 box", "DW_MountainCave.png"                , (fun () -> LocationCheckboxes.[int LocationIDs.MOUNTAIN_CAVE].IsChecked <- System.Nullable.op_Implicit true)
-    "Tablet Cave", "DW_TabletCave.png"                   , (fun () -> ())
-    "---1 box", "DW_TabletCave.png"                      , (fun () -> LocationCheckboxes.[int LocationIDs.TABLET_CAVE].IsChecked <- System.Nullable.op_Implicit true)
-    "Garin's Tomb", "DW_GarinTomb.png"                   , (fun () -> if not LocationCheckboxes.[int LocationIDs.GARINS_TOMB_2_BOXES].IsChecked.Value then async { voice.Speak("Write down the tomb location") } |> Async.Start)
-    "---top 3 box", "DW_GarinTomb.png"                   , (fun () -> LocationCheckboxes.[int LocationIDs.GARINS_TOMB].IsChecked <- System.Nullable.op_Implicit true)
-    "---bottom 2 box", "DW_GarinTomb.png"                , (fun () -> LocationCheckboxes.[int LocationIDs.GARINS_TOMB].IsChecked <- System.Nullable.op_Implicit true
-                                                                      LocationCheckboxes.[int LocationIDs.GARINS_TOMB_3_BOXES].IsChecked <- System.Nullable.op_Implicit true)
-    |]
+let LocationCheckboxes : System.Windows.Controls.CheckBox[] = Array.zeroCreate 25
 let mutable harpReminderIsPending = false
 let rec harp() = 
     async {

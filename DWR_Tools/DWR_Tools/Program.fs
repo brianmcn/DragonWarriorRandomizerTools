@@ -4,7 +4,11 @@ open System.Windows.Controls
 open System.Windows.Media
 open System.Windows.Interop 
 
-// TODO way to deal with 'reset' without crashing (e.g. xp decreasing)
+// TODO re-add shop-tracking UI, add fullplate track
+// TODO tabs or somewhere to display dungeon maps
+// TODO tab for full DL2 simulator
+// TODO timeline
+// TODO possible xp graph over time
 
 // TODO add AP/DP/STR/AGI tracker (when that screen pops up?) also note weapon/armor/etc
 //   - could capture the level when it was taken, and always know current level, so could show how 'stale' the info was that way
@@ -156,9 +160,6 @@ let gridAdd(g:Grid, x, c, r) =
 
 type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this = 
     inherit Window()
-    let nearbyCaption = new TextBox(Text="nearby world 0",FontSize=16.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(2.0))
-    let allCaption = new TextBox(Text="all explored 0",FontSize=16.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(2.0))
-    let mutable currentContinent = 0
     let mutable src_cb : CheckBox = null  // staff of rain checkbox
     let mutable jerk_cb : CheckBox = null  // jerk checkbox
     let mutable startTime = DateTime.Now + TimeSpan.FromSeconds(0.0)
@@ -171,16 +172,10 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
     let mutable heroMaxMP = 0
     let mutable heroAP = 0
     let mutable heroDP = 0
-    let mutable curFrame = 0
-    let mutable image1Frames = null
-    let mutable image2Frames = null
-    let image1 = new Image()
-    let image2 = new Image()
     let mutable caveMapIsCurrentlyDisplayed = false
     let monsterImage = new Image()
     let tab = new TabControl(Background=Brushes.Black)
     let mutable ssNum = 1
-    let mutable prevMatchName = ""
     let mutable heroExp = 0
     let mutable heroLevel = 1
     let heroLevelTimes = Array.create 30 null
@@ -234,27 +229,25 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
     let onCheckedChanged(resource) =
         if resource <> "" then
             let imageStream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream(resource)
-            image1.Source <- System.Windows.Media.Imaging.BitmapFrame.Create(imageStream)
+            //image1.Source <- System.Windows.Media.Imaging.BitmapFrame.Create(imageStream)
             caveMapIsCurrentlyDisplayed <- true
         else
-            image1.Source <- null
+            //image1.Source <- null
             caveMapIsCurrentlyDisplayed <- false
-    let makeCheckedStuff(labelStr,strResEffects,cba:CheckBox[]) = 
+    let makeCheckedStuff(strResBoxesEffects,cba:CheckBox[]) = 
         let sp = new StackPanel(Background=Brushes.Black)
-        sp.Background<-Brushes.Black
-        let label = new Label()
-        label.Content <- new TextBox(Text=labelStr,FontSize=16.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0))
-        let fudgeLabel() =
-            if labelStr = "ITEMS" then
-                (label.Content :?> TextBox).Text <- sprintf "ITEMS %d/7 bury-able" (Constants.howManyOf7SpecialItemsChecked())
-        sp.Children.Add(label) |> ignore
         let mutable index = 0
-        for s,res,effect in strResEffects do
-            let tb = new TextBox(Text=s,FontSize=16.0,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0))
+        for s,res,isChecked,boxes:_[],uies,effect in strResBoxesEffects do
+            let tb = new TextBox(Text=s,FontSize=10.0,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0),IsReadOnly=true)
+            tb.Margin <- Thickness(2.0) // space between rows
             let brush, thunk = makeAnimationBrush()
             tb.Background <- brush
             let cb = new CheckBox(Content=tb)
-            cb.IsChecked <- System.Nullable.op_Implicit false
+            cb.VerticalContentAlignment <- VerticalAlignment.Center
+            cb.LayoutTransform <- new ScaleTransform(2.0, 2.0)
+            cb.IsChecked <- System.Nullable.op_Implicit isChecked
+            if isChecked then
+                tb.Foreground <- Brushes.SlateBlue
             cba.[index] <- cb
             index <- index + 1
             if s = "Staff Rain Cave (>)" then 
@@ -262,12 +255,12 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
             if s = "Jerk Cave (<)" then 
                 jerk_cb <- cb
             cb.Checked.Add(fun _ -> 
-                fudgeLabel()
                 effect()
                 if s = "Staff of Rain" then 
                     src_cb.IsChecked <- System.Nullable.op_Implicit true
                 if s = "Rainbow Drop" then 
                     jerk_cb.IsChecked <- System.Nullable.op_Implicit true
+(* TODO put this logic with changeDomain box tracking
                 if res = "E_SWORD" then 
                     heroWeaponIndex <- Constants.WEAPONS.Length-2
                     updateWeapon()
@@ -281,20 +274,29 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
                     let ts = DateTime.Now - startTime
                     tb.Text <- tb.Text + sprintf " %02d:%02d:%02d" ts.Hours ts.Minutes ts.Seconds
                 else 
-                    onCheckedChanged(res)
-                tb.Foreground <- Brushes.DarkSlateBlue 
-                thunk())
+*)
+                onCheckedChanged(res)
+                tb.Foreground <- Brushes.SlateBlue 
+                thunk()
+                TrackerModel.AnythingChanged.Trigger())
             cb.Unchecked.Add(fun _ -> 
-                fudgeLabel()
                 onCheckedChanged("")
                 tb.Foreground <- Brushes.Orange
-                thunk())
-            sp.Children.Add(cb) |> ignore
-        fudgeLabel()
+                thunk()
+                TrackerModel.AnythingChanged.Trigger())
+            let hp = new StackPanel(Background=Brushes.Black,Orientation=Orientation.Horizontal)
+            hp.Children.Add(cb) |> ignore
+            let c = new Canvas(Height=30., Width=30.0*float(boxes.Length))
+            for i = 0 to boxes.Length-1 do
+                TrackerModel.canvasAdd(c,boxes.[i],float(30*i),0.)
+            hp.Children.Add(c) |> ignore
+            for uie in uies do
+                hp.Children.Add(uie) |> ignore
+            sp.Children.Add(hp) |> ignore
         sp
     let content = new Grid()
     let xpTextBox = new RichTextBox(FontSize=16.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0),Focusable=false)
-    let hmsTimeTextBox = new TextBox(Text="timer",FontSize=42.0,Background=Brushes.Black,Foreground=Brushes.LightGreen,BorderThickness=Thickness(0.0))
+    let hmsTimeTextBox = new TextBox(Text="timer",FontSize=36.0,Background=Brushes.Black,Foreground=Brushes.LightGreen,BorderThickness=Thickness(0.0))
     let monsterName = new TextBox(Text="name",FontSize=20.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0))
     let monsterXP = new TextBox(Text="EXP",FontSize=20.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0))
     let monsterGold = new TextBox(Text="GOLD",FontSize=20.0,FontFamily=System.Windows.Media.FontFamily("Courier New"),Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0))
@@ -305,12 +307,11 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
     let mutable source = null
     let stackPanel = new StackPanel(Background=Brushes.Black)
     let update() =
-        curFrame <- curFrame+1
         let timer = System.Diagnostics.Stopwatch.StartNew()
         // update time
         let ts = DateTime.Now - startTime
         let h,m,s = ts.Hours, ts.Minutes, ts.Seconds
-        hmsTimeTextBox.Text <- sprintf "%02d:%02d:%02d\r\ndeaths:%2d" h m s numDeaths
+        hmsTimeTextBox.Text <- sprintf "%02d:%02d:%02d    deaths:%2d" h m s numDeaths
         // update XP & spell info
         let bmpScreenshot = Screenshot.GetDWRBitmap()
         let gp(x,y) =
@@ -340,7 +341,6 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
             if (DateTime.Now - mostRecentDeathTime) > TimeSpan.FromSeconds(10.0) then // ensure don't run this two frames in a row
                 numDeaths <- numDeaths + 1
                 mostRecentDeathTime <- DateTime.Now 
-                currentContinent <- 0
                 changed <- true
         | _ -> ()
         match PixelLayout.getAGHPMPAPDP(gp) with   
@@ -388,18 +388,14 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
         updateWeapon()
         updateArmor()
         updateShield()
-        RenderOptions.SetBitmapScalingMode(image1, BitmapScalingMode.NearestNeighbor)
-        RenderOptions.SetBitmapScalingMode(image2, BitmapScalingMode.NearestNeighbor)
 
         content.ColumnDefinitions.Add(new ColumnDefinition(Width=GridLength(76.0)))
-        content.ColumnDefinitions.Add(new ColumnDefinition(Width=GridLength(200.0)))
         content.ColumnDefinitions.Add(new ColumnDefinition())
         content.RowDefinitions.Add(new RowDefinition())
 
         // left grid
         let leftGrid = new Grid()
         leftGrid.ColumnDefinitions.Add(new ColumnDefinition())
-        leftGrid.RowDefinitions.Add(new RowDefinition(Height=GridLength(76.0)))
         leftGrid.RowDefinitions.Add(new RowDefinition(Height=GridLength(506.0)))
         leftGrid.RowDefinitions.Add(new RowDefinition())
         leftGrid.RowDefinitions.Add(new RowDefinition())
@@ -409,35 +405,60 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
             let imageStream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("CroppedBrianKitty.png")
             kitty.Source <- System.Windows.Media.Imaging.BitmapFrame.Create(imageStream)
             kitty
-        let kitty = makeKitty()
-        gridAdd(leftGrid,kitty,0,0)
-        gridAdd(leftGrid,xpTextBox,0,1)
-        gridAdd(leftGrid,weaponTextBox,0,2)
-        gridAdd(leftGrid,armorTextBox,0,3)
-        gridAdd(leftGrid,shieldTextBox,0,4)
+        let kitty = makeKitty()// TODO add back kitty somewhere else
+        gridAdd(leftGrid,xpTextBox,0,0)
+        gridAdd(leftGrid,weaponTextBox,0,1)
+        gridAdd(leftGrid,armorTextBox,0,2)
+        gridAdd(leftGrid,shieldTextBox,0,3)
         weaponTextBox.MouseDown.Add(fun _ -> updateWeapon())
         armorTextBox.MouseDown.Add(fun _ -> updateArmor())
         shieldTextBox.MouseDown.Add(fun _ -> updateShield())
         gridAdd(content,leftGrid,0,0)
-        // right grid
-        let rightGrid = new Grid()
-        rightGrid.ColumnDefinitions.Add(new ColumnDefinition())
-        rightGrid.RowDefinitions.Add(new RowDefinition(Height=GridLength(108.0)))
-        gridAdd(rightGrid,hmsTimeTextBox,0,0)
+        // right panel
+        let rightPanel = new StackPanel(Orientation=Orientation.Vertical, Background=Brushes.Black)
+        rightPanel.Children.Add(hmsTimeTextBox) |> ignore
 
-        rightGrid.RowDefinitions.Add(new RowDefinition())
-        let locationTextBox = makeCheckedStuff("LOCATIONS FOUND",Constants.LOCATIONS,Constants.LocationCheckboxes)
-        gridAdd(rightGrid,locationTextBox,0,1)
+        let locationTextBox = makeCheckedStuff(TrackerModel.LOCATIONS,Constants.LocationCheckboxes)
+        rightPanel.Children.Add(locationTextBox) |> ignore
 
-        // add right grid
-        gridAdd(content,rightGrid,1,0)
+        let unfounds = StackPanel(Orientation=Orientation.Horizontal, Background=Brushes.Black)
+        unfounds.Children.Add(new TextBox(Text="Remaining:",FontSize=16.0,Background=Brushes.Black,Foreground=Brushes.Orange,BorderThickness=Thickness(0.0),IsReadOnly=true)) |> ignore
+        let draw(held,c:Canvas,i) =
+            c.Children.Clear()
+            if not(held) then
+                TrackerModel.canvasAdd(c, TrackerModel.BMPtoImage TrackerModel.ITEMS.Bitmaps.[i], 5., 5.)
+            else
+                TrackerModel.canvasAdd(c, TrackerModel.BMPtoImage (TrackerModel.greyInvert TrackerModel.ITEMS.Bitmaps.[i]), 5., 5.)
+        let kih = TrackerModel.Box.KeyItemsHeld()
+        let unfoundCanvases = ResizeArray()
+        for i = 0 to kih.Length-1 do
+            let c = new Canvas(Width=30., Height=30.)
+            unfoundCanvases.Add(c)
+            draw(kih.[i],c,i)
+            unfounds.Children.Add(c) |> ignore
+        TrackerModel.AnythingChanged.Publish.Add(fun _ ->
+            let kih = TrackerModel.Box.KeyItemsHeld()
+            for i = 0 to kih.Length-1 do
+                draw(kih.[i], unfoundCanvases.[i], i)
+            )
+        rightPanel.Children.Add(unfounds) |> ignore
 
+        // add right panel
+        gridAdd(content,rightPanel,1,0)
+
+#if NOMORE
         // picture area
         if racingMode then
             let sp = new StackPanel(Background=Brushes.Black,Orientation=Orientation.Vertical)
+            let c = Canvas()
+            c.Children.Add(sp) |> ignore
             if not leagueMode then
                 let kitty = makeKitty()
                 sp.Children.Add(kitty) |> ignore
+                TrackerModel.canvasAdd(c, TrackerModel.boxItemImpl(TrackerModel.Box()), 0., 0.)
+                TrackerModel.canvasAdd(c, TrackerModel.boxItemImpl(TrackerModel.Box()), 30., 0.)
+                TrackerModel.canvasAdd(c, TrackerModel.boxItemImpl(TrackerModel.Box()), 60., 0.)
+                TrackerModel.canvasAdd(c, TrackerModel.boxItemImpl(TrackerModel.Box()), 90., 0.)
                 //statsTextBox.Text<-"Stats not yet seen"
                 //sp.Children.Add(statsTextBox) |> ignore
             else
@@ -512,16 +533,33 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
             cb.Checked.Add(fun _ -> Constants.voice.Volume <- 30)
             cb.Unchecked.Add(fun _ -> Constants.voice.Volume <- 0)
             sp.Children.Add(cb) |> ignore
-            gridAdd(content,sp,2,0)
+            gridAdd(content,c,2,0)
+#endif
         // full window
         this.Title <- "Dragon Warrior Randomizer"
         this.Content <- content
-        this.Width <- 1280.0 - 720.0
-        this.Height <- 720.0
+        //this.Width <- 1280.0 - 720.0
+        //this.Height <- 720.0
         //this.SizeToContent <- SizeToContent.Height
+        this.SizeToContent <- SizeToContent.WidthAndHeight
         this.WindowStartupLocation <- WindowStartupLocation.Manual
-        this.Left <- 1300.0
-        this.Top <- 20.0
+        this.Left <- 1450.0
+        this.Top <- 0.0
+
+        System.Windows.Application.Current.DispatcherUnhandledException.Add(fun e -> 
+            let ex = e.Exception
+            printfn "An unhandled exception from UI thread:"
+            printfn "%s" (ex.ToString())
+            printfn "press Enter to end"
+            System.Console.ReadLine() |> ignore
+            )
+        System.AppDomain.CurrentDomain.UnhandledException.Add(fun e -> 
+            let ex = e.ExceptionObject
+            printfn "An unhandled exception from background thread:"
+            printfn "%s" (ex.ToString())
+            printfn "press Enter to end"
+            System.Console.ReadLine() |> ignore
+            )
 
         let timer = new System.Windows.Threading.DispatcherTimer()
         timer.Interval <- TimeSpan.FromSeconds(0.2)  // TODO decide time, interacts with both mapping and monster portraits...
@@ -586,25 +624,6 @@ type MyWindow(ihrs,imins,isecs,racingMode,leagueMode,xp_thresholds) as this =
                     ssNum <- ssNum + 1
                 handled <- true
         IntPtr.Zero
-
-let neededAttacksTable() =
-    for mp in 56..8..160 do
-        let heals = mp / 8
-        let mutable ap = 120
-        let mutable foundLo = false
-        while ap <> -1 do
-            let mx = (ap-100) / 2
-            let mn = mx / 2
-            let av = (mx + mn) / 2
-            let numAttacksLo = (150 / av) + 1
-            let numAttacksHi = (165 / av) + 1
-            if not foundLo && (heals >= numAttacksLo - 2) then
-                printf "%3d mp - need %3d " mp ap
-                foundLo <- true
-            if heals >= numAttacksHi - 2 then
-                printfn "to %3d ap to win" ap
-                ap <- -2
-            ap <- ap + 1
 
 [<STAThread>]
 [<EntryPoint>]
